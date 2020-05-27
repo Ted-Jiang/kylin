@@ -902,12 +902,11 @@ public class CubeController extends BasicController {
     public CuboidTreeResponse getCurrentCuboids(@PathVariable String cubeName) {
         checkCubeExists(cubeName);
         CubeInstance cube = cubeService.getCubeManager().getCube(cubeName);
+
         // The cuboid tree displayed should be consistent with the current one
         CuboidScheduler cuboidScheduler = cube.getCuboidScheduler();
-        Map<Long, Long> cuboidStatsMap = cube.getCuboids();
-        if (cuboidStatsMap == null) {
-            cuboidStatsMap = CuboidStatsReaderUtil.readCuboidStatsFromCube(cuboidScheduler.getAllCuboidIds(), cube);
-        }
+        Set<Long> currentCuboidSet = cuboidScheduler.getAllCuboidIds();
+        Map<Long, Long> cuboidStatsMap = CuboidStatsReaderUtil.readCuboidStatsFromCube(currentCuboidSet, cube);
 
         Map<Long, Long> hitFrequencyMap = null;
         Map<Long, Long> queryMatchMap = null;
@@ -918,7 +917,6 @@ public class CubeController extends BasicController {
             logger.warn("Fail to query on system cube due to " + e);
         }
 
-        Set<Long> currentCuboidSet = cube.getCuboidScheduler().getAllCuboidIds();
         return cubeService.getCuboidTreeResponse(cuboidScheduler, cuboidStatsMap, hitFrequencyMap, queryMatchMap,
                 currentCuboidSet);
     }

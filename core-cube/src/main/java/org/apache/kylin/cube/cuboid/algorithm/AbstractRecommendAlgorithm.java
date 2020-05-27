@@ -48,6 +48,7 @@ public abstract class AbstractRecommendAlgorithm implements CuboidRecommendAlgor
     @Override
     public List<Long> recommend(double expansionRate) {
         double spaceLimit = cuboidStats.getBaseCuboidSize() * expansionRate;
+        logger.info("space limit for the algorithm is {} with expansion rate {}", spaceLimit, expansionRate);
         return start(spaceLimit);
     }
 

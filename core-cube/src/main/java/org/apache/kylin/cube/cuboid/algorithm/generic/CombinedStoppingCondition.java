@@ -18,12 +18,16 @@
 
 package org.apache.kylin.cube.cuboid.algorithm.generic;
 
-import org.apache.commons.math3.genetics.Population;
-import org.apache.commons.math3.genetics.StoppingCondition;
-
 import java.util.List;
 
+import org.apache.commons.math3.genetics.Population;
+import org.apache.commons.math3.genetics.StoppingCondition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class CombinedStoppingCondition implements StoppingCondition {
+    private static final Logger logger = LoggerFactory.getLogger(GeneticAlgorithm.class);
+
     private List<StoppingCondition> conditions;
 
     public CombinedStoppingCondition(List<StoppingCondition> conditions) {
@@ -34,6 +38,7 @@ public class CombinedStoppingCondition implements StoppingCondition {
     public boolean isSatisfied(Population population) {
         for (StoppingCondition condition : conditions) {
             if (condition.isSatisfied(population)) {
+                logger.info("Stopping condition {} is satisfied", condition);
                 return true;
             }
         }

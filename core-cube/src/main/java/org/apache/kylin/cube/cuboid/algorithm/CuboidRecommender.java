@@ -118,7 +118,7 @@ public class CuboidRecommender {
      */
     public Map<Long, Long> getRecommendCuboidList(CuboidStats cuboidStats, KylinConfig kylinConf,
             boolean ifForceRecommend) {
-        long threshold1 = 1L << kylinConf.getCubePlannerAgreedyAlgorithmAutoThreshold() - 1;
+        long threshold1 = 1L << kylinConf.getCubePlannerGreedyAlgorithmAutoThreshold() - 1;
         long threshold2 = 1L << kylinConf.getCubePlannerGeneticAlgorithmAutoThreshold() - 1;
         if (threshold1 >= threshold2) {
             logger.error("Invalid Cube Planner Algorithm configuration");

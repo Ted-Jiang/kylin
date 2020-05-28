@@ -840,12 +840,16 @@ public abstract class KylinConfigBase implements Serializable {
         return Double.parseDouble(getOptional("kylin.cube.cubeplanner.bpus-min-benefit-ratio", "0.01"));
     }
 
-    public int getCubePlannerAgreedyAlgorithmAutoThreshold() {
+    public int getCubePlannerGreedyAlgorithmAutoThreshold() {
         return Integer.parseInt(getOptional("kylin.cube.cubeplanner.algorithm-threshold-greedy", "8"));
     }
 
     public int getCubePlannerGeneticAlgorithmAutoThreshold() {
         return Integer.parseInt(getOptional("kylin.cube.cubeplanner.algorithm-threshold-genetic", "23"));
+    }
+
+    public double getCubePlannerOptimizationSpaceBenefitRatio() {
+        return Double.parseDouble(getOptional("kylin.cube.cubeplanner.optimization-space-benefit-ratio", "0.1"));
     }
 
     /**

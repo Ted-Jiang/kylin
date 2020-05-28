@@ -43,6 +43,7 @@ import org.apache.kylin.cube.CubeUpdate;
 import org.apache.kylin.cube.cuboid.Cuboid;
 import org.apache.kylin.cube.cuboid.CuboidCLI;
 import org.apache.kylin.cube.cuboid.CuboidScheduler;
+import org.apache.kylin.cube.cuboid.algorithm.RecommendResult;
 import org.apache.kylin.cube.model.CubeDesc;
 import org.apache.kylin.engine.EngineFactory;
 import org.apache.kylin.engine.mr.CubingJob;
@@ -1019,7 +1020,7 @@ public class CubeService extends BasicService implements InitializingBean {
     }
 
     /** cube planner services */
-    public Map<Long, Long> getRecommendCuboidStatistics(CubeInstance cube, Map<Long, Long> hitFrequencyMap,
+    public RecommendResult getRecommendCuboidStatistics(CubeInstance cube, Map<Long, Long> hitFrequencyMap,
             Map<Long, Map<Long, Pair<Long, Long>>> rollingUpCountSourceMap) throws IOException {
         aclEvaluate.checkProjectAdminPermission(cube.getProject());
         return CuboidRecommenderUtil.getRecommendCuboidList(cube, hitFrequencyMap, rollingUpCountSourceMap);

@@ -130,6 +130,12 @@ public class CubeInstance extends RootPersistentEntity implements IRealization, 
     @JsonProperty("snapshots")
     private Map<String, String> snapshots = Maps.newHashMap();
 
+    @JsonProperty("score")
+    private double score = -1;
+
+    @JsonProperty("score_hint")
+    private String scoreHint;
+    
     // cuboid scheduler lazy built
     transient private CuboidScheduler cuboidScheduler;
 
@@ -733,6 +739,22 @@ public class CubeInstance extends RootPersistentEntity implements IRealization, 
 
     public void putSnapshotResPath(String table, String snapshotResPath) {
         getSnapshots().put(table, snapshotResPath);
+    }
+
+    public void setScore(double score) {
+        this.score = score;
+    }
+
+    public double getScore() {
+        return score;
+    }
+
+    public String getScoreHint() {
+        return scoreHint;
+    }
+
+    public void setScoreHint(String scoreHint) {
+        this.scoreHint = scoreHint;
     }
 
     public static CubeInstance getCopyOf(CubeInstance other) {

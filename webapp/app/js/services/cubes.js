@@ -74,7 +74,7 @@ KylinApp.factory('CubeService', ['$resource', function ($resource, config) {
       isArray: false,
       interceptor: {
         response: function(response) {
-          return transformCuboidsResponse(response.data);
+          return transformCuboidsResponse(response.data.cuboidTree);
         }
       }
     },

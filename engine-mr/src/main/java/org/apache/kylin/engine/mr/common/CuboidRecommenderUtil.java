@@ -27,8 +27,13 @@ import org.apache.kylin.common.util.Pair;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeSegment;
 import org.apache.kylin.cube.cuboid.CuboidScheduler;
+import org.apache.kylin.cube.cuboid.TreeCuboidScheduler;
 import org.apache.kylin.cube.cuboid.algorithm.CuboidRecommender;
 import org.apache.kylin.cube.cuboid.algorithm.CuboidStats;
+import org.apache.kylin.cube.cuboid.algorithm.CuboidStatsUtil;
+import org.apache.kylin.cube.cuboid.algorithm.OptimizationBenefit;
+import org.apache.kylin.cube.cuboid.algorithm.RecommendResult;
+import org.apache.kylin.shaded.com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,7 +72,7 @@ public class CuboidRecommenderUtil {
     }
 
     /** Trigger cube planner phase two for optimization */
-    public static Map<Long, Long> getRecommendCuboidList(CubeInstance cube, Map<Long, Long> hitFrequencyMap,
+    public static RecommendResult getRecommendCuboidList(CubeInstance cube, Map<Long, Long> hitFrequencyMap,
             Map<Long, Map<Long, Pair<Long, Long>>> rollingUpCountSourceMap) throws IOException {
 
         CuboidScheduler cuboidScheduler = cube.getCuboidScheduler();
@@ -84,6 +89,7 @@ public class CuboidRecommenderUtil {
         String key = cube.getName();
         double queryUncertaintyRatio = config.getCubePlannerQueryUncertaintyRatio();
         double bpusMinBenefitRatio = config.getCubePlannerBPUSMinBenefitRatio();
+        double expansionRatio = config.getCubePlannerExpansionRateThreshold();
         CuboidStats cuboidStats = new CuboidStats.Builder(key, baseCuboid, statsPair.getFirst(),
                 statsPair.getSecond()) {
             @Override
@@ -100,7 +106,31 @@ public class CuboidRecommenderUtil {
                 .setHitFrequencyMap(hitFrequencyMap) //
                 .setRollingUpCountSourceMap(rollingUpCountSourceMap) //
                 .build();
-        return CuboidRecommender.getInstance().getRecommendCuboidList(cuboidStats, config);
+        Map<Long, Long> recomCuboidStatsMap = CuboidRecommender.getInstance().getRecommendCuboidList(cuboidStats,
+                config);
+
+        OptimizationBenefit optBftModel;
+        if (hitFrequencyMap != null && !hitFrequencyMap.isEmpty()) {
+            Map<Long, Long> allStats = cuboidStats.getStatistics();
+            Map<Long, Double> allSizes = CuboidStatsReaderUtil.readCuboidSizeFromCube(allStats, cube);
+
+            CuboidScheduler recomCuboidScheduler = new TreeCuboidScheduler(cube.getDescriptor(),
+                    Lists.newArrayList(recomCuboidStatsMap.keySet()),
+                    new TreeCuboidScheduler.CuboidCostComparator(recomCuboidStatsMap));
+
+            Map<Long, Double> cuboidHitProbabilityMap = CuboidStatsUtil.calculateCuboidHitProbability(allStats.keySet(),
+                    hitFrequencyMap, baseCuboid, queryUncertaintyRatio);
+
+            double spaceLimit = expansionRatio * allSizes.get(baseCuboid);
+            double spaceBenefitRatio = config.getCubePlannerOptimizationSpaceBenefitRatio();
+
+            optBftModel = CuboidStatsUtil.calculateOptimizationBenefit(allStats, allSizes, cuboidScheduler,
+                    recomCuboidScheduler, cuboidHitProbabilityMap, spaceLimit, spaceBenefitRatio);
+            logger.info("The benefit for optimizing cube {} is {}", cube, optBftModel.getTotalBenefit());
+        } else {
+            optBftModel = OptimizationBenefit.ZERO;
+        }
+        return new RecommendResult.Builder(recomCuboidStatsMap).setOptimizationBenefitModel(optBftModel).build();
     }
 
     /** For future segment level recommend */

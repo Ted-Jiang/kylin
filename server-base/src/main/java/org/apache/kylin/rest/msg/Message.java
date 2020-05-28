@@ -173,6 +173,11 @@ public class Message {
         return "Rebuild snapshot of hive view '%s' is not supported, please refresh segment of the cube";
     }
 
+    // Cube Planner
+    public String getFAIL_RECOMMEND_CUBOID() {
+        return "Cannot get recommend cuboid list for cube '%s'.";
+    }
+    
     // Model
     public String getINVALID_MODEL_DEFINITION() {
         return "The data model definition is invalid.";

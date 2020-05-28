@@ -39,6 +39,8 @@ import org.apache.kylin.cube.CubeManager;
 import org.apache.kylin.cube.CubeSegment;
 import org.apache.kylin.cube.cuboid.CuboidScheduler;
 import org.apache.kylin.cube.cuboid.TreeCuboidScheduler;
+import org.apache.kylin.cube.cuboid.algorithm.OptimizationBenefit;
+import org.apache.kylin.cube.cuboid.algorithm.RecommendResult;
 import org.apache.kylin.cube.model.CubeBuildTypeEnum;
 import org.apache.kylin.cube.model.CubeDesc;
 import org.apache.kylin.cube.model.CubeJoinedFlatTableDesc;
@@ -71,6 +73,7 @@ import org.apache.kylin.rest.request.JobBuildRequest2;
 import org.apache.kylin.rest.request.JobOptimizeRequest;
 import org.apache.kylin.rest.request.LookupSnapshotBuildRequest;
 import org.apache.kylin.rest.response.CubeInstanceResponse;
+import org.apache.kylin.rest.response.CuboidRecommendResponse;
 import org.apache.kylin.rest.response.CuboidTreeResponse;
 import org.apache.kylin.rest.response.EnvelopeResponse;
 import org.apache.kylin.rest.response.GeneralResponse;
@@ -862,26 +865,34 @@ public class CubeController extends BasicController {
         checkCubeExists(cubeName);
         CubeInstance cube = cubeService.getCubeManager().getCube(cubeName);
 
-        Map<Long, Long> cuboidList = getRecommendCuboidList(cube);
-        List<Set<String>> dimensionSetList = Lists.newLinkedList();
+        Message msg = MsgPicker.getMsg();
+        String errorMsg = String.format(Locale.ROOT, msg.getFAIL_RECOMMEND_CUBOID(), cubeName);
 
+        RecommendResult recommRet = getRecommendCuboidList(cube);
+        if (recommRet == null) {
+            logger.warn(errorMsg);
+            throw new InternalErrorException(errorMsg);
+        }
+
+        Map<Long, Long> cuboidList = recommRet.getRecommendCuboids();
         if (cuboidList == null || cuboidList.isEmpty()) {
-            logger.info("Cannot get recommended cuboid list for cube " + cubeName);
-        } else {
-            if (cuboidList.size() < top) {
-                logger.info("Require " + top + " recommended cuboids, but only " + cuboidList.size() + " is found.");
-            }
-            Iterator<Long> cuboidIterator = cuboidList.keySet().iterator();
-            RowKeyColDesc[] rowKeyColDescList = cube.getDescriptor().getRowkey().getRowKeyColumns();
+            logger.warn(errorMsg);
+            throw new InternalErrorException(errorMsg);
+        }
+        if (cuboidList.size() < top) {
+            logger.info("Only recommend " + cuboidList.size() + " cuboids less than topn " + top);
+        }
+        Iterator<Long> cuboidIterator = cuboidList.keySet().iterator();
+        RowKeyColDesc[] rowKeyColDescList = cube.getDescriptor().getRowkey().getRowKeyColumns();
 
-            while (top-- > 0 && cuboidIterator.hasNext()) {
-                Set<String> dimensionSet = Sets.newHashSet();
-                dimensionSetList.add(dimensionSet);
-                long cuboid = cuboidIterator.next();
-                for (int i = 0; i < rowKeyColDescList.length; i++) {
-                    if ((cuboid & (1L << rowKeyColDescList[i].getBitIndex())) > 0) {
-                        dimensionSet.add(rowKeyColDescList[i].getColumn());
-                    }
+        List<Set<String>> dimensionSetList = Lists.newLinkedList();
+        while (top-- > 0 && cuboidIterator.hasNext()) {
+            Set<String> dimensionSet = Sets.newHashSet();
+            dimensionSetList.add(dimensionSet);
+            long cuboid = cuboidIterator.next();
+            for (int i = 0; i < rowKeyColDescList.length; i++) {
+                if ((cuboid & (1L << rowKeyColDescList[i].getBitIndex())) > 0) {
+                    dimensionSet.add(rowKeyColDescList[i].getColumn());
                 }
             }
         }
@@ -923,13 +934,27 @@ public class CubeController extends BasicController {
 
     @RequestMapping(value = "/{cubeName}/cuboids/recommend", method = RequestMethod.GET)
     @ResponseBody
-    public CuboidTreeResponse getRecommendCuboids(@PathVariable String cubeName) throws IOException {
+    public CuboidRecommendResponse getRecommendCuboids(@PathVariable String cubeName) throws IOException {
         checkCubeExists(cubeName);
         CubeInstance cube = cubeService.getCubeManager().getCube(cubeName);
-        Map<Long, Long> recommendCuboidStatsMap = getRecommendCuboidList(cube);
-        if (recommendCuboidStatsMap == null || recommendCuboidStatsMap.isEmpty()) {
-            return new CuboidTreeResponse();
+
+        Message msg = MsgPicker.getMsg();
+        String errorMsg = String.format(Locale.ROOT, msg.getFAIL_RECOMMEND_CUBOID(), cubeName);
+
+        RecommendResult recommRet = getRecommendCuboidList(cube);
+        if (recommRet == null) {
+            logger.warn(errorMsg);
+            return new CuboidRecommendResponse(new CuboidTreeResponse(), OptimizationBenefit.ZERO);
         }
+        Map<Long, Long> recommendCuboidStatsMap = recommRet.getRecommendCuboids();
+        if (recommendCuboidStatsMap == null || recommendCuboidStatsMap.isEmpty()) {
+            logger.warn(errorMsg);
+            return new CuboidRecommendResponse(new CuboidTreeResponse(), OptimizationBenefit.ZERO);
+        }
+
+        //update cube score
+        cubeService.getCubeManager().saveCubeOptimizationBenefit(cube, recommRet.getOptimizationBenefit());
+
         CuboidScheduler cuboidScheduler = new TreeCuboidScheduler(cube.getDescriptor(),
                 Lists.newArrayList(recommendCuboidStatsMap.keySet()),
                 new TreeCuboidScheduler.CuboidCostComparator(recommendCuboidStatsMap));
@@ -940,11 +965,13 @@ public class CubeController extends BasicController {
         Map<Long, Long> queryMatchMap = cubeService.getCuboidQueryMatchCount(cubeName);
 
         Set<Long> currentCuboidSet = cube.getCuboidScheduler().getAllCuboidIds();
-        return cubeService.getCuboidTreeResponse(cuboidScheduler, recommendCuboidStatsMap, displayHitFrequencyMap,
-                queryMatchMap, currentCuboidSet);
+
+        CuboidTreeResponse cuboidTree = cubeService.getCuboidTreeResponse(cuboidScheduler, recommendCuboidStatsMap,
+                displayHitFrequencyMap, queryMatchMap, currentCuboidSet);
+        return new CuboidRecommendResponse(cuboidTree, recommRet.getOptimizationBenefit());
     }
 
-    private Map<Long, Long> getRecommendCuboidList(CubeInstance cube) throws IOException {
+    private RecommendResult getRecommendCuboidList(CubeInstance cube) throws IOException {
         // Get cuboid source info
         Map<Long, Long> optimizeHitFrequencyMap = getSourceCuboidHitFrequency(cube.getName());
         Map<Long, Map<Long, Pair<Long, Long>>> rollingUpCountSourceMap = cubeService

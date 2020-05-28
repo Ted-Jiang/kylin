@@ -39,6 +39,8 @@ public class CubeUpdate {
     private Map<String, String> updateTableSnapshotPath = null;
     private long createTimeUTC = -1;
     private long cuboidLastOptimized = -1;
+    private double score = -2;
+    private String scoreHint;
 
     public CubeUpdate(CubeInstance cubeInstance) {
         setCubeInstance(cubeInstance);
@@ -150,5 +152,21 @@ public class CubeUpdate {
 
     public void setCuboidLastOptimized(long cuboidLastOptimized) {
         this.cuboidLastOptimized = cuboidLastOptimized;
+    }
+    
+    public double getScore() {
+        return score;
+    }
+
+    public void setScore(double score) {
+        this.score = score;
+    }
+
+    public String getScoreHint() {
+        return scoreHint;
+    }
+
+    public void setScoreHint(String scoreHint) {
+        this.scoreHint = scoreHint;
     }
 }

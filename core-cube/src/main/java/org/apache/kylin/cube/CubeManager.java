@@ -45,6 +45,7 @@ import org.apache.kylin.common.util.Dictionary;
 import org.apache.kylin.common.util.Pair;
 import org.apache.kylin.common.util.RandomUtil;
 import org.apache.kylin.cube.cuboid.Cuboid;
+import org.apache.kylin.cube.cuboid.algorithm.OptimizationBenefit;
 import org.apache.kylin.cube.model.CubeDesc;
 import org.apache.kylin.cube.model.CubeDescTiretreeGlobalDomainDictUtil;
 import org.apache.kylin.cube.model.SnapshotTableDesc;
@@ -305,6 +306,24 @@ public class CubeManager implements IRealizationProvider {
         }
     }
 
+    private void updateCubeScore(CubeInstance cube, double score, String scoreHint) throws IOException {
+        if (cube.getScore() == score) {
+            if (cube.getScoreHint() == null) {
+                if (scoreHint == null)
+                    return;
+            } else if (cube.getScoreHint().equals(scoreHint)) {
+                return;
+            }
+        }
+        try (AutoLock lock = cubeMapLock.lockForWrite()) {
+            cube = cube.latestCopyForWrite(); // get a latest copy
+            CubeUpdate update = new CubeUpdate(cube);
+            update.setScore(score);
+            update.setScoreHint(scoreHint);
+            updateCube(update);
+        }
+    }
+
     public CubeInstance updateCubeStatus(CubeInstance cube, RealizationStatusEnum newStatus) throws IOException {
         try (AutoLock lock = cubeMapLock.lockForWrite()) {
             cube = cube.latestCopyForWrite(); // get a latest copy
@@ -454,6 +473,14 @@ public class CubeManager implements IRealizationProvider {
         if (update.getCuboidLastOptimized() >= 0) {
             cube.setCuboidLastOptimized(update.getCuboidLastOptimized());
         }
+
+        if (update.getScore() >= -1) {
+            cube.setScore(update.getScore());
+        }
+
+        if (update.getScoreHint() != null) {
+            cube.setScoreHint(update.getScoreHint());
+        }
     }
 
     private void processToUpdateSegments(CubeUpdate update, Segments<CubeSegment> newSegs) {
@@ -584,6 +611,29 @@ public class CubeManager implements IRealizationProvider {
                     + cubeSegment.getCubeInstance().getName() + "/" + cubeSegment);
         }
         return snapshotResPath;
+    }
+
+    public OptimizationBenefit loadCubeOptimizationBenefit(final CubeInstance cubeInstance) throws IOException {
+        logger.info("Going to load optimization benefit for cube {}", cubeInstance.getName());
+        return OptimizationBenefit.loadFromStore(getStore(), cubeInstance);
+    }
+
+    public void saveCubeOptimizationBenefit(CubeInstance cubeInstance, OptimizationBenefit benefit) throws IOException {
+        saveCubeOptimizationBenefit(cubeInstance, benefit, true);
+    }
+
+    public void saveCubeOptimizationBenefit(CubeInstance cubeInstance, OptimizationBenefit benefit, boolean ifUpdate)
+            throws IOException {
+        logger.info("Going to update optimization benefit for cube {}", cubeInstance.getName());
+        OptimizationBenefit.saveToStore(getStore(), cubeInstance, benefit);
+        if (ifUpdate) {
+            updateCubeScore(cubeInstance, benefit.getScore(), benefit.getScoreHint());
+        }
+    }
+
+    private void removeCubeScoreStats(CubeInstance cubeInstance) throws IOException {
+        logger.info("Going to remove optimization benefit for cube {}", cubeInstance.getName());
+        OptimizationBenefit.removeFromStore(getStore(), cubeInstance);
     }
 
     @VisibleForTesting

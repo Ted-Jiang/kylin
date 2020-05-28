@@ -227,14 +227,14 @@ KylinApp.controller('CubeCtrl', function ($scope, $rootScope, AccessService, Mes
             $scope.currentOptions.caption = angular.copy(cubeConfig.currentCaption);
             if ($scope.cube.recommendCuboids){
                 $scope.currentOptions.caption.css['text-align'] = 'right';
-                $scope.currentOptions.caption.css['right'] = '-12px';
+                $scope.currentOptions.caption.css['right'] = '-120px';
             }
             $scope.currentOptions.chart.color = function(d) {
                 var cuboid = _.find(data.nodeInfos, function(o) { return o.name == d; });
                 if (cuboid.deleted) {
                     return d3.scale.category20c().range()[17];
                 } else {
-                    return getColorByQuery(0, 1/data.nodeInfos.length, cuboid.query_rate);
+                    return getColorByQuery(1/data.nodeInfos.length, cuboid.query_rate);
                 }
             };
             $scope.currentOptions.chart.sunburst = getSunburstDispatch();
@@ -246,14 +246,10 @@ KylinApp.controller('CubeCtrl', function ($scope, $rootScope, AccessService, Mes
             $scope.recommendOptions.caption = angular.copy(cubeConfig.recommendCaption);
             $scope.recommendOptions.chart.color = function(d) {
                 var cuboid = _.find(data.nodeInfos, function(o) { return o.name == d; });
-                if (cuboid.row_count < 0) {
+                if (!cuboid.existed) {
                     return d3.scale.category20c().range()[5];
                 } else {
-                    var colorIndex = 0;
-                    if (!cuboid.existed) {
-                        colorIndex = 8;
-                    }
-                    return getColorByQuery(colorIndex, 1/data.nodeInfos.length, cuboid.query_rate);
+                    return getColorByQuery(1/data.nodeInfos.length, cuboid.query_rate);
                 }
             };
             $scope.recommendOptions.chart.sunburst = getSunburstDispatch();
@@ -282,15 +278,15 @@ KylinApp.controller('CubeCtrl', function ($scope, $rootScope, AccessService, Mes
     };
 
     // Different color for chart element by query count
-    function getColorByQuery(colorIndex, baseRate, queryRate) {
+    function getColorByQuery(baseRate, queryRate) {
         if (queryRate > (3 * baseRate)) {
-            return d3.scale.category20c().range()[colorIndex];
+            return d3.scale.category20c().range()[0];
         } else if (queryRate > (2 * baseRate)) {
-            return d3.scale.category20c().range()[colorIndex+1];
+            return d3.scale.category20c().range()[1];
         } else if (queryRate > baseRate) {
-            return d3.scale.category20c().range()[colorIndex+2];
+            return d3.scale.category20c().range()[2];
         } else {
-            return d3.scale.category20c().range()[colorIndex+3];
+            return d3.scale.category20c().range()[3];
         }
     }
 

@@ -176,7 +176,7 @@ KylinApp.constant('cubeConfig', {
   },
   currentCaption: {
     enable: true,
-    html: '<div>Existed: <i class="fa fa-square" style="color:#38c;"></i> Hottest '
+    html: '<div><i class="fa fa-square" style="color:#38c;"></i> Hottest '
           + '<i class="fa fa-square" style="color:#7bd;"></i> Hot '
           + '<i class="fa fa-square" style="color:#ade;"></i> Warm '
           + '<i class="fa fa-square" style="color:#cef;"></i> Cold '
@@ -189,17 +189,13 @@ KylinApp.constant('cubeConfig', {
   },
   recommendCaption: {
     enable: true,
-    html: '<div>New: <i class="fa fa-square" style="color:#3a5;"></i> Hottest '
-      + '<i class="fa fa-square" style="color:#7c7;"></i> Hot '
-      + '<i class="fa fa-square" style="color:#aea;"></i> Warm '
-      + '<i class="fa fa-square" style="color:#cfc;"></i> Cold '
-      + '<i class="fa fa-square" style="color:#f94;"></i> Mandatory</div>',
+    html: '<div><i class="fa fa-square" style="color:#f94;"></i> New</div>',
     css: {
       position: 'relative',
       top: '-35px',
       height: 0,
       'text-align': 'left',
-      'left': '-12px'
+      'left': '93px'
     }
   }
 });

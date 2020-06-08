@@ -382,6 +382,18 @@ public class RestClient {
         return content;
     }
 
+    public String getCuboidRecommendResponse(String cubeName) throws IOException {
+        String url = baseUrl + "/cubes/" + cubeName + "/cuboids/recommend";
+        HttpGet get = newGet(url);
+        HttpResponse response = client.execute(get);
+        String content = getContent(response);
+        if (response.getStatusLine().getStatusCode() != 200) {
+            throw new IOException(
+                    "Invalid response " + response.getStatusLine().getStatusCode() + " with url " + url + "\n");
+        }
+        return content;
+    }
+
     public void checkCompatibility(String jsonRequest) throws IOException {
         checkCompatibility(jsonRequest, false);
     }

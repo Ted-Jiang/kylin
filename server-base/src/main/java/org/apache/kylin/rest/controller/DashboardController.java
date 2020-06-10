@@ -22,12 +22,9 @@ import java.util.List;
 
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.metadata.project.ProjectInstance;
-import org.apache.kylin.rest.request.PrepareSqlRequest;
 import org.apache.kylin.rest.response.MetricsResponse;
-import org.apache.kylin.rest.response.SQLResponse;
 import org.apache.kylin.rest.service.CubeService;
 import org.apache.kylin.rest.service.DashboardService;
-import org.apache.kylin.rest.service.QueryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,9 +45,6 @@ public class DashboardController extends BasicController {
     private DashboardService dashboardService;
 
     @Autowired
-    private QueryService queryService;
-
-    @Autowired
     private CubeService cubeService;
 
     @RequestMapping(value = "/metric/cube", method = { RequestMethod.GET })
@@ -67,21 +61,8 @@ public class DashboardController extends BasicController {
             @RequestParam(value = "cubeName", required = false) String cubeName,
             @RequestParam(value = "startTime") String startTime, @RequestParam(value = "endTime") String endTime) {
         checkAuthorization(projectName);
-        MetricsResponse queryMetrics = new MetricsResponse();
-        PrepareSqlRequest sqlRequest = dashboardService.getQueryMetricsSQLRequest(startTime, endTime, projectName,
-                cubeName);
-        SQLResponse sqlResponse = queryService.doQueryWithCache(sqlRequest);
-        if (!sqlResponse.getIsException()) {
-            queryMetrics.increase("queryCount",
-                    dashboardService.getMetricValue(sqlResponse.getResults().get(0).get(0)));
-            queryMetrics.increase("avgQueryLatency",
-                    dashboardService.getMetricValue(sqlResponse.getResults().get(0).get(1)));
-            queryMetrics.increase("maxQueryLatency",
-                    dashboardService.getMetricValue(sqlResponse.getResults().get(0).get(2)));
-            queryMetrics.increase("minQueryLatency",
-                    dashboardService.getMetricValue(sqlResponse.getResults().get(0).get(3)));
-        }
-        return queryMetrics;
+
+        return dashboardService.getQueryMetrics(projectName, cubeName, startTime, endTime);
     }
 
     @RequestMapping(value = "/metric/job", method = RequestMethod.GET)
@@ -90,20 +71,8 @@ public class DashboardController extends BasicController {
             @RequestParam(value = "cubeName", required = false) String cubeName,
             @RequestParam(value = "startTime") String startTime, @RequestParam(value = "endTime") String endTime) {
         checkAuthorization(projectName);
-        MetricsResponse jobMetrics = new MetricsResponse();
-        PrepareSqlRequest sqlRequest = dashboardService.getJobMetricsSQLRequest(startTime, endTime, projectName,
-                cubeName);
-        SQLResponse sqlResponse = queryService.doQueryWithCache(sqlRequest);
-        if (!sqlResponse.getIsException()) {
-            jobMetrics.increase("jobCount", dashboardService.getMetricValue(sqlResponse.getResults().get(0).get(0)));
-            jobMetrics.increase("avgJobBuildTime",
-                    dashboardService.getMetricValue(sqlResponse.getResults().get(0).get(1)));
-            jobMetrics.increase("maxJobBuildTime",
-                    dashboardService.getMetricValue(sqlResponse.getResults().get(0).get(2)));
-            jobMetrics.increase("minJobBuildTime",
-                    dashboardService.getMetricValue(sqlResponse.getResults().get(0).get(3)));
-        }
-        return jobMetrics;
+
+        return dashboardService.getJobMetrics(projectName, cubeName, startTime, endTime);
     }
 
     @RequestMapping(value = "/chart/{category}/{metric}/{dimension}", method = RequestMethod.GET)
@@ -113,9 +82,8 @@ public class DashboardController extends BasicController {
             @RequestParam(value = "cubeName", required = false) String cubeName,
             @RequestParam(value = "startTime") String startTime, @RequestParam(value = "endTime") String endTime) {
         checkAuthorization(projectName);
-        PrepareSqlRequest sqlRequest = dashboardService.getChartSQLRequest(startTime, endTime, projectName, cubeName,
-                dimension, metric, category);
-        return dashboardService.transformChartData(queryService.doQueryWithCache(sqlRequest));
+
+        return dashboardService.getChartData(category, projectName, cubeName, startTime, endTime, dimension, metric);
     }
 
     private void checkAuthorization(String projectName) {

@@ -25,6 +25,7 @@ import static org.apache.kylin.cube.cuboid.CuboidModeEnum.RECOMMEND;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -69,6 +70,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.apache.kylin.shaded.com.google.common.base.Objects;
 import org.apache.kylin.shaded.com.google.common.collect.Lists;
+import org.apache.kylin.shaded.com.google.common.collect.Sets;
 
 @SuppressWarnings("serial")
 @JsonAutoDetect(fieldVisibility = Visibility.NONE, getterVisibility = Visibility.NONE, isGetterVisibility = Visibility.NONE, setterVisibility = Visibility.NONE)
@@ -126,6 +128,9 @@ public class CubeInstance extends RootPersistentEntity implements IRealization, 
 
     @JsonProperty("cuboid_last_optimized")
     private long cuboidLastOptimized;
+
+    @JsonProperty("cuboid_optimized_timestamp_serial")
+    private Set<Long> cuboidOptimizedTimestamps = Sets.newHashSet();
 
     @JsonProperty("snapshots")
     private Map<String, String> snapshots = Maps.newHashMap();
@@ -457,6 +462,7 @@ public class CubeInstance extends RootPersistentEntity implements IRealization, 
         cuboidBytes = null;
         cuboidBytesRecommend = null;
         cuboidLastOptimized = 0L;
+        cuboidOptimizedTimestamps.clear();
     }
 
     public Set<Long> getCuboidsByMode(String cuboidModeName) {
@@ -559,6 +565,14 @@ public class CubeInstance extends RootPersistentEntity implements IRealization, 
 
     public void setCuboidLastOptimized(long lastOptimized) {
         this.cuboidLastOptimized = lastOptimized;
+        this.cuboidOptimizedTimestamps.add(lastOptimized);
+    }
+
+    public List<Long> getCuboidOptimizedTimestamps() {
+        this.cuboidOptimizedTimestamps.add(cuboidLastOptimized);
+        List<Long> ret = Lists.newArrayList(this.cuboidOptimizedTimestamps);
+        Collections.sort(ret);
+        return ret;
     }
 
     /**

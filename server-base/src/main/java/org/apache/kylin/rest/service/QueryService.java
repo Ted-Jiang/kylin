@@ -386,13 +386,6 @@ public class QueryService extends BasicService {
         logger.info(stringBuilder.toString());
     }
 
-    public SQLResponse querySystemCube(String sql) {
-        SQLRequest sqlRequest = new SQLRequest();
-        sqlRequest.setProject(MetricsManager.SYSTEM_PROJECT);
-        sqlRequest.setSql(sql);
-        return doQueryWithCache(sqlRequest, false);
-    }
-
     public SQLResponse doQueryWithCache(SQLRequest sqlRequest) {
         long t = System.currentTimeMillis();
         aclEvaluate.checkProjectReadPermission(sqlRequest.getProject());

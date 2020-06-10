@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import javax.servlet.http.HttpServletResponse;
 
@@ -73,6 +75,7 @@ import org.apache.kylin.rest.request.JobBuildRequest2;
 import org.apache.kylin.rest.request.JobOptimizeRequest;
 import org.apache.kylin.rest.request.LookupSnapshotBuildRequest;
 import org.apache.kylin.rest.response.CubeInstanceResponse;
+import org.apache.kylin.rest.response.CubeOptimizationTrendResponse;
 import org.apache.kylin.rest.response.CuboidRecommendResponse;
 import org.apache.kylin.rest.response.CuboidTreeResponse;
 import org.apache.kylin.rest.response.EnvelopeResponse;
@@ -85,6 +88,9 @@ import org.apache.kylin.rest.service.ProjectService;
 import org.apache.kylin.rest.service.QueryService;
 import org.apache.kylin.rest.util.AclEvaluate;
 import org.apache.kylin.rest.util.ValidateUtil;
+import org.apache.kylin.shaded.com.google.common.collect.Lists;
+import org.apache.kylin.shaded.com.google.common.collect.Maps;
+import org.apache.kylin.shaded.com.google.common.collect.Sets;
 import org.apache.kylin.source.kafka.util.KafkaClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,9 +109,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
-import org.apache.kylin.shaded.com.google.common.collect.Lists;
-import org.apache.kylin.shaded.com.google.common.collect.Maps;
-import org.apache.kylin.shaded.com.google.common.collect.Sets;
 
 /**
  * CubeController is defined as Restful API entrance for UI.
@@ -969,6 +972,55 @@ public class CubeController extends BasicController {
         CuboidTreeResponse cuboidTree = cubeService.getCuboidTreeResponse(cuboidScheduler, recommendCuboidStatsMap,
                 displayHitFrequencyMap, queryMatchMap, currentCuboidSet);
         return new CuboidRecommendResponse(cuboidTree, recommRet.getOptimizationBenefit());
+    }
+
+    @RequestMapping(value = "/{cubeName}/optimization/trend", method = RequestMethod.GET)
+    @ResponseBody
+    public CubeOptimizationTrendResponse getOptimizationTrend(@PathVariable String cubeName) throws IOException {
+        CubeInstance cube = getCube(cubeName);
+
+        long endTimestamp = System.currentTimeMillis();
+        TreeMap<String, Double> trendOfQueryLatency = cubeService.getQueryLatencyTrendForOptimization(cube,
+                endTimestamp);
+        TreeMap<String, Double> trendOfStorageUsage = cubeService.getStorageUsageTrendForOptimization(cube,
+                endTimestamp);
+
+        TreeSet<String> timeSequenece = new TreeSet<>();
+        timeSequenece.addAll(trendOfQueryLatency.keySet());
+        timeSequenece.addAll(trendOfStorageUsage.keySet());
+
+        List<String> timeSequeneceList = new ArrayList<>(timeSequenece.size());
+        List<Double> trendOfQueryLatencyList = new ArrayList<>(timeSequenece.size());
+        List<Double> trendOfStorageUsageList = new ArrayList<>(timeSequenece.size());
+        Double prevQueryLatency = trendOfQueryLatency.firstEntry().getValue();
+        Double prevStorageUsage = trendOfStorageUsage.firstEntry().getValue();
+        for (String timeKey : timeSequenece) {
+            timeSequeneceList.add(timeKey);
+
+            // query latency sequences
+            Double queryLatency = trendOfQueryLatency.get(timeKey);
+            if (queryLatency == null) {
+                queryLatency = prevQueryLatency;
+            } else {
+                prevQueryLatency = queryLatency;
+            }
+            if (queryLatency != null) {
+                trendOfQueryLatencyList.add(queryLatency);
+            }
+
+            // storage usage sequences
+            Double storageUsage = trendOfStorageUsage.get(timeKey);
+            if (storageUsage == null) {
+                storageUsage = prevStorageUsage;
+            } else {
+                prevStorageUsage = storageUsage;
+            }
+            if (storageUsage != null) {
+                trendOfStorageUsageList.add(storageUsage);
+            }
+
+        }
+        return new CubeOptimizationTrendResponse(timeSequeneceList, trendOfQueryLatencyList, trendOfStorageUsageList);
     }
 
     private RecommendResult getRecommendCuboidList(CubeInstance cube) throws IOException {

@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
@@ -72,11 +73,10 @@ import org.apache.kylin.metadata.project.ProjectManager;
 import org.apache.kylin.metadata.project.RealizationEntry;
 import org.apache.kylin.metadata.realization.RealizationStatusEnum;
 import org.apache.kylin.metadata.realization.RealizationType;
-import org.apache.kylin.metrics.MetricsManager;
-import org.apache.kylin.metrics.property.QueryCubePropertyEnum;
 import org.apache.kylin.rest.constant.Constant;
 import org.apache.kylin.rest.exception.BadRequestException;
 import org.apache.kylin.rest.exception.ForbiddenException;
+import org.apache.kylin.rest.exception.InternalErrorException;
 import org.apache.kylin.rest.msg.Message;
 import org.apache.kylin.rest.msg.MsgPicker;
 import org.apache.kylin.rest.request.MetricsRequest;
@@ -86,8 +86,14 @@ import org.apache.kylin.rest.response.CuboidTreeResponse;
 import org.apache.kylin.rest.response.CuboidTreeResponse.NodeInfo;
 import org.apache.kylin.rest.response.HBaseResponse;
 import org.apache.kylin.rest.response.MetricsResponse;
+import org.apache.kylin.rest.response.SQLResponse;
 import org.apache.kylin.rest.util.AclEvaluate;
+import org.apache.kylin.rest.util.SqlCreationUtil;
 import org.apache.kylin.rest.util.ValidateUtil;
+import org.apache.kylin.shaded.com.google.common.cache.Cache;
+import org.apache.kylin.shaded.com.google.common.cache.CacheBuilder;
+import org.apache.kylin.shaded.com.google.common.collect.Lists;
+import org.apache.kylin.shaded.com.google.common.collect.Maps;
 import org.apache.kylin.storage.hbase.HBaseConnection;
 import org.apache.kylin.storage.hbase.util.StorageCleanUtil;
 import org.apache.kylin.storage.hybrid.HybridInstance;
@@ -103,11 +109,6 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-
-import org.apache.kylin.shaded.com.google.common.cache.Cache;
-import org.apache.kylin.shaded.com.google.common.cache.CacheBuilder;
-import org.apache.kylin.shaded.com.google.common.collect.Lists;
-import org.apache.kylin.shaded.com.google.common.collect.Maps;
 
 /**
  * Stateless & lightweight service facade of cube management functions.
@@ -1026,6 +1027,33 @@ public class CubeService extends BasicService implements InitializingBean {
         return CuboidRecommenderUtil.getRecommendCuboidList(cube, hitFrequencyMap, rollingUpCountSourceMap);
     }
 
+    public TreeMap<String, Double> getQueryLatencyTrendForOptimization(CubeInstance cube, long endTimestamp) {
+        PrepareSqlRequest prepareSqlRequest = SqlCreationUtil.createPrepareSqlRequestOfQueryLatencyTrend(cube,
+                endTimestamp);
+
+        return getTrendForOptimization(prepareSqlRequest);
+    }
+
+    public TreeMap<String, Double> getStorageUsageTrendForOptimization(CubeInstance cube, long endTimestamp) {
+        PrepareSqlRequest prepareSqlRequest = SqlCreationUtil.createPrepareSqlRequestOfStorageUsageTrend(cube,
+                endTimestamp);
+
+        return getTrendForOptimization(prepareSqlRequest);
+    }
+
+    private TreeMap<String, Double> getTrendForOptimization(PrepareSqlRequest prepareSqlRequest) {
+        SQLResponse sqlResponse = queryService.doQueryWithCache(prepareSqlRequest, false);
+        if (sqlResponse.getIsException()) {
+            throw new InternalErrorException("Fail to execute optimization trend sql\n" + prepareSqlRequest.getSql()
+                    + "\n  due to" + sqlResponse.getExceptionMessage());
+        }
+        TreeMap<String, Double> ret = new TreeMap<>();
+        for (List<String> row : sqlResponse.getResults()) {
+            ret.put(row.get(0), Double.parseDouble(row.get(1)));
+        }
+        return ret;
+    }
+    
     public Map<Long, Long> formatQueryCount(List<List<String>> orgQueryCount) {
         Map<Long, Long> formattedQueryCount = Maps.newLinkedHashMap();
         for (List<String> hit : orgQueryCount) {
@@ -1049,59 +1077,25 @@ public class CubeService extends BasicService implements InitializingBean {
     }
 
     public Map<Long, Long> getCuboidHitFrequency(String cubeName, boolean isCuboidSource) {
-        String cuboidColumn = isCuboidSource ? QueryCubePropertyEnum.CUBOID_SOURCE.toString()
-                : QueryCubePropertyEnum.CUBOID_TARGET.toString();
-        String hitMeasure = QueryCubePropertyEnum.WEIGHT_PER_HIT.toString();
-        String table = getMetricsManager().getSystemTableFromSubject(getConfig().getKylinMetricsSubjectQueryCube());
-        String sql = "select " + cuboidColumn + ", sum(" + hitMeasure + ")" //
-                + " from " + table//
-                + " where " + QueryCubePropertyEnum.CUBE.toString() + " = ?" //
-                + " group by " + cuboidColumn;
+        PrepareSqlRequest prepareSqlRequest = SqlCreationUtil.createPrepareSqlRequestOfCuboidHitFrequency(cubeName,
+                isCuboidSource);
 
-        List<List<String>> orgHitFrequency = getPrepareQueryResult(cubeName, sql);
+        List<List<String>> orgHitFrequency = queryService.doQueryWithCache(prepareSqlRequest, false).getResults();
         return formatQueryCount(orgHitFrequency);
     }
 
     public Map<Long, Map<Long, Pair<Long, Long>>> getCuboidRollingUpStats(String cubeName) {
-        String cuboidSource = QueryCubePropertyEnum.CUBOID_SOURCE.toString();
-        String cuboidTgt = QueryCubePropertyEnum.CUBOID_TARGET.toString();
-        String aggCount = QueryCubePropertyEnum.AGGR_COUNT.toString();
-        String returnCount = QueryCubePropertyEnum.RETURN_COUNT.toString();
-        String table = getMetricsManager().getSystemTableFromSubject(getConfig().getKylinMetricsSubjectQueryCube());
-        String sql = "select " + cuboidSource + ", " + cuboidTgt + ", avg(" + aggCount + "), avg(" + returnCount + ")"//
-                + " from " + table //
-                + " where " + QueryCubePropertyEnum.CUBE.toString() + " = ?" //
-                + " group by " + cuboidSource + ", " + cuboidTgt;
+        PrepareSqlRequest prepareSqlRequest = SqlCreationUtil.createPrepareSqlRequestOfCuboidRollingUpStats(cubeName);
 
-        List<List<String>> orgRollingUpCount = getPrepareQueryResult(cubeName, sql);
+        List<List<String>> orgRollingUpCount = queryService.doQueryWithCache(prepareSqlRequest, false).getResults();
         return formatRollingUpStats(orgRollingUpCount);
     }
 
     public Map<Long, Long> getCuboidQueryMatchCount(String cubeName) {
-        String cuboidSource = QueryCubePropertyEnum.CUBOID_SOURCE.toString();
-        String hitMeasure = QueryCubePropertyEnum.WEIGHT_PER_HIT.toString();
-        String table = getMetricsManager().getSystemTableFromSubject(getConfig().getKylinMetricsSubjectQueryCube());
-        String sql = "select " + cuboidSource + ", sum(" + hitMeasure + ")" //
-                + " from " + table //
-                + " where " + QueryCubePropertyEnum.CUBE.toString() + " = ?" //
-                + " and " + QueryCubePropertyEnum.IF_MATCH.toString() + " = true" //
-                + " group by " + cuboidSource;
+        PrepareSqlRequest prepareSqlRequest = SqlCreationUtil.createPrepareSqlRequestOfCuboidQueryMatchCount(cubeName);
 
-        List<List<String>> orgMatchHitFrequency = getPrepareQueryResult(cubeName, sql);
+        List<List<String>> orgMatchHitFrequency = queryService.doQueryWithCache(prepareSqlRequest, false).getResults();
         return formatQueryCount(orgMatchHitFrequency);
-    }
-
-    private List<List<String>> getPrepareQueryResult(String cubeName, String sql) {
-        PrepareSqlRequest sqlRequest = new PrepareSqlRequest();
-        sqlRequest.setProject(MetricsManager.SYSTEM_PROJECT);
-        PrepareSqlRequest.StateParam[] params = new PrepareSqlRequest.StateParam[1];
-        params[0] = new PrepareSqlRequest.StateParam();
-        params[0].setClassName("java.lang.String");
-        params[0].setValue(cubeName);
-        sqlRequest.setParams(params);
-        sqlRequest.setSql(sql);
-
-        return queryService.doQueryWithCache(sqlRequest, false).getResults();
     }
 
     private class HTableInfoSyncListener extends Broadcaster.Listener {

@@ -44,6 +44,9 @@
         <li class="{{cube.visiblePage=='planner'? 'active':''}}" ng-if="(userService.hasRole('ROLE_ADMIN') || hasPermission('cube', cube, permissions.ADMINISTRATION.mask) && !newAccess) && isShowCubeplanner">
             <a href="" ng-click="cube.visiblePage='planner';getCubePlanner(cube);">Planner</a>
         </li>
+        <li class="{{cube.visiblePage=='trend'? 'active':''}}" ng-if="userService.hasRole('ROLE_ADMIN') || hasPermission(cube, permissions.ADMINISTRATION.mask)">
+          <a href="" ng-click="cube.visiblePage='trend';getOptimizationTrend(cube);">Trend</a>
+        </li>
         <li class="{{cube.visiblePage=='streaming'? 'active':''}}" ng-if="(userService.hasRole('ROLE_ADMIN') || hasPermission('cube', cube, permissions.ADMINISTRATION.mask)  && !newAccess) && cube.streamingV2">
             <a href="" ng-click="cube.visiblePage='streaming';getStreamingInfo(cube)">Streaming</a>
        </li>
@@ -174,6 +177,21 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="cube-detail" ng-if="cube.visiblePage=='trend'">
+      <div style="margin: 15px;">
+        <div ng-if="cube.cuboid_optimized_timestamp_serial.length">
+          <div class="row">
+            <div class="col-md-12">
+              <nvd3 options="optimizationTrendOptions" data="optimizationTrendData"></nvd3>
+            </div>
+          </div>
+        </div>
+        <div ng-if="cube.cuboid_optimized_timestamp_serial.length == 0">
+          <h5>No Optimization Trend Info.</h5>
+        </div>
+      </div>
     </div>
 
     <div class="cube-detail" ng-if="cube.visiblePage=='streaming'">

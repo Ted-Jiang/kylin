@@ -95,6 +95,7 @@ KylinApp.factory('CubeService', ['$resource', function ($resource, config) {
     checkDuplicateCubeName: {method: 'GET', params: {action: 'validate'}, isArray: false},
     migrate: {method: 'PUT', params: {action: 'migrateRequest'}, isArray: false},
     approve: {method: 'PUT', params: {action: 'migrateApprove'}, isArray: false},
-    reject: {method: 'PUT', params: {action: 'migrateReject'}, isArray: false}
+    reject: {method: 'PUT', params: {action: 'migrateReject'}, isArray: false},
+    getOptimizationTrend: {method: 'GET', params: {propName: 'optimization', action: 'trend'}, isArray: false}
   });
 }]);

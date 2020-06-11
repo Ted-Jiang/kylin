@@ -57,7 +57,7 @@ KylinApp.factory('DashboardService', ['$resource', '$location', function ($resou
             var data = response.data;
             var jobMetrics;
             if (data) {
-              jobMetrics = {jobCount: data.jobCount, buildingTime: {avg: data.avgJobBuildTime*1024*1024/1000, max: data.maxJobBuildTime*1024*1024/1000, min: data.minJobBuildTime*1024*1024/1000}};
+              jobMetrics = {jobCount: data.jobCount, buildingTime: {avg: data.avgJobBuildTime*1024*1024/1000, max: data.maxJobBuildTime*1024*1024/1000, min: data.minJobBuildTime*1024*1024/1000}, expansionRate: data.avgJobExpansionRate};
             }
             return jobMetrics;
           }

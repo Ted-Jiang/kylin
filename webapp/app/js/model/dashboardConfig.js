@@ -26,7 +26,8 @@ KylinApp.constant('dashboardConfig', {
     {name: 'query count', value: 'QUERY_COUNT'},
     {name: 'avg query latency', value: 'AVG_QUERY_LATENCY'},
     {name: 'job count', value: 'JOB_COUNT'},
-    {name: 'avg build time', value: 'AVG_JOB_BUILD_TIME'}
+    {name: 'avg build time', value: 'AVG_JOB_BUILD_TIME'},
+    {name: 'avg expansion rate', value: 'EXPANSION_RATE'}
   ],
   dimensions: [
     {name: 'project', value: 'PROJECT'},

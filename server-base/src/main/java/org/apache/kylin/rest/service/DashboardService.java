@@ -115,6 +115,7 @@ public class DashboardService extends BasicService {
             jobMetrics.increase("avgJobBuildTime", getMetricValue(row.get(1)));
             jobMetrics.increase("maxJobBuildTime", getMetricValue(row.get(2)));
             jobMetrics.increase("minJobBuildTime", getMetricValue(row.get(3)));
+            jobMetrics.increase("avgJobExpansionRate", getMetricValue(row.get(4)));
         }
 
         return jobMetrics;

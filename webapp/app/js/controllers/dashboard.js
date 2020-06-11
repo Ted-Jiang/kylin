@@ -255,6 +255,18 @@ KylinApp.controller('DashboardCtrl', function ($scope, $location, storage, kylin
     $scope.createCharts();
   };
 
+  // Click job expansion rate
+  $scope.jobExpansionChart = function() {
+    $scope.currentSquare = 'jobExpansionRate';
+    $scope.barchartCategory = dashboardConfig.categories[1];
+    $scope.barchartMetric = dashboardConfig.metrics[4];
+    $scope.linechartCategory = dashboardConfig.categories[1];
+    $scope.linechartMetric = dashboardConfig.metrics[4];
+
+    $scope.removeChart('all');
+    $scope.createCharts();
+  };
+
   // Line chart granularity change.
   $scope.changeDimensionFilter = function(chartType) {
     if (chartType === 'line') {

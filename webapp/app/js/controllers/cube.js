@@ -125,7 +125,7 @@ KylinApp.controller('CubeCtrl', function ($scope, $rootScope, AccessService, Mes
         if (!cube.currentCuboids) {
             CubeService.getCurrentCuboids({cubeId: cube.name}, function(data) {
                 if (data && data.nodeInfos) {
-                    $scope.createChart(data, 'current');
+                    $scope.createPlannerChart(data, 'current');
                     cube.currentCuboids = data;
                 } else {
                     $scope.currentOptions = angular.copy(cubeConfig.chartOptions);
@@ -136,7 +136,7 @@ KylinApp.controller('CubeCtrl', function ($scope, $rootScope, AccessService, Mes
                 console.error('current cuboid error', e.data);
             });
         } else {
-            $scope.createChart(cube.currentCuboids, 'current');
+            $scope.createPlannerChart(cube.currentCuboids, 'current');
         }
     };
 
@@ -151,7 +151,7 @@ KylinApp.controller('CubeCtrl', function ($scope, $rootScope, AccessService, Mes
                     if (data.nodeInfos.length === 1 && !data.nodeInfos[0].cuboid_id) {
                          SweetAlert.swal('Loading', 'Please wait a minute, servers are recommending for you', 'success');
                     } else {
-                        $scope.createChart(data, 'recommend');
+                        $scope.createPlannerChart(data, 'recommend');
                         cube.recommendCuboids = data;
                         // update current chart mark delete node gray.
                         angular.forEach(cube.currentCuboids.nodeInfos, function(nodeInfo) {
@@ -160,7 +160,7 @@ KylinApp.controller('CubeCtrl', function ($scope, $rootScope, AccessService, Mes
                                 nodeInfo.deleted = true;
                             }
                         });
-                        $scope.createChart(cube.currentCuboids, 'current');
+                        $scope.createPlannerChart(cube.currentCuboids, 'current');
                         $scope.currentChart.api.refresh();
                     }
                 } else {
@@ -173,7 +173,7 @@ KylinApp.controller('CubeCtrl', function ($scope, $rootScope, AccessService, Mes
                 console.error('recommend cuboid error', e.data);
             });
         } else {
-            $scope.createChart(cube.recommendCuboids, 'recommend');
+            $scope.createPlannerChart(cube.recommendCuboids, 'recommend');
         }
     };
 
@@ -219,11 +219,11 @@ KylinApp.controller('CubeCtrl', function ($scope, $rootScope, AccessService, Mes
     };
 
     // transform chart data and customized options.
-    $scope.createChart = function(data, type) {
+    $scope.createPlannerChart = function(data, type) {
         var chartData = data.treeNode;
         if ('current' === type) {
             $scope.currentData = [chartData];
-            $scope.currentOptions = angular.copy(cubeConfig.baseChartOptions);
+            $scope.currentOptions = angular.copy(cubeConfig.basePlannerChartOptions);
             $scope.currentOptions.caption = angular.copy(cubeConfig.currentCaption);
             if ($scope.cube.recommendCuboids){
                 $scope.currentOptions.caption.css['text-align'] = 'right';
@@ -242,7 +242,7 @@ KylinApp.controller('CubeCtrl', function ($scope, $rootScope, AccessService, Mes
             $scope.currentOptions.subtitle.text = '[Cuboid Count: ' + data.nodeInfos.length + '] [Row Count: ' + data.totalRowCount + ']';
         } else if ('recommend' === type) {
             $scope.recommendData = [chartData];
-            $scope.recommendOptions = angular.copy(cubeConfig.baseChartOptions);
+            $scope.recommendOptions = angular.copy(cubeConfig.basePlannerChartOptions);
             $scope.recommendOptions.caption = angular.copy(cubeConfig.recommendCaption);
             $scope.recommendOptions.chart.color = function(d) {
                 var cuboid = _.find(data.nodeInfos, function(o) { return o.name == d; });
@@ -289,6 +289,47 @@ KylinApp.controller('CubeCtrl', function ($scope, $rootScope, AccessService, Mes
             return d3.scale.category20c().range()[3];
         }
     }
+
+    // click trend tab to get trend chart
+    $scope.getOptimizationTrend = function(cube) {
+      $scope.optimizationTrendData = [];
+      $scope.optimizationTrendOptions = angular.copy(cubeConfig.baseOptimizationTrendChartOptions);
+      CubeService.getOptimizationTrend({cubeId: cube.name}, function (trendData) {
+        var i;
+        if (trendData.trendOfQueryLatency.length) {
+          var queryLatency = {
+            key: 'Query Latency'
+          };
+          var queryLatencyValues = [];
+          for (i = 0; i < trendData.trendOfQueryLatency.length; i++) {
+            queryLatencyValues.push({
+              x: (new Date(trendData.timeSequence[i])).getTime(),
+              y: trendData.trendOfQueryLatency[i]
+            });
+          }
+          queryLatency.values = _.sortBy(queryLatencyValues, 'x');
+          $scope.optimizationTrendData.push(queryLatency);
+        }
+        if (trendData.trendOfStorageUsage.length) {
+          var storageUsage = {
+            key: 'Storage Usage',
+            bar: true
+          };
+          var storageUsageValues = [];
+          for (i = 0; i < trendData.trendOfStorageUsage.length; i++) {
+            storageUsageValues.push({
+              x: (new Date(trendData.timeSequence[i])).getTime(),
+              y: trendData.trendOfStorageUsage[i]
+            });
+          }
+          storageUsage.values = _.sortBy(storageUsageValues, 'x');
+          $scope.optimizationTrendData.push(storageUsage);
+        }
+      }, function (e) {
+        SweetAlert.swal('Oops...', 'Failed to get trend data', 'error');
+        console.error('get trend error', e.data);
+      });
+    };
 
     // streaming cube status
     $scope.getStreamingInfo = function(cube) {

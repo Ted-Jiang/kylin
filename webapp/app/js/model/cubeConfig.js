@@ -128,7 +128,7 @@ KylinApp.constant('cubeConfig', {
     {name: 'Meta Store', value: 'metaStore'},
     {name: 'HBase', value: 'hbase'}
   ],
-  baseChartOptions: {
+  basePlannerChartOptions: {
     chart: {
       type: 'sunburstChart',
       height: 500,
@@ -196,6 +196,49 @@ KylinApp.constant('cubeConfig', {
       height: 0,
       'text-align': 'left',
       'left': '93px'
+    }
+  },
+  baseOptimizationTrendChartOptions: {
+    chart: {
+      type: 'linePlusBarChart',
+      height: 600,
+      duration: 500,
+      focusEnable: false,
+      margin : {
+        top: 60,
+        right: 100,
+        bottom: 60,
+        left: 100
+      },
+      xAxis: {
+        axisLabel: "Date",
+        tickFormat: function(d) {
+          return d3.time.format('%Y-%m-%d %H:%M:%S')(new Date(d));
+        },
+      },
+      y1Axis: {
+        axisLabel: 'Expansion Rate',
+        tickFormat: function(d) {
+          return d3.format('.2f')(d);
+        },
+        showMaxMin: false
+      },
+      y2Axis: {
+        axisLabel: 'Query Latency (ms)',
+        tickFormat: function(d) {
+          if (d < 1000) {
+            if (parseFloat(d) === d) {
+              return d3.format('.1')(d);
+            } else {
+              return d3.format('.2f')(d);
+            }
+          } else {
+            var prefix = d3.formatPrefix(d);
+            return prefix.scale(d) + prefix.symbol;
+          }
+        },
+        showMaxMin: false
+      },
     }
   }
 });

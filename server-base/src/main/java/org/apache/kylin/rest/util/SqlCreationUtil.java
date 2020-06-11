@@ -95,7 +95,8 @@ public class SqlCreationUtil {
     public static PrepareSqlRequest createPrepareSqlRequestOfTotalJobMetrics(String projectName, String cubeName,
             String startTime, String endTime) {
         String[] measures = new String[] { JobMeasureEnum.JOB_COUNT.toSQL(), JobMeasureEnum.AVG_JOB_BUILD_TIME.toSQL(),
-                JobMeasureEnum.MAX_JOB_BUILD_TIME.toSQL(), JobMeasureEnum.MIN_JOB_BUILD_TIME.toSQL() };
+                JobMeasureEnum.MAX_JOB_BUILD_TIME.toSQL(), JobMeasureEnum.MIN_JOB_BUILD_TIME.toSQL(),
+                JobMeasureEnum.EXPANSION_RATE.toSQL() };
 
         return createPrepareSqlRequestOfJobMetrics(projectName, cubeName, startTime, endTime, null, measures);
     }
@@ -373,7 +374,8 @@ public class SqlCreationUtil {
         JOB_COUNT("count(*)"), //
         AVG_JOB_BUILD_TIME("avg(" + JobPropertyEnum.PER_BYTES_TIME_COST.toString() + ")"), //
         MAX_JOB_BUILD_TIME("max(" + JobPropertyEnum.PER_BYTES_TIME_COST.toString() + ")"), //
-        MIN_JOB_BUILD_TIME("min(" + JobPropertyEnum.PER_BYTES_TIME_COST.toString() + ")");
+        MIN_JOB_BUILD_TIME("min(" + JobPropertyEnum.PER_BYTES_TIME_COST.toString() + ")"), //
+        EXPANSION_RATE(getExpansionRateMetric());
 
         private final String sql;
 

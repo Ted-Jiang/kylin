@@ -139,7 +139,10 @@ public abstract class AbstractHadoopJob extends Configured implements Tool {
             .hasArg().isRequired(true).withDescription("HDFS metadata url").create(BatchConstants.ARG_META_URL);
     public static final Option OPTION_HBASE_CONF_PATH = OptionBuilder.withArgName(BatchConstants.ARG_HBASE_CONF_PATH).hasArg()
             .isRequired(true).withDescription("HBase config file path").create(BatchConstants.ARG_HBASE_CONF_PATH);
-
+    protected static final Option OPTION_DATA_EXPORT_DELIMITER = OptionBuilder
+            .withArgName(BatchConstants.ARG_DATA_EXPORT_DELIMITER).hasArg().isRequired(false)
+            .withDescription("Data export delimiter for columns").create(BatchConstants.ARG_DATA_EXPORT_DELIMITER);
+    
     private static final String MAP_REDUCE_CLASSPATH = "mapreduce.application.classpath";
 
     private static final Map<String, KylinConfig> kylinConfigCache = Maps.newConcurrentMap();

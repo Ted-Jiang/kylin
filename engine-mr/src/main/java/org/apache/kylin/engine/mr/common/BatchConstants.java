@@ -81,6 +81,8 @@ public interface BatchConstants {
 
     String CFG_CONVERGE_CUBOID_PARTITION_PARAM = "converge.cuboid.partition.param";
 
+    String CFG_DATA_EXPORT_DELIMITER = "data.export.delimiter";
+
     /**
      * command line ARGuments
      */
@@ -116,6 +118,7 @@ public interface BatchConstants {
     String ARG_BASE64_ENCODED_SQL = "base64EncodedSql";
     String ARG_GLOBAL_DIC_PART_REDUCE_STATS = "global_dict_part_reduce_stats";
     String ARG_GLOBAL_DIC_MAX_DISTINCT_COUNT = "global_dict_max_distinct_count";
+    String ARG_DATA_EXPORT_DELIMITER = "dataExportDelimiter";
 
     /**
      * logger and counter

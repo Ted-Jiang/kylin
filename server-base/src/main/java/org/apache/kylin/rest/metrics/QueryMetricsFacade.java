@@ -19,6 +19,7 @@
 package org.apache.kylin.rest.metrics;
 
 import java.nio.charset.Charset;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,6 +31,7 @@ import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.QueryContext;
 import org.apache.kylin.common.QueryContextFacade;
+import org.apache.kylin.metadata.model.IStorageAware;
 import org.apache.kylin.metrics.MetricsManager;
 import org.apache.kylin.metrics.lib.impl.RecordEvent;
 import org.apache.kylin.metrics.lib.impl.TimedRecordEvent;
@@ -121,6 +123,7 @@ public class QueryMetricsFacade {
                     sqlResponse.getThrowable());
 
             long totalStorageReturnCount = 0L;
+            Map<String, Long> totalStorageReturnCountMap = new HashMap<>();
             if (contextEntry.getQueryType().equalsIgnoreCase(OLAPQuery.EnumeratorTypeEnum.OLAP.name())) {
                 for (Map<String, QueryContext.CubeSegmentStatistics> cubeEntry : contextEntry.getCubeSegmentStatisticsMap()
                         .values()) {
@@ -140,6 +143,12 @@ public class QueryMetricsFacade {
                                 segmentEntry.isIfSuccess(), 1.0 / cubeEntry.size());
 
                         totalStorageReturnCount += segmentEntry.getStorageReturnedRows();
+                        Long storageReturnCount = totalStorageReturnCountMap.get(segmentEntry.getCubeName());
+                        if (storageReturnCount == null) {
+                            storageReturnCount = 0L;
+                        }
+                        storageReturnCount += segmentEntry.getStorageReturnedRows();
+                        totalStorageReturnCountMap.put(segmentEntry.getCubeName(), storageReturnCount);
                         //For update cube segment level related query metrics
                         MetricsManager.getInstance().update(cubeSegmentMetricsEvent);
                     }
@@ -152,8 +161,26 @@ public class QueryMetricsFacade {
             setQueryStats(queryMetricsEvent, //
                     sqlResponse.getDuration(), sqlResponse.getResults() == null ? 0 : sqlResponse.getResults().size(),
                     totalStorageReturnCount);
-            //For update query level metrics
+            // For update query level metrics
             MetricsManager.getInstance().update(queryMetricsEvent);
+
+            // If hit a hybrid, update query level metrics for each inner cubes
+            if (contextEntry.getRealizationType() == IStorageAware.ID_HYBRID) {
+                for (Map.Entry<String, Long> entry : totalStorageReturnCountMap.entrySet()) {
+                    RecordEvent queryMetricsEventInner = new TimedRecordEvent(
+                            KylinConfig.getInstanceFromEnv().getKylinMetricsSubjectQuery());
+                    setQueryWrapper(queryMetricsEventInner, //
+                            user, sqlRequest.getSql(),
+                            sqlResponse.isStorageCacheUsed() ? "CACHE" : contextEntry.getQueryType(),
+                            norm(sqlRequest.getProject()), entry.getKey(), IStorageAware.ID_SHARDED_HBASE,
+                            sqlResponse.getThrowable());
+                    // Use the total result size for each cube currently
+                    setQueryStats(queryMetricsEventInner, //
+                            sqlResponse.getDuration(),
+                            sqlResponse.getResults() == null ? 0 : sqlResponse.getResults().size(), entry.getValue());
+                    MetricsManager.getInstance().update(queryMetricsEventInner);
+                }
+            }
         }
     }
 

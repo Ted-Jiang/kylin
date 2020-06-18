@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.UUID;
 
 import javax.servlet.http.HttpServletResponse;
 
@@ -36,6 +37,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.kylin.common.util.JsonUtil;
 import org.apache.kylin.common.util.Pair;
 import org.apache.kylin.common.util.RandomUtil;
+import org.apache.kylin.common.util.StringUtil;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
 import org.apache.kylin.cube.CubeSegment;
@@ -55,11 +57,13 @@ import org.apache.kylin.engine.mr.common.CuboidStatsReaderUtil;
 import org.apache.kylin.job.JobInstance;
 import org.apache.kylin.job.JoinedFlatTable;
 import org.apache.kylin.job.exception.JobException;
+import org.apache.kylin.metadata.model.DataModelDesc;
 import org.apache.kylin.metadata.model.IJoinedFlatTableDesc;
 import org.apache.kylin.metadata.model.ISourceAware;
 import org.apache.kylin.metadata.model.MeasureDesc;
 import org.apache.kylin.metadata.model.SegmentRange;
 import org.apache.kylin.metadata.model.SegmentRange.TSRange;
+import org.apache.kylin.metadata.model.TableRef;
 import org.apache.kylin.metadata.project.ProjectInstance;
 import org.apache.kylin.metadata.realization.RealizationStatusEnum;
 import org.apache.kylin.rest.exception.BadRequestException;
@@ -70,6 +74,7 @@ import org.apache.kylin.rest.exception.TooManyRequestException;
 import org.apache.kylin.rest.msg.Message;
 import org.apache.kylin.rest.msg.MsgPicker;
 import org.apache.kylin.rest.request.CubeRequest;
+import org.apache.kylin.rest.request.CubeWithAllRequest;
 import org.apache.kylin.rest.request.JobBuildRequest;
 import org.apache.kylin.rest.request.JobBuildRequest2;
 import org.apache.kylin.rest.request.JobOptimizeRequest;
@@ -84,8 +89,10 @@ import org.apache.kylin.rest.response.HBaseResponse;
 import org.apache.kylin.rest.response.ResponseCode;
 import org.apache.kylin.rest.service.CubeService;
 import org.apache.kylin.rest.service.JobService;
+import org.apache.kylin.rest.service.ModelService;
 import org.apache.kylin.rest.service.ProjectService;
 import org.apache.kylin.rest.service.QueryService;
+import org.apache.kylin.rest.service.TableService;
 import org.apache.kylin.rest.util.AclEvaluate;
 import org.apache.kylin.rest.util.ValidateUtil;
 import org.apache.kylin.shaded.com.google.common.collect.Lists;
@@ -133,6 +140,14 @@ public class CubeController extends BasicController {
     @Autowired
     @Qualifier("queryService")
     private QueryService queryService;
+
+    @Autowired
+    @Qualifier("modelMgmtService")
+    private ModelService modelService;
+
+    @Autowired
+    @Qualifier("tableService")
+    private TableService tableService;
 
     @Autowired
     private AclEvaluate aclEvaluate;
@@ -593,12 +608,137 @@ public class CubeController extends BasicController {
 
         //drop Cube
         try {
-            cubeService.deleteCube(cube);
+            cubeService.deleteCube(cube, true);
         } catch (Exception e) {
             logger.error(e.getLocalizedMessage(), e);
             throw new InternalErrorException("Failed to delete cube. " + " Caused by: " + e.getMessage(), e);
         }
 
+    }
+
+    @RequestMapping(value = "/{cubeName}/withAll", method = { RequestMethod.DELETE }, produces = { "application/json" })
+    @ResponseBody
+    public GeneralResponse deleteCubeWithAll(@PathVariable String cubeName) {
+        CubeInstance cube = getCube(cubeName);
+
+        DataModelDesc model = cube.getModel();
+        ProjectInstance project = cubeService.getProjectManager().getProjectOfModel(model.getName());
+        Set<TableRef> tables = model.getAllTables();
+
+        //drop Cube
+        try {
+            cubeService.deleteCube(cube, false);
+        } catch (Exception e) {
+            logger.error(e.getLocalizedMessage(), e);
+            throw new InternalErrorException("Failed to delete cube caused by: " + e.getMessage(), e);
+        }
+
+        GeneralResponse response = new GeneralResponse();
+        StringBuilder warningMsg = new StringBuilder();
+
+        //drop Model
+        try {
+            modelService.dropModel(model);
+        } catch (Exception e) {
+            logger.warn("", e);
+            warningMsg.append(e);
+
+            response.setProperty("Warning message:", warningMsg.toString());
+            return response;
+        }
+
+        //unload tables
+        Set<String> unLoadFail = com.google.common.collect.Sets.newHashSet();
+        for (TableRef table : tables) {
+            try {
+                boolean ifUnloaded = tableService.unloadHiveTable(table.getTableIdentity(), project.getName());
+                if (!ifUnloaded) {
+                    unLoadFail.add(table.getTableIdentity());
+                }
+            } catch (Exception e) {
+                logger.error("Failed to unload Hive Table", e);
+                throw new InternalErrorException(e.getLocalizedMessage());
+            }
+        }
+        if (!unLoadFail.isEmpty()) {
+            warningMsg.append("Fail to unload tables: ").append(unLoadFail);
+        }
+
+        response.setProperty("Warning message:", warningMsg.toString());
+        return response;
+    }
+
+    /**
+     * Save cubeDesc with loading tables, creating model
+     * @param cubeWithAllRequest
+     * @return
+     * @throws JsonProcessingException
+     */
+    @RequestMapping(value = "/withAll", method = { RequestMethod.POST }, produces = { "application/json" })
+    @ResponseBody
+    public CubeWithAllRequest saveCubeDescWithAll(@RequestBody CubeWithAllRequest cubeWithAllRequest) {
+        if (cubeWithAllRequest == null) {
+            logger.info("CubeWithAllRequest should not be null.");
+            throw new BadRequestException("CubeWithAllRequest should not be null.");
+        }
+
+        Message msg = MsgPicker.getMsg();
+
+        String projectName = (null == cubeWithAllRequest.getProject()) ? ProjectInstance.DEFAULT_PROJECT_NAME
+                : cubeWithAllRequest.getProject();
+        ProjectInstance project = cubeService.getProjectManager().getProject(projectName);
+        if (project == null) {
+            throw new BadRequestException(msg.getPROJECT_NOT_FOUND());
+        }
+
+        DataModelDesc model;
+        try {
+            model = JsonUtil.readValue(cubeWithAllRequest.getModelDescData(), DataModelDesc.class);
+            model.setUuid(UUID.randomUUID().toString());
+        } catch (Exception e) {
+            throw new BadRequestException("Fail to deserialize modelDescData");
+        }
+
+        CubeDesc cubeDesc;
+        try {
+            cubeDesc = JsonUtil.readValue(cubeWithAllRequest.getCubeDescData(), CubeDesc.class);
+            cubeDesc.setUuid(UUID.randomUUID().toString());
+        } catch (Exception e) {
+            throw new BadRequestException("Fail to deserialize cubeDescData");
+        }
+
+        String[] tableNames = StringUtil.splitAndTrim(cubeWithAllRequest.getTables(), ",");
+        try {
+            tableService.loadHiveTablesToProject(tableNames, project.getName());
+        } catch (Exception e) {
+            throw new BadRequestException(String.format(Locale.ROOT, "Fail to load tables %s due to %s",
+                    cubeWithAllRequest.getTables(), e.getLocalizedMessage()));
+        }
+
+        try {
+            DataModelDesc existingModel = modelService.getDataModelManager().getDataModelDesc(model.getName());
+            if (existingModel != null) {
+                cubeWithAllRequest
+                        .appendMessage("model " + model.getName() + " already exist and will using existing one");
+                model = existingModel;
+            } else {
+                modelService.createModelDesc(projectName, model);
+            }
+        } catch (Exception e) {
+            throw new BadRequestException(String.format(Locale.ROOT, "Fail to create model %s due to %s",
+                    model.getName(), e.getLocalizedMessage()));
+        }
+
+        try {
+            cubeService.createCubeAndDesc(project, cubeDesc);
+        } catch (Exception e) {
+            throw new BadRequestException(String.format(Locale.ROOT, "Fail to create cube %s due to %s",
+                    cubeDesc.getName(), e.getLocalizedMessage()));
+        }
+
+        cubeWithAllRequest.setModelUuid(model.getUuid());
+        cubeWithAllRequest.setCubeUuid(cubeDesc.getUuid());
+        return cubeWithAllRequest;
     }
 
     /**

@@ -316,14 +316,16 @@ public class CubeService extends BasicService implements InitializingBean {
         return updatedCubeDesc;
     }
 
-    public void deleteCube(CubeInstance cube) throws IOException {
+    public void deleteCube(CubeInstance cube, boolean ifCheckJobs) throws IOException {
         aclEvaluate.checkProjectWritePermission(cube);
         Message msg = MsgPicker.getMsg();
 
-        final List<CubingJob> cubingJobs = jobService.listJobsByRealizationName(cube.getName(), null,
-                EnumSet.of(ExecutableState.READY, ExecutableState.RUNNING, ExecutableState.ERROR));
-        if (!cubingJobs.isEmpty()) {
-            throw new BadRequestException(String.format(Locale.ROOT, msg.getDISCARD_JOB_FIRST(), cube.getName()));
+        if (ifCheckJobs) {
+            final List<CubingJob> cubingJobs = jobService.listJobsByRealizationName(cube.getName(), null,
+                    EnumSet.of(ExecutableState.READY, ExecutableState.RUNNING, ExecutableState.ERROR));
+            if (!cubingJobs.isEmpty()) {
+                throw new BadRequestException(String.format(Locale.ROOT, msg.getDISCARD_JOB_FIRST(), cube.getName()));
+            }
         }
 
         try {

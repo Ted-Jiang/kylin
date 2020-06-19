@@ -40,6 +40,64 @@ then
 
     echo "metadata store backed up to ${_file}"
 
+elif [ "$1" == "backup-hdfs" ]
+then
+
+    BACKUP_HOME="$2/meta_backups"
+
+    if [ "$#" -eq 3 ]
+    then
+        HDFS_META_HOME=$3
+    else
+        HDFS_META_HOME=$(grep kylin.env.hdfs-working-dir ${KYLIN_HOME}/conf/kylin.properties | awk -F= '{print $2}')
+    fi
+
+    if [ -z "$HDFS_META_HOME" ]
+    then
+        quit "HDFS_META_HOME should be defined!!!"
+    else
+        echo "HDFS_META_HOME is $HDFS_META_HOME"
+    fi
+
+    _now=$(date +"%Y_%m_%d_%H_%M_%S")
+    _file="meta_${_now}"
+    _tar="${_file}.tar.gz"
+    _cur_meta_dir="${BACKUP_HOME}/${_file}"
+    mkdir -p ${_cur_meta_dir}
+
+    echo "Starting backup to ${_cur_meta_dir}"
+    ${KYLIN_HOME}/bin/kylin.sh org.apache.kylin.common.persistence.ResourceTool download ${_cur_meta_dir}
+    echo "metadata store backed up to ${_cur_meta_dir}"
+
+    _cur_meta_tar="${BACKUP_HOME}/${_tar}"
+    tar -czvf ${_cur_meta_tar} ${_cur_meta_dir}
+
+    HDFS_BACKUP_HOME="${HDFS_META_HOME}/meta_backups"
+    hadoop fs -mkdir -p ${HDFS_BACKUP_HOME}
+
+    echo "Upload metadata ${_cur_meta_tar} to hdfs ${HDFS_BACKUP_HOME}"
+    hadoop fs -copyFromLocal ${_cur_meta_tar} ${HDFS_BACKUP_HOME}
+    echo "metadata store backed up to hdfs ${HDFS_BACKUP_HOME}/${_tar}"
+
+    rm -f ${_cur_meta_tar}
+    rm -rf ${_cur_meta_dir}
+    echo "remove local meta ${_cur_meta_dir}"
+
+    # keep latest n tars
+    _n_keep=5
+
+    _n_exists=`hadoop fs -ls ${HDFS_BACKUP_HOME} | wc -l`
+
+    if ((${_n_exists} > ${_n_keep}))
+    then
+        _n_delete=$((${_n_exists} - ${_n_keep}))
+        for _hdfs_tar in `hadoop fs -ls ${HDFS_BACKUP_HOME} | sort -k6,7 -r | awk '{print $8}' | tail -${_n_delete}`
+        do
+          echo "Going to delete hdfs file ${_hdfs_tar}"
+          hadoop fs -rm ${_hdfs_tar}
+        done
+    fi
+
 elif [ "$1" == "fetch" ]
 then
 

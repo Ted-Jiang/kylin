@@ -16,6 +16,7 @@
 // limitations under the License.
 //
 
+// use 2.x protobuf rather than 3.x
 // usage:
 // protoc  --java_out=./storage-hbase/src/main/java  ./storage-hbase/src/main/java/org/apache/kylin/storage/hbase/cube/v2/coprocessor/endpoint/protobuf/CubeVisit.proto
 
@@ -38,7 +39,8 @@ message CubeVisitRequest {
     optional string queryId = 6;
     optional bool spillEnabled = 7 [default = true];
     optional int64 maxScanBytes = 8; // must be positive
-    optional bool isExactAggregate = 9 [default = false];
+    optional int64 maxReturnBytes = 9; // max return bytes
+    optional bool isExactAggregate = 10 [default = false];
     message IntList {
         repeated int32 ints = 1;
     }

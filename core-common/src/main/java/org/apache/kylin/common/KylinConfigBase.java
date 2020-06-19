@@ -1416,6 +1416,12 @@ public abstract class KylinConfigBase implements Serializable {
         return value > 0 ? value : Long.MAX_VALUE;
     }
 
+    public long getPartitionMaxReturnBytes() {
+        long value = Long.parseLong(
+                this.getOptional("kylin.storage.partition.max-return-bytes", String.valueOf(3L * 1024 * 1024 * 1024)));
+        return value > 0 ? value : Long.MAX_VALUE;
+    }
+    
     public int getQueryCoprocessorTimeoutSeconds() {
         return Integer.parseInt(this.getOptional("kylin.storage.hbase.coprocessor-timeout-seconds", "0"));
     }

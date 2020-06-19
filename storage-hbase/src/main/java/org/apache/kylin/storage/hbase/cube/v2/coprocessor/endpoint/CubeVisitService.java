@@ -334,7 +334,13 @@ public class CubeVisitService extends CubeVisitProtos.CubeVisitService implement
             long finalRowCount = 0L;
 
             try {
+                long maxReturnBytes = request.hasMaxReturnBytes() ? request.getMaxReturnBytes() : Long.MAX_VALUE;
                 for (GTRecord oneRecord : finalScanner) {
+                    int outputSize = outputStream.size();
+                    if (outputSize > maxReturnBytes) {
+                        throw new ResourceLimitExceededException("return row size exceeds threshold " + outputSize);
+                    }
+
                     buffer.clear();
                     try {
                         oneRecord.exportColumns(scanReq.getColumns(), buffer);

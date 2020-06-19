@@ -21,6 +21,7 @@ package org.apache.kylin.storage.hbase.cube.v2.coprocessor.endpoint;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.net.InetAddress;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
@@ -242,6 +243,8 @@ public class CubeVisitService extends CubeVisitProtos.CubeVisitService implement
 
         CubeVisitProtos.CubeVisitResponse.ErrorInfo errorInfo = null;
 
+        ThreadMXBean tdMXBean = ManagementFactory.getThreadMXBean();
+
         // if user change kylin.properties on kylin server, need to manually redeploy coprocessor jar to update KylinConfig of Env.
         KylinConfig kylinConfig = KylinConfig.createKylinConfig(request.getKylinProperties());
 
@@ -274,6 +277,7 @@ public class CubeVisitService extends CubeVisitProtos.CubeVisitService implement
 
             appendProfileInfo(sb, "start latency: " + (serviceStartTime - scanReq.getStartTime()), serviceStartTime);
 
+            final long serviceStartCpuTime = tdMXBean.getCurrentThreadCpuTime();
             final List<InnerScannerAsIterator> cellListsForeachRawScan = Lists.newArrayList();
 
             for (RawScan hbaseRawScan : hbaseRawScans) {
@@ -385,6 +389,11 @@ public class CubeVisitService extends CubeVisitProtos.CubeVisitService implement
             appendProfileInfo(sb, "agg done", serviceStartTime);
             logger.info("Total scanned {} rows and {} bytes", cellListIterator.getTotalScannedRowCount(),
                     cellListIterator.getTotalScannedRowBytes());
+
+            long cpuTime = (tdMXBean.getCurrentThreadCpuTime() - serviceStartCpuTime) / 1000000L;
+            sb.append("cpuTime@");
+            sb.append(cpuTime);
+            sb.append(",");
 
             //outputStream.close() is not necessary
             byte[] compressedAllRows;

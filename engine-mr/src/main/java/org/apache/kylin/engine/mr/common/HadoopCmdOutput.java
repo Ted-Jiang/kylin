@@ -47,6 +47,8 @@ public class HadoopCmdOutput {
     private final StringBuilder output;
     private final Job job;
 
+    private String trackingURL;
+
     public HadoopCmdOutput(Job job, StringBuilder output) {
         super();
         this.job = job;
@@ -64,7 +66,22 @@ public class HadoopCmdOutput {
                 status.put(ExecutableConstants.MR_JOB_ID, job.getJobID().toString());
             }
             if (null != job.getTrackingURL()) {
-                status.put(ExecutableConstants.YARN_APP_URL, job.getTrackingURL().toString());
+                String newTrackingURL = job.getTrackingURL();
+                logger.info(ExecutableConstants.YARN_APP_URL + ":" + newTrackingURL);
+                if (trackingURL == null) {
+                    trackingURL = newTrackingURL;
+                } else if (!newTrackingURL.equals(trackingURL)) {
+                    // fix for the bug that getTrackingURL() return url without http or https header even https is enabled,
+                    // just a workaround, tobe deleted when this issue resolved
+                    if (trackingURL.startsWith("https://") && (!newTrackingURL.startsWith("https://"))) {
+                        trackingURL = "https://" + newTrackingURL;
+                    } else if (trackingURL.startsWith("http://") && (!newTrackingURL.startsWith("http://"))) {
+                        trackingURL = "http://" + newTrackingURL;
+                    } else {
+                        trackingURL = newTrackingURL;
+                    }
+                }
+                status.put(ExecutableConstants.YARN_APP_URL, trackingURL);
             }
             return status;
         } else {

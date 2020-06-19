@@ -51,9 +51,9 @@
             <list>
                 <ref bean="hiveSink"/>
                 <map key-type="org.apache.kylin.metrics.lib.ActiveReservoir" value-type="java.util.List">
-                    <!--
                     <entry key-ref="instantReservoir">
                         <list>
+                            <!--
                             <bean class="org.apache.kylin.common.util.Pair">
                                 <property name="first"
                                           value="org.apache.kylin.metrics.lib.impl.kafka.KafkaReservoirReporter"/>
@@ -63,9 +63,17 @@
                                     </props>
                                 </property>
                             </bean>
+                            -->
+                            <bean class="org.apache.kylin.common.util.Pair">
+                                <property name="first"
+                                          value="org.apache.kylin.metrics.lib.impl.prometheus.PrometheusReservoirReporter"/>
+                                <property name="second">
+                                    <props>
+                                    </props>
+                                </property>
+                            </bean>
                         </list>
                     </entry>
-                    -->
                     <entry key-ref="blockingReservoir">
                         <list>
                             <bean class="org.apache.kylin.common.util.Pair">

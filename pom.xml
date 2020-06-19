@@ -78,6 +78,9 @@
     <!-- Kafka versions -->
     <kafka.version>2.1.1</kafka.version>
 
+    <!-- Prometheus versions -->
+    <prometheus.version>0.0.21</prometheus.version>
+
     <!-- Spark versions -->
     <spark.version>2.4.5</spark.version>
     <kryo.version>4.0.0</kryo.version>
@@ -269,6 +272,11 @@
       <dependency>
         <groupId>org.apache.kylin</groupId>
         <artifactId>kylin-metrics-reporter-kafka</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.kylin</groupId>
+        <artifactId>kylin-metrics-reporter-prometheus</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -1387,6 +1395,7 @@
     <module>core-metrics</module>
     <module>metrics-reporter-hive</module>
     <module>metrics-reporter-kafka</module>
+    <module>metrics-reporter-prometheus</module>
     <module>cache</module>
     <module>cube-migration</module>
     <module>datasource-sdk</module>

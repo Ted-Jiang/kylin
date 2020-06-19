@@ -169,6 +169,7 @@ public class SQLResponse implements Serializable {
         return isPartial;
     }
 
+    @JsonIgnore
     public boolean isPushDown() {
         return queryPushDown;
     }
@@ -181,6 +182,7 @@ public class SQLResponse implements Serializable {
         this.totalScanCount = totalScanCount;
     }
 
+    @JsonIgnore
     public long getTotalScanBytes() {
         return totalScanBytes;
     }
@@ -205,6 +207,7 @@ public class SQLResponse implements Serializable {
         this.storageCacheUsed = storageCacheUsed;
     }
 
+    @JsonIgnore
     public String getTraceUrl() {
         return traceUrl;
     }

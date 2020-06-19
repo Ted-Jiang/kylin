@@ -58,9 +58,11 @@ import org.springframework.security.acls.model.NotFoundException;
 import org.springframework.security.acls.model.ObjectIdentity;
 import org.springframework.security.acls.model.Permission;
 import org.springframework.security.acls.model.Sid;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,6 +77,10 @@ public class AccessService {
     @Qualifier("aclService")
     private AclService aclService;
 
+    @Autowired
+    @Qualifier("userService")
+    UserService userService;
+    
     // ~ Methods to manage acl life circle of domain objects ~
 
     @Transactional
@@ -480,5 +486,11 @@ public class AccessService {
             return 1;
         }
         return null;
+    }
+
+    public void switchToUser(String user) {
+        UserDetails userDetails = userService.loadUserByUsername(user);
+        Authentication userAuth = new AnonymousAuthenticationToken(user, userDetails, userDetails.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(userAuth);
     }
 }

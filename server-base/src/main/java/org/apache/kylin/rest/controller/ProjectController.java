@@ -36,10 +36,14 @@ import org.apache.kylin.rest.service.CubeService;
 import org.apache.kylin.rest.service.ProjectService;
 import org.apache.kylin.rest.util.AclEvaluate;
 import org.apache.kylin.rest.util.ValidateUtil;
+import org.apache.kylin.shaded.com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -116,6 +120,32 @@ public class ProjectController extends BasicController {
         }
 
         return readableProjects.subList(projectOffset, projectOffset + projectLimit);
+    }
+
+    @RequestMapping(value = "/readable/user/{userName}", method = { RequestMethod.GET }, produces = {
+            "application/json" })
+    @ResponseBody
+    public List<ProjectInstance> getReadableProjects(@PathVariable String userName,
+            @RequestParam(value = "limit", required = false) Integer limit,
+            @RequestParam(value = "offset", required = false) Integer offset) {
+        Authentication origAuth = SecurityContextHolder.getContext().getAuthentication();
+
+        logger.info("Going to impersonate to user {} from {}", userName, origAuth.getName());
+
+        try {
+            accessService.switchToUser(userName);
+            return getReadableProjects(limit, offset);
+        } catch (UsernameNotFoundException e) {
+            logger.warn("User {} does not exist in system", userName);
+            return Lists.newArrayList();
+        } catch (InternalErrorException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new InternalErrorException(e);
+        } finally {
+            SecurityContextHolder.getContext().setAuthentication(origAuth);
+            logger.info("Recover to the origin user {} from impersonated one {}", origAuth.getName(), userName);
+        }
     }
 
     @RequestMapping(value = "", method = { RequestMethod.POST }, produces = { "application/json" })

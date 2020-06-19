@@ -39,7 +39,7 @@
                             <td>
                                 <select ng-model="selectedSegment"
                                         ng-init="selectedSegment=cube.segments[0];segmentSelected(selectedSegment);"
-                                        ng-options="segment as segment.name for segment in cube.segments"
+                                        ng-options="segment as segment.name for segment in cube.segments | filter:getReadySegment"
                                         ng-change="segmentSelected(selectedSegment)">
                                 </select>
                             </td>

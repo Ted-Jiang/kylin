@@ -32,6 +32,7 @@ public class MailNotificationUtil {
     public static final String JOB_DISCARD = "JOB_DISCARD";
     public static final String JOB_SUCCEED = "JOB_SUCCEED";
     public static final String METADATA_PERSIST_FAIL = "METADATA_PERSIST_FAIL";
+    public static final String CUBE_OPTIMIZE_TRIGGER = "CUBE_OPTIMIZE_TRIGGER";
 
     public static final String NA = "NA";
 

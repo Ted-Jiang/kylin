@@ -33,10 +33,14 @@ import java.util.TimeZone;
 
 import javax.annotation.Nullable;
 
+import com.google.common.collect.Maps;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.lock.DistributedLock;
+import org.apache.kylin.common.util.MailService;
+import org.apache.kylin.common.util.MailTemplateProvider;
 import org.apache.kylin.common.util.Pair;
+import org.apache.kylin.common.util.StringUtil;
 import org.apache.kylin.common.zookeeper.KylinServerDiscovery;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
@@ -66,6 +70,7 @@ import org.apache.kylin.job.execution.CheckpointExecutable;
 import org.apache.kylin.job.execution.DefaultChainedExecutable;
 import org.apache.kylin.job.execution.ExecutableState;
 import org.apache.kylin.job.execution.Output;
+import org.apache.kylin.job.util.MailNotificationUtil;
 import org.apache.kylin.metadata.model.SegmentRange;
 import org.apache.kylin.metadata.model.SegmentRange.TSRange;
 import org.apache.kylin.metadata.model.SegmentStatusEnum;
@@ -328,6 +333,12 @@ public class JobService extends BasicService implements InitializingBean {
 
             getExecutableManager().addJob(checkpointJob);
 
+            try {
+                sendTriggerOptimizeMail(cube, checkpointJob.getName(), checkpointJob.getProjectName(), submitter);
+            } catch (Exception e) {
+                logger.warn("fail to send cube optimization notification email");
+            }
+
             return new Pair(getCheckpointJobInstance(checkpointJob), optimizeJobInstances);
         } catch (Exception e) {
             if (optimizeSegments != null) {
@@ -343,6 +354,30 @@ public class JobService extends BasicService implements InitializingBean {
             }
             throw e;
         }
+    }
+
+    private void sendTriggerOptimizeMail(CubeInstance cube, String jobName, String projectName, String submitter) {
+        KylinConfig config = getConfig();
+        String cubeName = cube.getName();
+        Map<String, Object> dataMap = Maps.newHashMap();
+        dataMap.put("job_name", jobName);
+        dataMap.put("env_name", config.getDeployEnv());
+        dataMap.put("submitter", StringUtil.noBlank(submitter, "missing submitter"));
+        dataMap.put("job_engine", MailNotificationUtil.getLocalHostName());
+        dataMap.put("project_name", projectName);
+        dataMap.put("cube_name", cubeName);
+        String content = MailTemplateProvider.getInstance()
+                .buildMailContent(MailNotificationUtil.CUBE_OPTIMIZE_TRIGGER, dataMap);
+        String title = MailTemplateProvider.getMailTitle("OPTIMIZE INFO", config.getDeployEnv(), projectName, cubeName);
+        List<String> users = Lists.newArrayList();
+        users.addAll(cube.getDescriptor().getNotifyList());
+        final String[] adminDls = config.getAdminDls();
+        if (null != adminDls) {
+            for (String adminDl : adminDls) {
+                users.add(adminDl);
+            }
+        }
+        new MailService(config).sendMail(users, title, content);
     }
 
     public JobInstance submitRecoverSegmentOptimizeJob(CubeSegment segment, String submitter)

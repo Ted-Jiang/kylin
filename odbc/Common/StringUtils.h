@@ -32,6 +32,7 @@ std::unique_ptr <char[]> wchar2char ( wchar_t* orig );
 std::unique_ptr <char[]> wchar2char ( const wchar_t* orig );
 void wchar2char ( wchar_t* orig, char* dest, int destLength );
 
+std::wstring string2wstring( const std::string& orig);
 std::wstring string2wstring ( std::string& orig );
 std::string wstring2string ( std::wstring& orig );
 

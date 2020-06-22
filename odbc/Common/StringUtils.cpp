@@ -198,6 +198,12 @@ void wchar2char ( wchar_t* orig, char* dest, int destBufferLength )
     wcstombs_s ( &convertedChars, dest, newsize, orig, _TRUNCATE );
 }
 
+std::wstring string2wstring ( const std::string& orig )
+{
+	std::wstring ws;
+	ws.assign(orig.begin(), orig.end());
+	return ws;
+}
 
 std::wstring string2wstring ( std::string& orig )
 {

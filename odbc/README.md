@@ -35,7 +35,7 @@ KylinODBC\Installer(64bit) - Contains a MSI installer for kylin odbc driver(x64)
 
 ## Build zlib and Casablanca from source code
 
-KylinODBC uses zlib for data compression and Casablanca as REST client. KylinODBC requires its libraries to be static libs, so we need to download source codes and compile it manually.  Remember if you want to build 64 bit odbc driver, you'll have to build 64 bit dependency libaries, the same goes for 32 bit. It is recommended that you build Release|x64, Debug|x64, Release|Win32, Debug|Win32 for all the libraries.
+KylinODBC uses zlib for data compression and Casablanca as REST client(customized git@github.corp.ebay.com:Kylin/cpprestsdk.git). KylinODBC requires its libraries to be static libs, so we need to download source codes and compile it manually.  Remember if you want to build 64 bit odbc driver, you'll have to build 64 bit dependency libaries, the same goes for 32 bit. It is recommended that you build Release|x64, Debug|x64, Release|Win32, Debug|Win32 for all the libraries.
 
 ### Set ZLIB_HOME and CPPREST_HOME
 
@@ -55,5 +55,6 @@ Here're some tips when compiling zlib:
 We use Casablanca 2.0.1, like zlib, we need static libs of Casablanca, so again we need to compile it manually. Download 2.0.1 source code from code repository: http://casablanca.codeplex.com/SourceControl/changeset/fa40cc31af293417bb9f25d358a3af576226394a. Refer to https://katyscode.wordpress.com/2014/04/01/how-to-statically-link-the-c-rest-sdk-casablanca to build it.
 
 ### Compile KylinODBC
+Pay additional attention to the preprocessor definition, CPPREST_FORCE_HTTP_CLIENT_ASIO, which is for using boost asio for http client instead of winhttp.
 
-Open KylinODBC.sln, if you're building a 32 bit ODBC driver, set the profile to RELEASE|Win32, build project Installer and find the driver exe at Installer/Express/SingleImage/DiskImages/DISK1. If you're building a 64 bit driver, set the profile to RELEASE|x64, and find the exe at Installer(x64bit)/Express/SingleImage/DiskImages/DISK1.
+Open KylinODBC.sln with VS2019, if you're building a 32 bit ODBC driver, set the profile to RELEASE|Win32, build the modular "Driver". After the dll library is generated, openKylinODBC.sln with VS2012, build project Installer and find the driver exe at Installer/Express/SingleImage/DiskImages/DISK1. If you're building a 64 bit driver, set the profile to RELEASE|x64, and find the exe at Installer(x64bit)/Express/SingleImage/DiskImages/DISK1.

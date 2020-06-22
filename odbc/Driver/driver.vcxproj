@@ -48,37 +48,38 @@
     <SccLocalPath />
     <ProjectGuid>{B43F2DB9-B3B5-4D66-A0E0-D65D3675EAF5}</ProjectGuid>
     <ProjectName>Driver</ProjectName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Template|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Template|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -112,13 +113,13 @@
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\Intermediate\</IntDir>
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(CPPREST_HOME)\Release\include;$(SolutionDir)\Common;C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(CPPREST_HOME)\Binaries\$(Platform)\$(Configuration);$(SolutionDir)\Common\$(Platform)\$(Configuration);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(CPPREST_HOME)\Release\include;$(vcpkgRoot)\$(Platform)-windows-static\include;$(SolutionDir)\Common;C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(CPPREST_HOME)\Binaries\$(Platform)\$(Configuration);$(vcpkgRoot)\$(Platform)-windows-static\lib;$(SolutionDir)\Common\$(Platform)\$(Configuration);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(CPPREST_HOME)\Release\include;$(SolutionDir)\Common;C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(CPPREST_HOME)\Binaries\$(Platform)\$(Configuration);$(SolutionDir)\Common\$(Platform)\$(Configuration);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(CPPREST_HOME)\Release\include;$(vcpkgRoot)\$(Platform)-windows-static\include;$(SolutionDir)\Common;C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(CPPREST_HOME)\Binaries\$(Platform)\$(Configuration);$(vcpkgRoot)\$(Platform)-windows-static\lib;$(SolutionDir)\Common\$(Platform)\$(Configuration);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture);$(LibraryPath)</LibraryPath>
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\Intermediate\</IntDir>
   </PropertyGroup>
@@ -126,13 +127,13 @@
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\Intermediate\</IntDir>
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(CPPREST_HOME)\Release\include;$(SolutionDir)\Common;C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(CPPREST_HOME)\Binaries\$(Platform)\$(Configuration);$(SolutionDir)\Common\$(Platform)\$(Configuration);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(CPPREST_HOME)\Release\include;$(vcpkgRoot)\$(Platform)-windows-static\include;$(SolutionDir)\Common;C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(CPPREST_HOME)\Binaries\$(Platform)\$(Configuration);$(vcpkgRoot)\$(Platform)-windows-static\lib;$(SolutionDir)\Common\$(Platform)\$(Configuration);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(CPPREST_HOME)\Release\include;$(SolutionDir)\Common;C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(CPPREST_HOME)\Binaries\$(Platform)\$(Configuration);$(SolutionDir)\Common\$(Platform)\$(Configuration);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(CPPREST_HOME)\Release\include;$(vcpkgRoot)\$(Platform)-windows-static\include;$(SolutionDir)\Common;C:\Program Files (x86)\Visual Leak Detector\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(CPPREST_HOME)\Binaries\$(Platform)\$(Configuration);$(vcpkgRoot)\$(Platform)-windows-static\lib;$(SolutionDir)\Common\$(Platform)\$(Configuration);C:\Program Files (x86)\Visual Leak Detector\lib\Win$(PlatformArchitecture);$(LibraryPath)</LibraryPath>
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\Intermediate\</IntDir>
   </PropertyGroup>
@@ -154,7 +155,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <WarningLevel>Level3</WarningLevel>
       <AdditionalIncludeDirectories>.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;WIN32;_WINDOWS;_USRDLL;driver_EXPORTS;_XML_STREAM_SOCK_CLIENT;_NO_ASYNCRTIMP;SHIPPING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>CPPREST_FORCE_HTTP_CLIENT_ASIO;_CRT_SECURE_NO_WARNINGS;NDEBUG;WIN32;_WINDOWS;_USRDLL;driver_EXPORTS;_XML_STREAM_SOCK_CLIENT;_NO_ASYNCRTIMP;SHIPPING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AssemblerListingLocation>$(Platform)\$(Configuration)\</AssemblerListingLocation>
       <PrecompiledHeaderOutputFile>$(Platform)\$(Configuration)\driver.pch</PrecompiledHeaderOutputFile>
       <ObjectFileName>$(Platform)\$(Configuration)\</ObjectFileName>
@@ -182,7 +183,7 @@
       <SubSystem>Console</SubSystem>
       <OutputFile>$(Platform)\$(Configuration)\driver.dll</OutputFile>
       <ImportLibrary>$(Platform)\$(Configuration)\driver.lib</ImportLibrary>
-      <AdditionalDependencies>odbccp32.lib;odbc32.lib;mswsock.lib;ws2_32.lib;winhttp.lib;cpprest110_2_0.lib;Common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>legacy_stdio_definitions.lib;odbccp32.lib;odbc32.lib;mswsock.lib;ws2_32.lib;cpprest.lib;Common.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\driver.DEF</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
@@ -202,7 +203,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <WarningLevel>Level3</WarningLevel>
       <AdditionalIncludeDirectories>.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;WIN32;_WINDOWS;_USRDLL;driver_EXPORTS;_XML_STREAM_SOCK_CLIENT;_NO_ASYNCRTIMP;SHIPPING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>CPPREST_FORCE_HTTP_CLIENT_ASIO;_CRT_SECURE_NO_WARNINGS;NDEBUG;WIN32;_WINDOWS;_USRDLL;driver_EXPORTS;_XML_STREAM_SOCK_CLIENT;_NO_ASYNCRTIMP;SHIPPING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AssemblerListingLocation>$(Platform)\$(Configuration)\</AssemblerListingLocation>
       <PrecompiledHeaderOutputFile>$(Platform)\$(Configuration)\driver.pch</PrecompiledHeaderOutputFile>
       <ObjectFileName>$(Platform)\$(Configuration)\</ObjectFileName>
@@ -229,7 +230,7 @@
       <SubSystem>Console</SubSystem>
       <OutputFile>$(Platform)\$(Configuration)\driver.dll</OutputFile>
       <ImportLibrary>$(Platform)\$(Configuration)\driver.lib</ImportLibrary>
-      <AdditionalDependencies>odbccp32.lib;odbc32.lib;mswsock.lib;ws2_32.lib;winhttp.lib;cpprest110_2_0.lib;Common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>legacy_stdio_definitions.lib;odbccp32.lib;odbc32.lib;mswsock.lib;ws2_32.lib;cpprest.lib;Common.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\driver.DEF</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
@@ -248,7 +249,7 @@
       <MinimalRebuild>true</MinimalRebuild>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <AdditionalIncludeDirectories>.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;WIN32;_WINDOWS;_USRDLL;driver_EXPORTS;_XML_STREAM_SOCK_CLIENT;_NO_ASYNCRTIMP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>CPPREST_FORCE_HTTP_CLIENT_ASIO;_CRT_SECURE_NO_WARNINGS;_DEBUG;WIN32;_WINDOWS;_USRDLL;driver_EXPORTS;_XML_STREAM_SOCK_CLIENT;_NO_ASYNCRTIMP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AssemblerListingLocation>$(Platform)\$(Configuration)\</AssemblerListingLocation>
       <PrecompiledHeaderOutputFile>$(Platform)\$(Configuration)\driver.pch</PrecompiledHeaderOutputFile>
       <ObjectFileName>$(Platform)\$(Configuration)\</ObjectFileName>
@@ -278,7 +279,7 @@
       <SubSystem>Console</SubSystem>
       <OutputFile>$(Platform)\$(Configuration)\driver.dll</OutputFile>
       <ImportLibrary>$(Platform)\$(Configuration)\driver.lib</ImportLibrary>
-      <AdditionalDependencies>cpprest110d_2_0.lib;odbc32.lib;odbccp32.lib;mswsock.lib;ws2_32.lib;winhttp.lib;Common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>legacy_stdio_definitions.lib;cpprest.lib;odbc32.lib;odbccp32.lib;mswsock.lib;ws2_32.lib;Common.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\driver.DEF</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
@@ -292,7 +293,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalIncludeDirectories>.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;WIN32;_WINDOWS;_USRDLL;driver_EXPORTS;_XML_STREAM_SOCK_CLIENT;_NO_ASYNCRTIMP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>CPPREST_FORCE_HTTP_CLIENT_ASIO;_CRT_SECURE_NO_WARNINGS;_DEBUG;WIN32;_WINDOWS;_USRDLL;driver_EXPORTS;_XML_STREAM_SOCK_CLIENT;_NO_ASYNCRTIMP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AssemblerListingLocation>$(Platform)\$(Configuration)\</AssemblerListingLocation>
       <PrecompiledHeaderOutputFile>$(Platform)\$(Configuration)\driver.pch</PrecompiledHeaderOutputFile>
       <ObjectFileName>$(Platform)\$(Configuration)\</ObjectFileName>
@@ -321,7 +322,7 @@
       <SubSystem>Console</SubSystem>
       <OutputFile>$(Platform)\$(Configuration)\driver.dll</OutputFile>
       <ImportLibrary>$(Platform)\$(Configuration)\driver.lib</ImportLibrary>
-      <AdditionalDependencies>odbc32.lib;odbccp32.lib;mswsock.lib;ws2_32.lib;winhttp.lib;cpprest110d_2_0.lib;Common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>legacy_stdio_definitions.lib;odbc32.lib;odbccp32.lib;mswsock.lib;ws2_32.lib;cpprest.lib;Common.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\driver.DEF</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>

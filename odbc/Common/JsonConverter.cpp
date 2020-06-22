@@ -20,7 +20,8 @@
 #include "JsonConverter.h"
 
 #define ASSIGN_IF_NOT_NULL(x,y,z)  if(!y.is_null())x=y.z
-#define x_ASSIGN_IF_NOT_NULL(x,y,z)  if(!y.is_null())x=wstring2string(y.z)
+#define x_ASSIGN_IF_NOT_NULL(x,y,z)  if(!y.is_null())x=y.z
+#define w_ASSIGN_IF_NOT_NULL(x,y,z)  if(!y.is_null())x=string2wstring(y.z)
 
 
 TableMeta* TableMetaFromJSON ( web::json::value& object )
@@ -157,7 +158,8 @@ void constructUnflattenResults ( SQLResponse* result, web::json::value& o_result
 
             else
             {
-                row -> contents . push_back ( ( jter -> as_string () ) );
+				string strCell = jter->as_string();
+				row->contents.push_back(string2wstring(strCell));
             }
         }
 
@@ -172,7 +174,7 @@ std::unique_ptr <SQLResponse> SQLResponseFromJSON ( web::json::value& object )
     result -> affectedRowCount = object[U ( "affectedRowCount" )] . as_integer ();
     result -> isException = object[U ( "isException" )] . as_bool ();
 
-    ASSIGN_IF_NOT_NULL ( result->exceptionMessage, object[U ( "exceptionMessage" )], as_string() );
+    w_ASSIGN_IF_NOT_NULL ( result->exceptionMessage, object[U ( "exceptionMessage" )], as_string() );
 
     if ( object[U ( "columnMetas" )] . is_array () )
     {
@@ -190,8 +192,8 @@ std::unique_ptr <SQLResponse> SQLResponseFromJSON ( web::json::value& object )
 std::unique_ptr <ErrorMessage> ErrorMessageFromJSON ( web::json::value& object )
 {
     std::unique_ptr <ErrorMessage> result ( new ErrorMessage () );
-    ASSIGN_IF_NOT_NULL ( result->url, object[U ( "url" )], as_string() );
-    ASSIGN_IF_NOT_NULL ( result->msg, object[U ( "exception" )], as_string() );
+    w_ASSIGN_IF_NOT_NULL ( result->url, object[U ( "url" )], as_string() );
+    w_ASSIGN_IF_NOT_NULL ( result->msg, object[U ( "exception" )], as_string() );
     return result;
 }
 

@@ -18,7 +18,6 @@
 
 
 #include <cpprest/http_client.h>
-#include <cpprest/filestream.h>
 #include <cpprest/json.h>
 #include <cpprest/uri.h>
 #include <string>
@@ -44,6 +43,41 @@ using namespace web::http::client;
 using namespace concurrency::streams;
 using namespace web;
 using namespace web::json;
+
+const string m_certRoot = "C:\\Cert\\";
+const string m_caPath = m_certRoot + "ca-bundle.crt";
+const string m_clientKeyPath = m_certRoot + "host.key";
+const string m_clientCertPath = m_certRoot + "host.crt";
+
+inline bool if_file_exists(const std::string& name) {
+	ifstream f(name.c_str());
+	return f.good();
+}
+
+void SetClientCert(http_client_config& config, string& serverAddr) {
+	if (serverAddr.find_first_of("https") == 0) {
+		if (if_file_exists(m_caPath) && if_file_exists(m_clientKeyPath) && if_file_exists(m_clientCertPath)) {
+			config.set_ssl_context_callback([&](boost::asio::ssl::context& ctx) -> void {
+				ctx.set_default_verify_paths();
+				try
+				{
+					ctx.load_verify_file(m_caPath);
+					ctx.use_private_key_file(m_clientKeyPath, boost::asio::ssl::context::pem);
+					ctx.use_certificate_file(m_clientCertPath, boost::asio::ssl::context::pem);
+				}
+				catch (std::exception& e)
+				{
+					std::stringstream ss;
+					ss << "Fail to read config files for ssl due to " << e.what();
+					throw runtime_error(ss.str());
+				}
+				});
+		}
+		else {
+			config.set_validate_certificates(false);
+		}
+	}
+}
 
 /// <summary>
 /// Find the longest length
@@ -133,7 +167,7 @@ void overwrite ( SQLResponse* res )
             case ODBCTypes::ODBC_Type_Time :
             case ODBCTypes::ODBC_Type_Timestamp :
                 length = ScanForLength ( res -> results, i );
-				if (length > meta -> displaySize) 
+				if (length > meta -> displaySize)
 				{
 					meta -> displaySize = length;
 				}
@@ -150,7 +184,7 @@ void overwrite ( SQLResponse* res )
     }
 }
 
-std::wstring completeServerStr ( char* serverStr, long port )
+std::string completeServerStr ( char* serverStr, long port )
 {
     //concat the whole server string
     char completeServerAddr[256];
@@ -174,11 +208,11 @@ std::wstring completeServerStr ( char* serverStr, long port )
         strcat ( completeServerAddr, portSuffix );
     }
 
-    return string2wstring ( std::string ( completeServerAddr ) );
+    return std::string(completeServerAddr);
 }
 
 
-http_request makeRequest ( const char* username, const char* passwd, const wchar_t* uriStr, http::method method )
+http_request makeRequest ( const char* username, const char* passwd, const char* uriStr, http::method method )
 {
     http_request request;
     char s[128];
@@ -186,22 +220,22 @@ http_request makeRequest ( const char* username, const char* passwd, const wchar
     std::string b64 = base64_encode ( ( unsigned char const* ) s, strlen ( s ) );
     request . set_method ( method );
     request . set_request_uri ( uri ( uri::encode_uri ( uriStr ) ) );
-    request . headers () . add ( header_names::authorization, string2wstring ( "Basic " + b64 ) );
+    request . headers () . add ( header_names::authorization, ( "Basic " + b64 ) );
 	request . headers () . add ( header_names::accept, "application/json" );
     request . headers () . add ( header_names::content_type, "application/json" );
-    request . headers () . add ( header_names::user_agent, "KylinODBCDriver" );
     return request;
 }
 
 bool restAuthenticate ( char* serverAddr, long port, char* username, char* passwd )
 {
-    wstring serverAddrW = completeServerStr ( serverAddr, port );
+    string serverAddrX = completeServerStr ( serverAddr, port );
     http_client_config config;
     config . set_timeout ( utility::seconds ( 300 ) );
-	config . set_validate_certificates ( false );
-    http_client session ( serverAddrW, config );
+	SetClientCert(config, serverAddrX);
+
+    http_client session (serverAddrX, config );
     //can get project list only when correct username/password is given
-    http_request request = makeRequest ( username, passwd, L"/kylin/api/projects", methods::GET );
+    http_request request = makeRequest ( username, passwd, "/kylin/api/projects", methods::GET );
     http_response response = session . request ( request ) . get ();
 
     if ( response . status_code () == status_codes::OK )
@@ -217,12 +251,13 @@ bool restAuthenticate ( char* serverAddr, long port, char* username, char* passw
 
 void restListProjects ( char* serverAddr, long port, char* username, char* passwd, std::vector <string>& holder )
 {
-    wstring serverAddrW = completeServerStr ( serverAddr, port );
+    string serverAddrX = completeServerStr ( serverAddr, port );
     http_client_config config;
     config . set_timeout ( utility::seconds ( 300 ) );
-	config . set_validate_certificates ( false );
-    http_client session ( serverAddrW, config );
-    http_request request = makeRequest ( username, passwd, L"/kylin/api/projects", methods::GET );
+	SetClientCert(config, serverAddrX);
+
+    http_client session (serverAddrX, config );
+    http_request request = makeRequest ( username, passwd, "/kylin/api/projects", methods::GET );
     http_response response = session . request ( request ) . get ();
 
     if ( response . status_code () == status_codes::OK )
@@ -231,7 +266,7 @@ void restListProjects ( char* serverAddr, long port, char* username, char* passw
 
         for ( auto iter = projects . as_array () . begin (); iter != projects . as_array () . end (); ++iter )
         {
-            holder . push_back ( wstring2string ( ( *iter )[U ( "name" )] . as_string () ) );
+            holder . push_back (  ( *iter )[U ( "name" )] . as_string () );
         }
 
         if ( holder . size () == 0 )
@@ -256,14 +291,15 @@ void restListProjects ( char* serverAddr, long port, char* username, char* passw
 std::unique_ptr <MetadataResponse> restGetMeta ( char* serverAddr, long port, char* username, char* passwd,
                                                  char* project )
 {
-    wstring serverAddrW = completeServerStr ( serverAddr, port );
+    string serverAddrX = completeServerStr ( serverAddr, port );
     http_client_config config;
     config . set_timeout ( utility::seconds ( 300 ) );
-	config . set_validate_certificates ( false );
-    http_client session ( serverAddrW, config );
-    std::wstringstream wss;
-    wss << L"/kylin/api/tables_and_columns" << L"?project=" << project;
-    http_request request = makeRequest ( username, passwd, wss . str () . c_str (), methods::GET );
+	SetClientCert(config, serverAddrX);
+
+    http_client session (serverAddrX, config );
+    std::stringstream ss;
+    ss << "/kylin/api/tables_and_columns" << "?project=" << project;
+    http_request request = makeRequest ( username, passwd, ss . str () . c_str (), methods::GET );
     http_response response = session . request ( request ) . get ();
 
     if ( response . status_code () == status_codes::OK )
@@ -299,14 +335,14 @@ wstring cookQuery ( wchar_t* p )
         if ( p[i] == L'\r' || p[i] == L'\n' || p[i] == L'\t' )
         {
             wss << L' ';
-        } 
-  
+        }
+
         else if (p[i] == L'"')
 		{
 			wss << L"\\\"";
 		}
 
-		else 
+		else
 		{
 			wss << p[i];
 		}
@@ -317,18 +353,18 @@ wstring cookQuery ( wchar_t* p )
 
 wstring getBodyString ( http_response& response )
 {
-    bool isGzipped = response . headers () . has ( L"Content-Encoding" );
+    bool isGzipped = response . headers () . has ( "Content-Encoding" );
 
     if ( isGzipped )
     {
         isGzipped = false;
-        http_headers::iterator iterator = response . headers () . find ( L"Content-Encoding" );
+        http_headers::iterator iterator = response . headers () . find ( "Content-Encoding" );
 
         if ( iterator != response . headers () . end () )
         {
-            wstring contentEncoding = iterator -> second;
+            string contentEncoding = iterator -> second;
 
-            if ( contentEncoding . find ( L"gzip" ) != std::string::npos )
+            if ( contentEncoding . find ( "gzip" ) != std::string::npos )
             {
                 isGzipped = true;
             }
@@ -368,7 +404,7 @@ std::unique_ptr <SQLResponse> convertToSQLResponse ( int statusFlag,
     if ( statusFlag == 1 )
     {
         //convert to json
-        web::json::value actualRes = web::json::value::parse ( responseStr );
+        web::json::value actualRes = web::json::value::parse ( wstring2string(responseStr) );
         std::unique_ptr <SQLResponse> r = SQLResponseFromJSON ( actualRes );
 
         if ( r -> isException == true )
@@ -383,7 +419,7 @@ std::unique_ptr <SQLResponse> convertToSQLResponse ( int statusFlag,
 
     else if ( statusFlag == 0 )
     {
-        std::unique_ptr <ErrorMessage> em = ErrorMessageFromJSON ( web::json::value::parse ( responseStr ) );
+        std::unique_ptr <ErrorMessage> em = ErrorMessageFromJSON ( web::json::value::parse ( wstring2string(responseStr) ) );
         string expMsg = wstring2string ( em -> msg );
         throw exception ( expMsg . c_str () );
     }
@@ -399,7 +435,7 @@ wstring requestQuery ( wchar_t* rawSql, char* serverAddr, long port, char* usern
 {
     //using local cache to intercept probing queries
     const wchar_t* cachedQueryRes = NULL;
-	
+
 	if (isPrepare) {
 		cachedQueryRes = loadCache ( rawSql  );
 	}
@@ -411,41 +447,32 @@ wstring requestQuery ( wchar_t* rawSql, char* serverAddr, long port, char* usern
     }
 
     //real requesting
-    wstring serverAddrW = completeServerStr ( serverAddr, port );
+    string serverAddrX = completeServerStr ( serverAddr, port );
     http_client_config config;
     config . set_timeout ( utility::seconds ( 36000 ) );
-	config . set_validate_certificates ( false );
+	SetClientCert(config, serverAddrX);
 
 	//uncomment these lines for debug with proxy
 	//wstring p = L"http://127.0.0.1:8888";
 	//config.set_proxy(web_proxy(p));
 
-    http_client session ( serverAddrW, config );
+    http_client session (serverAddrX, config );
     http_request request;
-	
-	if (!isPrepare) 
+
+	if (!isPrepare)
 	{
-		request = makeRequest ( username, passwd, L"/kylin/api/query", methods::POST );
+		request = makeRequest ( username, passwd, "/kylin/api/query", methods::POST );
 	}
 
 	else
 	{
-		request = makeRequest ( username, passwd, L"/kylin/api/query/prestate", methods::POST );
+		request = makeRequest ( username, passwd, "/kylin/api/query/prestate", methods::POST );
 	}
 
-    wstring sql = cookQuery ( rawSql );
-    std::wstringstream wss;
-    wss << L"{ \"acceptPartial\": false, \"project\" : \"" << project << L"\", " << " \"sql\" : \"" << sql << L"\"";
-	
-	// backward compatible, Apache Kylin <=2.0
-	if (isPrepare)
-	{
-		wss << L", \"params\" : [] ";
-	}
-
-	wss << L"}" ;
-
-    request . set_body ( wss . str (), L"application/json" );
+    string sql = wstring2string(cookQuery ( rawSql ));
+    std::stringstream ss;
+    ss << "{ \"acceptPartial\": false, \"project\" : \"" << project << "\", " << " \"sql\" : \"" << sql << "\" }" ;
+    request . set_body (ss.str(), "application/json" );
     request . headers () . add ( header_names::accept_encoding, "gzip,deflate" );
     http_response response;
 	http::status_code status;

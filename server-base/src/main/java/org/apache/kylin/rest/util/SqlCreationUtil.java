@@ -19,6 +19,7 @@
 package org.apache.kylin.rest.util;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.StringUtil;
 import org.apache.kylin.cube.CubeInstance;
+import org.apache.kylin.cube.CubeManager;
 import org.apache.kylin.metrics.MetricsManager;
 import org.apache.kylin.metrics.lib.impl.RecordEventTimeDetail;
 import org.apache.kylin.metrics.lib.impl.TimePropertyEnum;
@@ -73,7 +75,7 @@ public class SqlCreationUtil {
         String table = MetricsManager
                 .getSystemTableFromSubject(KylinConfig.getInstanceFromEnv().getKylinMetricsSubjectQuery());
 
-        Map<String, StateParam> filterMap = Maps.newHashMap();
+        Map<String, List<StateParam>> filterMap = Maps.newHashMap();
         if (StringUtil.isEmpty(projectName)) {
             addFilter(filterMap, QueryPropertyEnum.PROJECT.toString(), "<>", MetricsManager.SYSTEM_PROJECT,
                     String.class.getName());
@@ -83,6 +85,7 @@ public class SqlCreationUtil {
         }
         if (!StringUtil.isEmpty(cubeName)) {
             addFilter(filterMap, QueryPropertyEnum.REALIZATION.toString(), "=", cubeName, String.class.getName());
+            addCubeCreationUTCFilter(filterMap, cubeName);
         }
         addFilter(filterMap, QueryPropertyEnum.EXCEPTION.toString(), "=", "NULL", String.class.getName());
 
@@ -106,7 +109,7 @@ public class SqlCreationUtil {
         String table = MetricsManager
                 .getSystemTableFromSubject(KylinConfig.getInstanceFromEnv().getKylinMetricsSubjectJob());
 
-        Map<String, StateParam> filterMap = Maps.newHashMap();
+        Map<String, List<StateParam>> filterMap = Maps.newHashMap();
         if (StringUtil.isEmpty(projectName)) {
             addFilter(filterMap, JobPropertyEnum.PROJECT.toString(), "<>", MetricsManager.SYSTEM_PROJECT,
                     String.class.getName());
@@ -116,6 +119,7 @@ public class SqlCreationUtil {
         }
         if (!StringUtil.isEmpty(cubeName)) {
             addFilter(filterMap, JobPropertyEnum.CUBE.toString(), "IN", cubeName, String.class.getName());
+            addCubeCreationUTCFilter(filterMap, cubeName);
         }
 
         addFilter(filterMap, TimePropertyEnum.DAY_DATE.toString(), ">=", startTime, String.class.getName());
@@ -136,8 +140,9 @@ public class SqlCreationUtil {
         String[] measures = new String[1];
         measures[0] = "sum(" + QueryCubePropertyEnum.WEIGHT_PER_HIT.toString() + ")";
 
-        Map<String, StateParam> filterMap = Maps.newHashMap();
+        Map<String, List<StateParam>> filterMap = Maps.newHashMap();
         addFilter(filterMap, QueryCubePropertyEnum.CUBE.toString(), "=", cubeName, String.class.getName());
+        addCubeCreationUTCFilter(filterMap, cubeName);
 
         return createPrepareSqlRequest(table, dimensions, measures, filterMap);
     }
@@ -154,8 +159,9 @@ public class SqlCreationUtil {
         measures[0] = "avg(" + QueryCubePropertyEnum.AGGR_COUNT.toString() + ")";
         measures[1] = "avg(" + QueryCubePropertyEnum.RETURN_COUNT.toString() + ")";
 
-        Map<String, StateParam> filterMap = Maps.newHashMap();
+        Map<String, List<StateParam>> filterMap = Maps.newHashMap();
         addFilter(filterMap, QueryCubePropertyEnum.CUBE.toString(), "=", cubeName, String.class.getName());
+        addCubeCreationUTCFilter(filterMap, cubeName);
 
         return createPrepareSqlRequest(table, dimensions, measures, filterMap);
     }
@@ -170,8 +176,9 @@ public class SqlCreationUtil {
         String[] measures = new String[1];
         measures[0] = "sum(" + QueryCubePropertyEnum.WEIGHT_PER_HIT.toString() + ")";
 
-        Map<String, StateParam> filterMap = Maps.newHashMap();
+        Map<String, List<StateParam>> filterMap = Maps.newHashMap();
         addFilter(filterMap, QueryCubePropertyEnum.CUBE.toString(), "=", cubeName, String.class.getName());
+        addCubeCreationUTCFilter(filterMap, cubeName);
         addFilter(filterMap, QueryCubePropertyEnum.IF_MATCH.toString(), "=", "true", Boolean.class.getName());
 
         return createPrepareSqlRequest(table, dimensions, measures, filterMap);
@@ -189,8 +196,9 @@ public class SqlCreationUtil {
         String[] measures = new String[1];
         measures[0] = "avg(" + QueryPropertyEnum.TIME_COST.toString() + ") as query_latency";
 
-        Map<String, StateParam> filterMap = Maps.newHashMap();
+        Map<String, List<StateParam>> filterMap = Maps.newHashMap();
         addFilter(filterMap, QueryPropertyEnum.REALIZATION.toString(), "=", cube.getName(), String.class.getName());
+        addCubeCreationUTCFilter(filterMap, cube.getName());
 
         return createPrepareSqlRequest(table, dimensions, measures, filterMap, groupBys, groupBys);
     }
@@ -207,8 +215,9 @@ public class SqlCreationUtil {
         String[] measures = new String[1];
         measures[0] = getExpansionRateMetric() + " as expansion_rate";
 
-        Map<String, StateParam> filterMap = Maps.newHashMap();
+        Map<String, List<StateParam>> filterMap = Maps.newHashMap();
         addFilter(filterMap, JobPropertyEnum.CUBE.toString(), "=", cube.getName(), String.class.getName());
+        addCubeCreationUTCFilter(filterMap, cube.getName());
 
         return createPrepareSqlRequest(table, dimensions, measures, filterMap, groupBys, groupBys);
     }
@@ -246,12 +255,12 @@ public class SqlCreationUtil {
     }
 
     private static PrepareSqlRequest createPrepareSqlRequest(String table, String[] dimensions, String[] measures,
-            Map<String, StateParam> filterMap) {
+            Map<String, List<StateParam>> filterMap) {
         return createPrepareSqlRequest(table, dimensions, measures, filterMap, dimensions, null);
     }
 
     private static PrepareSqlRequest createPrepareSqlRequest(String table, String[] dimensions, String[] measures,
-            Map<String, StateParam> filterMap, String[] groupBys, String[] orderBys) {
+            Map<String, List<StateParam>> filterMap, String[] groupBys, String[] orderBys) {
         PrepareSqlRequest sqlRequest = new PrepareSqlRequest();
         sqlRequest.setProject(MetricsManager.SYSTEM_PROJECT);
 
@@ -262,12 +271,12 @@ public class SqlCreationUtil {
 
         String filterPart = "";
         if (filterMap != null && !filterMap.isEmpty()) {
-            List<Map.Entry<String, StateParam>> filterList = Lists.newArrayList(filterMap.entrySet());
+            List<Map.Entry<String, List<StateParam>>> filterList = Lists.newArrayList(filterMap.entrySet());
 
             filterPart = filterList.stream().map(Map.Entry::getKey).collect(Collectors.joining(" and "));
 
-            StateParam[] params = filterList.stream().map(Map.Entry::getValue).collect(Collectors.toList())
-                    .toArray(new StateParam[filterMap.size()]);
+            StateParam[] params = filterList.stream().map(Map.Entry::getValue).flatMap(Collection::stream)
+                    .toArray(StateParam[]::new);
             sqlRequest.setParams(params);
         }
 
@@ -304,13 +313,58 @@ public class SqlCreationUtil {
         return elements != null && elements.length > 0 ? StringUtil.join(Arrays.asList(elements), ", ") : "";
     }
 
-    private static void addFilter(Map<String, StateParam> filterMap, String keyName, String compareSign, String value,
-            String className) {
+    private static void addCubeCreationUTCFilter(Map<String, List<StateParam>> filterMap, String cubeName) {
+        CubeManager cubeManager = CubeManager.getInstance(KylinConfig.getInstanceFromEnv());
+        CubeInstance cubeInstance = cubeManager.getCube(cubeName);
+        if (cubeInstance != null) {
+            RecordEventTimeDetail dateDetail = new RecordEventTimeDetail(cubeInstance.getCreateTimeUTC());
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("(");
+            sb.append(TimePropertyEnum.DAY_DATE.toString() + " > ?");
+            sb.append(" or ");
+            sb.append("(");
+            sb.append(TimePropertyEnum.DAY_DATE.toString() + " = ?");
+            sb.append(" and ");
+            sb.append("(");
+            sb.append(TimePropertyEnum.TIME_HOUR.toString() + " > ?");
+            sb.append(" or ");
+            sb.append("(");
+            sb.append(TimePropertyEnum.TIME_HOUR.toString() + " = ?");
+            sb.append(" and ");
+            sb.append(TimePropertyEnum.TIME_MINUTE.toString() + " >= ?");
+            sb.append(")");
+            sb.append(")");
+            sb.append(")");
+            sb.append(")");
+            String key = sb.toString();
+
+            StateParam dayParam = new StateParam();
+            dayParam.setClassName(String.class.getName());
+            dayParam.setValue(dateDetail.date);
+
+            StateParam hourParam = new StateParam();
+            hourParam.setClassName(Integer.class.getName());
+            hourParam.setValue(String.valueOf(dateDetail.hour));
+
+            StateParam minuteParam = new StateParam();
+            minuteParam.setClassName(Integer.class.getName());
+            minuteParam.setValue(String.valueOf(dateDetail.minute));
+
+            List<StateParam> value = Lists.newArrayList(dayParam, dayParam, hourParam, hourParam, minuteParam);
+
+            filterMap.put(key, value);
+        }
+    }
+
+    private static void addFilter(Map<String, List<StateParam>> filterMap, String keyName, String compareSign,
+            String value, String className) {
         StateParam stateParam = new StateParam();
         stateParam.setClassName(className);
         stateParam.setValue(value);
         String mark = compareSign.equalsIgnoreCase("IN") ? "(?)" : "?";
-        filterMap.put(String.format(Locale.ROOT, "%s %s %s", keyName, compareSign, mark), stateParam);
+        filterMap.put(String.format(Locale.ROOT, "%s %s %s", keyName, compareSign, mark),
+                Lists.newArrayList(stateParam));
     }
 
     private enum CategoryEnum {

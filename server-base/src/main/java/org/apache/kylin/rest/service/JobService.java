@@ -33,7 +33,6 @@ import java.util.TimeZone;
 
 import javax.annotation.Nullable;
 
-import com.google.common.collect.Maps;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.lock.DistributedLock;
@@ -51,8 +50,8 @@ import org.apache.kylin.engine.mr.BatchOptimizeJobCheckpointBuilder;
 import org.apache.kylin.engine.mr.CubingJob;
 import org.apache.kylin.engine.mr.LookupSnapshotBuildJob;
 import org.apache.kylin.engine.mr.LookupSnapshotJobBuilder;
-import org.apache.kylin.engine.mr.common.CubeJobLockUtil;
 import org.apache.kylin.engine.mr.StreamingCubingEngine;
+import org.apache.kylin.engine.mr.common.CubeJobLockUtil;
 import org.apache.kylin.engine.mr.common.JobInfoConverter;
 import org.apache.kylin.engine.mr.steps.CubingExecutableUtil;
 import org.apache.kylin.job.JobInstance;
@@ -70,21 +69,31 @@ import org.apache.kylin.job.execution.CheckpointExecutable;
 import org.apache.kylin.job.execution.DefaultChainedExecutable;
 import org.apache.kylin.job.execution.ExecutableState;
 import org.apache.kylin.job.execution.Output;
+import org.apache.kylin.job.lock.zookeeper.ZookeeperJobLock;
 import org.apache.kylin.job.util.MailNotificationUtil;
 import org.apache.kylin.metadata.model.SegmentRange;
 import org.apache.kylin.metadata.model.SegmentRange.TSRange;
 import org.apache.kylin.metadata.model.SegmentStatusEnum;
 import org.apache.kylin.metadata.model.Segments;
 import org.apache.kylin.metadata.model.TableDesc;
+import org.apache.kylin.metadata.model.TableExtDesc;
+import org.apache.kylin.metadata.model.TableRef;
 import org.apache.kylin.metadata.realization.RealizationStatusEnum;
 import org.apache.kylin.rest.exception.BadRequestException;
 import org.apache.kylin.rest.msg.Message;
 import org.apache.kylin.rest.msg.MsgPicker;
+import org.apache.kylin.rest.response.ResponseCode;
 import org.apache.kylin.rest.util.AclEvaluate;
+import org.apache.kylin.shaded.com.google.common.base.Function;
+import org.apache.kylin.shaded.com.google.common.base.Predicate;
+import org.apache.kylin.shaded.com.google.common.base.Predicates;
+import org.apache.kylin.shaded.com.google.common.collect.FluentIterable;
+import org.apache.kylin.shaded.com.google.common.collect.Lists;
+import org.apache.kylin.shaded.com.google.common.collect.Maps;
+import org.apache.kylin.shaded.com.google.common.collect.Sets;
 import org.apache.kylin.source.ISource;
 import org.apache.kylin.source.SourceManager;
 import org.apache.kylin.source.SourcePartition;
-import org.apache.kylin.job.lock.zookeeper.ZookeeperJobLock;
 import org.apache.kylin.source.hive.MRHiveDictUtil;
 import org.apache.kylin.stream.coordinator.Coordinator;
 import org.apache.kylin.stream.core.model.SegmentBuildState;
@@ -92,16 +101,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-
-import org.apache.kylin.shaded.com.google.common.base.Function;
-import org.apache.kylin.shaded.com.google.common.base.Predicate;
-import org.apache.kylin.shaded.com.google.common.base.Predicates;
-import org.apache.kylin.shaded.com.google.common.collect.FluentIterable;
-import org.apache.kylin.shaded.com.google.common.collect.Lists;
-import org.apache.kylin.shaded.com.google.common.collect.Sets;
 
 /**
  * @author ysong1
@@ -115,6 +118,10 @@ public class JobService extends BasicService implements InitializingBean {
 
     @Autowired
     private AclEvaluate aclEvaluate;
+
+    @Autowired
+    @Qualifier("tableService")
+    private TableService tableService;
 
     /*
     * (non-Javadoc)
@@ -248,6 +255,7 @@ public class JobService extends BasicService implements InitializingBean {
 
         if (buildType == CubeBuildTypeEnum.BUILD || buildType == CubeBuildTypeEnum.REFRESH) {
             checkAllowParallelBuilding(cube);
+            checkSourceSchemaUpdate(cube);
         }
 
         DefaultChainedExecutable job;
@@ -291,6 +299,27 @@ public class JobService extends BasicService implements InitializingBean {
         JobInstance jobInstance = getSingleJobInstance(job);
 
         return jobInstance;
+    }
+
+    private void checkSourceSchemaUpdate(CubeInstance cube) {
+        String[] tables = cube.getModel().getAllTables().stream().map(TableRef::getTableIdentity)
+                .toArray(String[]::new);
+        String project = getProjectManager().getProjectOfModel(cube.getModel().getName()).getName();
+        try {
+            List<Pair<TableDesc, TableExtDesc>> allMeta = tableService.extractHiveTableMeta(tables, project);
+            // do schema check
+            TableSchemaUpdateChecker checker = new TableSchemaUpdateChecker(getTableManager(), getCubeManager(),
+                    getDataModelManager());
+            for (Pair<TableDesc, TableExtDesc> pair : allMeta) {
+                TableDesc tableDesc = pair.getFirst();
+                TableSchemaUpdateChecker.CheckResult result = checker.allowReload(tableDesc, project);
+                result.raiseExceptionAndNotifyWhenInvalid();
+            }
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException(e.getMessage(), ResponseCode.CODE_UNDEFINED, e);
+        } catch (Exception e) {
+            logger.warn("Can not connect to hive, table schema check skipped!");
+        }
     }
 
     public Pair<JobInstance, List<JobInstance>> submitOptimizeJob(CubeInstance cube, Set<Long> cuboidsRecommend,

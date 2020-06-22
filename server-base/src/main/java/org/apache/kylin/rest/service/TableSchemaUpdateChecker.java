@@ -18,19 +18,26 @@
 
 package org.apache.kylin.rest.service;
 
-import static org.apache.kylin.shaded.com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
+import static org.apache.kylin.shaded.com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
+import org.apache.kylin.common.KylinConfig;
+import org.apache.kylin.common.util.MailService;
+import org.apache.kylin.common.util.MailTemplateProvider;
+import org.apache.kylin.common.util.Pair;
+import org.apache.kylin.common.util.StringUtil;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
+import org.apache.kylin.job.util.MailNotificationUtil;
 import org.apache.kylin.metadata.TableMetadataManager;
 import org.apache.kylin.metadata.model.ColumnDesc;
 import org.apache.kylin.metadata.model.DataModelDesc;
@@ -38,62 +45,90 @@ import org.apache.kylin.metadata.model.DataModelManager;
 import org.apache.kylin.metadata.model.ModelDimensionDesc;
 import org.apache.kylin.metadata.model.TableDesc;
 import org.apache.kylin.metadata.model.TblColRef;
-
+import org.apache.kylin.metadata.project.ProjectManager;
 import org.apache.kylin.shaded.com.google.common.base.Preconditions;
 import org.apache.kylin.shaded.com.google.common.base.Predicate;
 import org.apache.kylin.shaded.com.google.common.collect.ImmutableList;
 import org.apache.kylin.shaded.com.google.common.collect.Iterables;
 import org.apache.kylin.shaded.com.google.common.collect.Lists;
+import org.apache.kylin.shaded.com.google.common.collect.Maps;
 import org.apache.kylin.shaded.com.google.common.collect.Sets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TableSchemaUpdateChecker {
+    private static final Logger logger = LoggerFactory.getLogger(TableSchemaUpdateChecker.class);
+
     private final TableMetadataManager metadataManager;
     private final CubeManager cubeManager;
     private final DataModelManager dataModelManager;
 
     public static class CheckResult {
+        private final String tableName;
         private final boolean valid;
         private final String reason;
+        private final Set<CubeInstance> impactedCubes;
 
-        private CheckResult(boolean valid, String reason) {
+        private CheckResult(String tableName, boolean valid, String reason) {
+            this(tableName, valid, reason, Sets.<CubeInstance> newHashSet());
+        }
+
+        private CheckResult(String tableName, boolean valid, String reason, Set<CubeInstance> impactedCubes) {
+            this.tableName = tableName;
             this.valid = valid;
             this.reason = reason;
+            this.impactedCubes = impactedCubes;
         }
 
         public void raiseExceptionWhenInvalid() {
+            raiseExceptionAndNotifyWhenInvalid(false);
+        }
+
+        public void raiseExceptionAndNotifyWhenInvalid() {
+            raiseExceptionAndNotifyWhenInvalid(true);
+        }
+
+        private void raiseExceptionAndNotifyWhenInvalid(boolean ifNotify) {
             if (!valid) {
-                throw new RuntimeException(reason);
+                if (ifNotify) {
+                    notifyInvalid(tableName, reason, impactedCubes);
+                }
+                throw new IllegalArgumentException(reason);
             }
         }
 
         static CheckResult validOnFirstLoad(String tableName) {
-            return new CheckResult(true, format(Locale.ROOT, "Table '%s' hasn't been loaded before", tableName));
+            return new CheckResult(tableName, true,
+                    format(Locale.ROOT, "Table '%s' hasn't been loaded before", tableName));
         }
 
         static CheckResult validOnCompatibleSchema(String tableName) {
-            return new CheckResult(true,
+            return new CheckResult(tableName, true,
                     format(Locale.ROOT, "Table '%s' is compatible with all existing cubes", tableName));
         }
 
         static CheckResult invalidOnFetchSchema(String tableName, Exception e) {
-            return new CheckResult(false,
+            return new CheckResult(tableName, false,
                     format(Locale.ROOT, "Failed to fetch metadata of '%s': %s", tableName, e.getMessage()));
         }
 
-        static CheckResult invalidOnIncompatibleSchema(String tableName, List<String> reasons) {
+        static CheckResult invalidOnIncompatibleSchema(String tableName, List<String> reasons,
+                Set<CubeInstance> impactedCubes) {
             StringBuilder buf = new StringBuilder();
             for (String reason : reasons) {
                 buf.append("- ").append(reason).append("\n");
             }
 
-            return new CheckResult(false,
+            return new CheckResult(tableName, false,
                     format(Locale.ROOT,
                             "Found %d issue(s) with '%s':%n%s Please disable and " + "purge related " + "cube(s) first",
-                            reasons.size(), tableName, buf.toString()));
+                            reasons.size(), tableName, buf.toString()),
+                    impactedCubes);
         }
     }
 
-    TableSchemaUpdateChecker(TableMetadataManager metadataManager, CubeManager cubeManager, DataModelManager dataModelManager) {
+    TableSchemaUpdateChecker(TableMetadataManager metadataManager, CubeManager cubeManager,
+            DataModelManager dataModelManager) {
         this.metadataManager = checkNotNull(metadataManager, "metadataManager is null");
         this.cubeManager = checkNotNull(cubeManager, "cubeManager is null");
         this.dataModelManager = checkNotNull(dataModelManager, "dataModelManager is null");
@@ -195,32 +230,36 @@ public class TableSchemaUpdateChecker {
         }
         List<String> issues = Lists.newArrayList();
 
-        for (DataModelDesc usedModel : findModelByTable(newTableDesc, prj)){
+        for (DataModelDesc usedModel : findModelByTable(newTableDesc, prj)) {
             checkValidationInModel(newTableDesc, issues, usedModel);
         }
 
+        Set<CubeInstance> impactedCubes = Sets.newHashSet();
         for (CubeInstance cube : findCubeByTable(newTableDesc)) {
-            checkValidationInCube(newTableDesc, issues, cube);
+            boolean ifImpacted = checkValidationInCube(newTableDesc, issues, cube);
+            if (ifImpacted) {
+                impactedCubes.add(cube);
+            }
         }
 
         if (issues.isEmpty()) {
             return CheckResult.validOnCompatibleSchema(fullTableName);
         }
-        return CheckResult.invalidOnIncompatibleSchema(fullTableName, issues);
+        return CheckResult.invalidOnIncompatibleSchema(fullTableName, issues, impactedCubes);
     }
 
     private Iterable<? extends DataModelDesc> findModelByTable(TableDesc newTableDesc, String prj) {
         List<DataModelDesc> usedModels = Lists.newArrayList();
         List<String> modelNames = dataModelManager.getModelsUsingTable(newTableDesc, prj);
-        modelNames.stream()
-                .map(mn -> dataModelManager.getDataModelDesc(mn))
-                .filter(m -> null != m)
+        modelNames.stream().map(mn -> dataModelManager.getDataModelDesc(mn)).filter(m -> null != m)
                 .forEach(m -> usedModels.add(m));
 
         return usedModels;
     }
 
-    private void checkValidationInCube(TableDesc newTableDesc, List<String> issues, CubeInstance cube) {
+    private boolean checkValidationInCube(TableDesc newTableDesc, List<String> issues, CubeInstance cube) {
+        boolean ifImpacted = false;
+
         final String fullTableName = newTableDesc.getIdentity();
         String modelName = cube.getModel().getName();
         // if user reloads a fact table used by cube, then all used columns must match current schema
@@ -230,6 +269,7 @@ public class TableSchemaUpdateChecker {
             if (!violateColumns.isEmpty()) {
                 issues.add(format(Locale.ROOT, "Column %s used in cube[%s] and model[%s], but changed " + "in hive",
                         violateColumns, cube.getName(), modelName));
+                ifImpacted = true;
             }
         }
 
@@ -238,11 +278,15 @@ public class TableSchemaUpdateChecker {
         if (cube.getModel().isLookupTable(fullTableName)) {
             TableDesc lookupTable = cube.getModel().findFirstTable(fullTableName).getTableDesc();
             if (!checkAllColumnsInTableDesc(lookupTable, newTableDesc)) {
-                issues.add(format(Locale.ROOT, "Table '%s' is used as Lookup Table in cube[%s] and model[%s], but "
-                                + "changed in " + "hive, only append operation are supported on hive table as lookup table",
+                issues.add(format(Locale.ROOT,
+                        "Table '%s' is used as Lookup Table in cube[%s] and model[%s], but " + "changed in "
+                                + "hive, only append operation are supported on hive table as lookup table",
                         lookupTable.getIdentity(), cube.getName(), modelName));
+                ifImpacted = true;
             }
         }
+
+        return ifImpacted;
     }
 
     private void checkValidationInModel(TableDesc newTableDesc, List<String> issues, DataModelDesc usedModel) {
@@ -281,7 +325,7 @@ public class TableSchemaUpdateChecker {
 
         return violateColumns;
     }
-    
+
     private List<String> checkAllColumnsInFactTable(DataModelDesc usedModel, TableDesc factTable,
             TableDesc newTableDesc) {
         List<String> violateColumns = Lists.newArrayList();
@@ -316,8 +360,8 @@ public class TableSchemaUpdateChecker {
 
     private ColumnDesc mustGetColumnDesc(TableDesc factTable, String columnName) {
         ColumnDesc columnDesc = factTable.findColumnByName(columnName);
-        Preconditions.checkNotNull(columnDesc,
-                format(Locale.ROOT, "Can't find column %s in current fact table %s.", columnName, factTable.getIdentity()));
+        Preconditions.checkNotNull(columnDesc, format(Locale.ROOT, "Can't find column %s in current fact table %s.",
+                columnName, factTable.getIdentity()));
         return columnDesc;
     }
 
@@ -348,10 +392,10 @@ public class TableSchemaUpdateChecker {
         List<String> issues = Lists.newArrayList();
         checkAllColumnsInHiveTableDesc(hiveTableDesc, newTableDesc, issues);
         if (issues.isEmpty()) {
-            return new CheckResult(true,
+            return new CheckResult(fullTableName, true,
                     format(Locale.ROOT, "Table '%s' is compatible with existing hive table", fullTableName));
         } else {
-            return new CheckResult(false, format(Locale.ROOT,
+            return new CheckResult(fullTableName, false, format(Locale.ROOT,
                     "Table '%s' is incompatible with existing hive table due to '%s'", fullTableName, issues));
         }
     }
@@ -389,5 +433,50 @@ public class TableSchemaUpdateChecker {
         if (!violateColumns.isEmpty()) {
             issues.add(format(Locale.ROOT, "Columns %s are incompatible " + "in hive", violateColumns));
         }
+    }
+
+    private static void notifyInvalid(String tableName, String reason, Set<CubeInstance> impactedCubes) {
+        KylinConfig kylinConfig = KylinConfig.getInstanceFromEnv();
+
+        Set<String> users = Sets.newHashSet();
+        for (CubeInstance cube : impactedCubes) {
+            users.addAll(cube.getDescriptor().getNotifyList());
+        }
+        final String[] adminDls = kylinConfig.getAdminDls();
+        if (adminDls != null) {
+            users.addAll(Lists.newArrayList(adminDls));
+        }
+
+        logger.debug("send notification to owner of {} impacted cubes for table {}", impactedCubes.size(), tableName);
+        Pair<String, String> mail = formatNotifications(tableName, impactedCubes, reason);
+        new MailService(kylinConfig).sendMail(Lists.newArrayList(users), mail.getFirst(), mail.getSecond());
+    }
+
+    private static Pair<String, String> formatNotifications(String tableName, Set<CubeInstance> cubes,
+            String issueDetails) {
+        KylinConfig kylinConfig = KylinConfig.getInstanceFromEnv();
+        ProjectManager projectManager = ProjectManager.getInstance(kylinConfig);
+
+        Map<String, Object> root = Maps.newHashMap();
+        root.put("job_name", "Source Data Schema Change");
+        root.put("env_name", kylinConfig.getDeployEnv());
+        root.put("change_details", Matcher.quoteReplacement(StringUtil.noBlank(issueDetails, "no change info")));
+        root.put("source_type", "HIVE");
+        root.put("source_data", tableName);
+
+        List<Map> impactInfoList = Lists.newArrayList();
+        for (CubeInstance cube : cubes) {
+            Map<String, Object> impactInfoMap = Maps.newHashMap();
+            impactInfoMap.put("project_name", projectManager.getProjectOfModel(cube.getModel().getName()));
+            impactInfoMap.put("cube_name", cube.getName());
+            impactInfoMap.put("cube_owner", cube.getOwner());
+            impactInfoList.add(impactInfoMap);
+        }
+
+        root.put("impacted_info_List", impactInfoList);
+
+        String content = MailTemplateProvider.getInstance().buildMailContent("HIVE_SCHEMA_CHANGED", root);
+        String title = MailNotificationUtil.getMailTitle("TABLE SCHEMA", "CHANGED", kylinConfig.getDeployEnv());
+        return Pair.newPair(title, content);
     }
 }

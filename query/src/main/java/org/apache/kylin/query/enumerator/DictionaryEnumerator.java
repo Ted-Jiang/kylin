@@ -70,8 +70,15 @@ public class DictionaryEnumerator implements Enumerator<Object[]> {
             return false;
         }
 
+        IRealization realization = olapContext.realization;
         TblColRef dictCol = olapContext.allColumns.iterator().next();
+        if (!realization.getConfig().isDictionaryEnumeratorEnabledForForeignKey()
+                && realization.getModel().isBelongToFK(dictCol)) {
+            logger.info("DictionaryEnumerator not enabled due to col {} belongs to FK", dictCol);
+            return false;
+        }
         if (!ifColumnHaveDictionary(dictCol, olapContext.realization, true)) {
+            logger.info("DictionaryEnumerator not enabled due to col {} is not dictionary encoded", dictCol);
             return false;
         }
         return true;
@@ -138,5 +145,6 @@ public class DictionaryEnumerator implements Enumerator<Object[]> {
 
     @Override
     public void close() {
+        logger.info("DictionaryEnumerator closed");
     }
 }

@@ -225,6 +225,21 @@ public class DataModelDesc extends RootPersistentEntity {
         return result;
     }
 
+    // check whether a col in fact table is part of FK
+    public boolean isBelongToFK(TblColRef col) {
+        if (!isFactTable(col.getTableRef())) {
+            return false;
+        }
+        for (TableRef lookup : getLookupTables()) {
+            JoinDesc lookupJoin = getJoinByPKSide(lookup);
+            int find = ArrayUtils.indexOf(lookupJoin.getForeignKeyColumns(), col);
+            if (find < 0)
+                continue;
+            return true;
+        }
+        return false;
+    }
+    
     public boolean isLookupTable(TableRef t) {
         if (t == null)
             return false;

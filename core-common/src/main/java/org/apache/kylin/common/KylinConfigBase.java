@@ -1838,6 +1838,10 @@ public abstract class KylinConfigBase implements Serializable {
         return Lists.newArrayList(rules.split(","));
     }
 
+    public boolean isDictionaryEnumeratorEnabledForForeignKey() {
+        return Boolean.valueOf(getOptional("kylin.query.enable-dict-enumerator-for-foreign-key", "false"));
+    }
+
     // check KYLIN-3358, need deploy coprocessor if enabled
     // finally should be deprecated
     public boolean isDynamicColumnEnabled() {

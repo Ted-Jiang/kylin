@@ -221,9 +221,7 @@ public class CubeHBaseEndpointRPC extends CubeHBaseRPC {
         logger.debug("Submitting rpc to {} shards starting from shard {}, scan range count {}", shardNum,
                 cuboidBaseShard, rawScans.size());
 
-        // KylinConfig: use env instance instead of CubeSegment, because KylinConfig will share among queries
-        // for different cubes until redeployment of coprocessor jar.
-        final KylinConfig kylinConfig = KylinConfig.getInstanceFromEnv();
+        final KylinConfig kylinConfig = cubeSeg.getConfig();
         final boolean compressionResult = kylinConfig.getCompressionResult();
 
         final boolean querySegmentCacheEnabled = isSegmentLevelCacheEnabled();

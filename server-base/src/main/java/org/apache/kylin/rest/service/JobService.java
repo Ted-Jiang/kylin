@@ -80,6 +80,7 @@ import org.apache.kylin.metadata.model.TableExtDesc;
 import org.apache.kylin.metadata.model.TableRef;
 import org.apache.kylin.metadata.realization.RealizationStatusEnum;
 import org.apache.kylin.rest.exception.BadRequestException;
+import org.apache.kylin.rest.exception.TooManyRequestException;
 import org.apache.kylin.rest.msg.Message;
 import org.apache.kylin.rest.msg.MsgPicker;
 import org.apache.kylin.rest.response.ResponseCode;
@@ -252,6 +253,7 @@ public class JobService extends BasicService implements InitializingBean {
 
         checkCubeDescSignature(cube);
         checkAllowBuilding(cube);
+        checkBuildingSegment(cube);
 
         if (buildType == CubeBuildTypeEnum.BUILD || buildType == CubeBuildTypeEnum.REFRESH) {
             checkAllowParallelBuilding(cube);
@@ -281,6 +283,9 @@ public class JobService extends BasicService implements InitializingBean {
 
             getExecutableManager().addJob(job);
 
+            //To add job id to the segment info for future system job check.
+            newSeg.setLastBuildJobID(job.getId());
+            getCubeManager().updateCubeSegments(cube, newSeg);
         } catch (Exception e) {
             if (newSeg != null) {
                 logger.error("Job submission might failed for NEW segment {}, will clean the NEW segment from cube",
@@ -354,6 +359,8 @@ public class JobService extends BasicService implements InitializingBean {
 
                 optimizeJobList.add(optimizeJob);
                 optimizeJobInstances.add(getSingleJobInstance(optimizeJob));
+
+                optimizeSegment.setLastBuildJobID(optimizeJob.getId());
             }
 
             /** Add checkpoint job for batch jobs */
@@ -361,6 +368,8 @@ public class JobService extends BasicService implements InitializingBean {
             checkpointJob.addTaskListForCheck(optimizeJobList);
 
             getExecutableManager().addJob(checkpointJob);
+
+            getCubeManager().updateCubeSegments(cube, optimizeSegments);
 
             try {
                 sendTriggerOptimizeMail(cube, checkpointJob.getName(), checkpointJob.getProjectName(), submitter);
@@ -457,6 +466,9 @@ public class JobService extends BasicService implements InitializingBean {
 
         getExecutableManager().addJob(optimizeJob);
 
+        optimizeSegment.setLastBuildJobID(optimizeJob.getId());
+        getCubeManager().updateCubeSegments(cubeInstance, optimizeSegment);
+        
         JobInstance optimizeJobInstance = getSingleJobInstance(optimizeJob);
 
         /** Update the checkpoint job */
@@ -528,6 +540,33 @@ public class JobService extends BasicService implements InitializingBean {
         if (currentCuboidSet.equals(cuboidsRecommend)) {
             throw new BadRequestException(
                     "The recommend cuboids are the same as the current cuboids. It's no need to do optimization.");
+        }
+    }
+
+    private void checkBuildingSegment(CubeInstance cube) {
+        checkBuildingSegment(cube, cube.getConfig().getMaxBuildingSegments());
+    }
+
+    private void checkBuildingSegment(CubeInstance cube, int maxBuildingSeg) {
+        if (cube.getBuildingSegments().size() < maxBuildingSeg) {
+            return;
+        }
+
+        int buildingSegments = 0;
+        for (CubeSegment segment : cube.getBuildingSegments()) {
+            buildingSegments++;
+            
+            String jobId = segment.getLastBuildJobID();
+            if (!StringUtil.isEmpty(jobId)) {
+                AbstractExecutable job = getExecutableManager().getJob(jobId);
+                if (job != null && "SYSTEM".equalsIgnoreCase(job.getSubmitter())) {
+                    // exclude the system jobs
+                    buildingSegments--;
+                }
+            }
+        }
+        if (buildingSegments >= maxBuildingSeg) {
+            throw new TooManyRequestException("There is already " + buildingSegments + " building segment; ");
         }
     }
 

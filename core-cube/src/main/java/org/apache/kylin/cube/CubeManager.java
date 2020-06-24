@@ -349,6 +349,15 @@ public class CubeManager implements IRealizationProvider {
         }
     }
 
+    public CubeInstance updateCubeSegments(CubeInstance cube, CubeSegment... segsToUpdate) throws IOException {
+        try (AutoLock lock = cubeMapLock.lockForWrite()) {
+            cube = cube.latestCopyForWrite(); // get a latest copy
+            CubeUpdate update = new CubeUpdate(cube);
+            update.setToUpdateSegs(segsToUpdate);
+            return updateCube(update);
+        }
+    }
+
     public CubeInstance dropOptmizingSegments(CubeInstance cube, CubeSegment... segsToDrop) throws IOException {
         try (AutoLock lock = cubeMapLock.lockForWrite()) {
             cube = cube.latestCopyForWrite(); // get a latest copy

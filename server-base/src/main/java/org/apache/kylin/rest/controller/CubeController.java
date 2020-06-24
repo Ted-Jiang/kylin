@@ -70,7 +70,6 @@ import org.apache.kylin.rest.exception.BadRequestException;
 import org.apache.kylin.rest.exception.ForbiddenException;
 import org.apache.kylin.rest.exception.InternalErrorException;
 import org.apache.kylin.rest.exception.NotFoundException;
-import org.apache.kylin.rest.exception.TooManyRequestException;
 import org.apache.kylin.rest.msg.Message;
 import org.apache.kylin.rest.msg.MsgPicker;
 import org.apache.kylin.rest.request.CubeRequest;
@@ -419,7 +418,6 @@ public class CubeController extends BasicController {
             String submitter = SecurityContextHolder.getContext().getAuthentication().getName();
             CubeInstance cube = jobService.getCubeManager().getCube(cubeName);
 
-            checkBuildingSegment(cube);
             return jobService.submitJob(cube, tsRange, segRange, sourcePartitionOffsetStart, sourcePartitionOffsetEnd,
                     CubeBuildTypeEnum.valueOf(buildType), force, submitter, priorityOffset);
         } catch (Throwable e) {
@@ -1241,17 +1239,6 @@ public class CubeController extends BasicController {
         if (cubeInstance == null) {
             Message msg = MsgPicker.getMsg();
             throw new NotFoundException(String.format(Locale.ROOT, msg.getCUBE_NOT_FOUND(), cubeName));
-        }
-    }
-
-    private void checkBuildingSegment(CubeInstance cube) {
-        checkBuildingSegment(cube, cube.getConfig().getMaxBuildingSegments());
-    }
-
-    private void checkBuildingSegment(CubeInstance cube, int maxBuildingSeg) {
-        if (cube.getBuildingSegments().size() >= maxBuildingSeg) {
-            throw new TooManyRequestException(
-                    "There is already " + cube.getBuildingSegments().size() + " building segment; ");
         }
     }
 

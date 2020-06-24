@@ -782,6 +782,9 @@ public class CubeService extends BasicService implements InitializingBean {
                     logger.info("Will submit merge job on " + newSeg);
                     DefaultChainedExecutable job = EngineFactory.createBatchMergeJob(newSeg, "SYSTEM");
                     getExecutableManager().addJob(job);
+
+                    newSeg.setLastBuildJobID(job.getId());
+                    getCubeManager().updateCubeSegments(cube, newSeg);
                     return job.getId();
                 } else {
                     logger.info("Not ready for merge on cube " + cubeName);

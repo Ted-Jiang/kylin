@@ -96,7 +96,7 @@ public class CubeBuildingCLI extends AbstractApplication {
         Preconditions.checkArgument(cube != null, "Cube named " + cubeName + " does not exist!!!");
         CubeBuildTypeEnum buildTypeEnum = CubeBuildTypeEnum.valueOf(buildType);
         Preconditions.checkArgument(buildTypeEnum != null, "Build type named " + buildType + " does not exist!!!");
-        submitJob(cube, new TSRange(startDate, endDate), buildTypeEnum, false, "SYSTEM");
+        submitJob(cube, new TSRange(startDate, endDate), buildTypeEnum, false, "SYSTEM2");
     }
 
     private void submitJob(CubeInstance cube, TSRange tsRange, CubeBuildTypeEnum buildType,
@@ -105,19 +105,22 @@ public class CubeBuildingCLI extends AbstractApplication {
 
         DefaultChainedExecutable job;
 
+        CubeSegment newSeg;
         if (buildType == CubeBuildTypeEnum.BUILD) {
-            CubeSegment newSeg = cubeManager.appendSegment(cube, tsRange);
+            newSeg = cubeManager.appendSegment(cube, tsRange);
             job = EngineFactory.createBatchCubingJob(newSeg, submitter, null);
         } else if (buildType == CubeBuildTypeEnum.MERGE) {
-            CubeSegment newSeg = cubeManager.mergeSegments(cube, tsRange, null, forceMergeEmptySeg);
+            newSeg = cubeManager.mergeSegments(cube, tsRange, null, forceMergeEmptySeg);
             job = EngineFactory.createBatchMergeJob(newSeg, submitter);
         } else if (buildType == CubeBuildTypeEnum.REFRESH) {
-            CubeSegment refreshSeg = cubeManager.refreshSegment(cube, tsRange, null);
-            job = EngineFactory.createBatchCubingJob(refreshSeg, submitter, null);
+            newSeg = cubeManager.refreshSegment(cube, tsRange, null);
+            job = EngineFactory.createBatchCubingJob(newSeg, submitter, null);
         } else {
             throw new JobException("invalid build type:" + buildType);
         }
+
         executableManager.addJob(job);
+        cubeManager.updateCubeSegments(cube, newSeg);
     }
 
     private void checkCubeDescSignature(CubeInstance cube) {

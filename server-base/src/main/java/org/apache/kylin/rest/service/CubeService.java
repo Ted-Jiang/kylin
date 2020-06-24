@@ -579,6 +579,18 @@ public class CubeService extends BasicService implements InitializingBean {
         getCubeDescManager().updateCubeDesc(desc);
     }
 
+    public CubeInstance updateCubeOwner(CubeInstance cube, String owner) throws IOException {
+        aclEvaluate.checkProjectWritePermission(cube);
+        if (cube.getOwner().equals(owner)) {
+            // Do nothing
+            return cube;
+        }
+        cube.setOwner(owner);
+
+        CubeUpdate update = new CubeUpdate(cube.latestCopyForWrite()).setOwner(owner);
+        return getCubeManager().updateCube(update);
+    }
+
     public CubeInstance rebuildLookupSnapshot(CubeInstance cube, String segmentName, String lookupTable)
             throws IOException {
         aclEvaluate.checkProjectOperationPermission(cube);

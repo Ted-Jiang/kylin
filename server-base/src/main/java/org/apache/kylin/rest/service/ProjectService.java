@@ -111,6 +111,15 @@ public class ProjectService extends BasicService {
         return updatedProject;
     }
 
+    @PreAuthorize(Constant.ACCESS_HAS_ROLE_ADMIN + " or hasPermission(#currentProject, 'ADMINISTRATION')")
+    public ProjectInstance updateProjectOwner(ProjectInstance currentProject, String newOwner)
+        throws IOException {
+
+        ProjectInstance updatedProject = getProjectManager().updateProjectOwner(currentProject, newOwner);
+        logger.debug("Project owner updated.");
+        return updatedProject;
+    }
+
     @PostFilter(Constant.ACCESS_POST_FILTER_READ)
     public List<ProjectInstance> listProjects(final Integer limit, final Integer offset) {
         List<ProjectInstance> projects = listAllProjects(limit, offset);

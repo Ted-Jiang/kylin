@@ -218,7 +218,7 @@ KylinApp
                 }
                 angular.forEach(oneQuery.result.data,function(row,index){
                     angular.forEach(row,function(column,value){
-                        var float =VdmUtil.SCToFloat(column);
+                        var float =VdmUtil.SCToFloat(column, result.columnMetas.find(function(columnMeta){ return columnMeta.label === value}).columnTypeName);
                         if (float!=""){
                             oneQuery.result.data[index][value]=parseFloat(float);
                         }

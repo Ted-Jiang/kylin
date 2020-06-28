@@ -65,8 +65,12 @@ KylinApp.factory('VdmUtil', function ($modal, $timeout, $location, $anchorScroll
       return fmt;
     },
 
-    SCToFloat:function(data){
+    SCToFloat:function(data, type){
       var resultValue = "";
+      var columnType = ['TINYINT', 'SMALLINT', 'INT', 'BIGINT', 'INTEGER', 'DECIMAL', 'DOUBLE', 'FLOAT'];
+      if (!!type && !columnType.includes(type)) {
+        return resultValue;
+      }
       if (data&&data.indexOf('E') != -1){
         var regExp = new RegExp('^((\\d+.?\\d+)[Ee]{1}(\\d+))$', 'ig');
         var result = regExp.exec(data);

@@ -262,6 +262,10 @@ public abstract class KylinConfigBase implements Serializable {
         return "DEV".equals(getOptional("kylin.env", "DEV"));
     }
 
+    public boolean isProdEnv() {
+        return Boolean.parseBoolean(getOptional("kylin.env.is-prod", "false"));
+    }
+
     public String getDeployEnv() {
         return getOptional("kylin.env", "DEV");
     }

@@ -106,7 +106,6 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
@@ -213,10 +212,11 @@ public class CubeService extends BasicService implements InitializingBean {
         CubeUpdate update = new CubeUpdate(cube.latestCopyForWrite()).setOwner(owner).setCost(cost);
         return getCubeManager().updateCube(update);
     }
-
-    @PreAuthorize(Constant.ACCESS_HAS_ROLE_ADMIN
-            + " or hasPermission(#project, 'ADMINISTRATION') or hasPermission(#project, 'MANAGEMENT')")
+    
     public CubeInstance createCubeAndDesc(ProjectInstance project, CubeDesc desc) throws IOException {
+        if (!aclEvaluate.checkProjectWritePermissionInProd()) {
+            aclEvaluate.checkProjectWritePermission(project.getName());
+        }
         Message msg = MsgPicker.getMsg();
         String cubeName = desc.getName();
 
@@ -288,7 +288,9 @@ public class CubeService extends BasicService implements InitializingBean {
 
     public CubeDesc updateCubeAndDesc(CubeInstance cube, CubeDesc desc, String newProjectName, boolean forceUpdate)
             throws IOException {
-        aclEvaluate.checkProjectWritePermission(cube);
+        if (!aclEvaluate.checkProjectWritePermissionInProd()) {
+            aclEvaluate.checkProjectWritePermission(newProjectName);
+        }
         Message msg = MsgPicker.getMsg();
 
         final List<CubingJob> cubingJobs = jobService.listJobsByRealizationName(cube.getName(), null,
@@ -844,10 +846,11 @@ public class CubeService extends BasicService implements InitializingBean {
             }
         }
     }
-
-    @PreAuthorize(Constant.ACCESS_HAS_ROLE_ADMIN
-            + " or hasPermission(#project, 'ADMINISTRATION') or hasPermission(#project, 'MANAGEMENT')")
+    
     public CubeDesc saveCube(CubeDesc desc, ProjectInstance project) throws IOException {
+        if (!aclEvaluate.checkProjectWritePermissionInProd()) {
+            aclEvaluate.checkProjectWritePermission(project.getName());
+        }
         Message msg = MsgPicker.getMsg();
 
         desc.setDraft(false);
@@ -867,10 +870,11 @@ public class CubeService extends BasicService implements InitializingBean {
         return desc;
     }
 
-    @PreAuthorize(Constant.ACCESS_HAS_ROLE_ADMIN
-            + " or hasPermission(#project, 'ADMINISTRATION') or hasPermission(#project, 'MANAGEMENT')")
     public void saveDraft(ProjectInstance project, CubeInstance cube, String uuid, RootPersistentEntity... entities)
             throws IOException {
+        if (!aclEvaluate.checkProjectWritePermissionInProd()) {
+            aclEvaluate.checkProjectWritePermission(project.getName());
+        }
         Draft draft = new Draft();
         draft.setProject(project.getName());
         draft.setUuid(uuid);
@@ -878,9 +882,10 @@ public class CubeService extends BasicService implements InitializingBean {
         getDraftManager().save(draft);
     }
 
-    @PreAuthorize(Constant.ACCESS_HAS_ROLE_ADMIN
-            + " or hasPermission(#project, 'ADMINISTRATION') or hasPermission(#project, 'MANAGEMENT')")
     public void saveDraft(ProjectInstance project, String uuid, RootPersistentEntity... entities) throws IOException {
+        if (!aclEvaluate.checkProjectWritePermissionInProd()) {
+            aclEvaluate.checkProjectWritePermission(project.getName());
+        }
         Draft draft = new Draft();
         draft.setProject(project.getName());
         draft.setUuid(uuid);

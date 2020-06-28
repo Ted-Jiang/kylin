@@ -176,7 +176,9 @@ public class TableService extends BasicService {
      * @throws Exception on error
      */
     public String[] loadHiveTablesToProject(String[] hiveTables, String project) throws Exception {
-        aclEvaluate.checkProjectAdminPermission(project);
+        if (!aclEvaluate.checkProjectWritePermissionInProd()) {
+            aclEvaluate.checkProjectAdminPermission(project);
+        }
         List<Pair<TableDesc, TableExtDesc>> allMeta = extractHiveTableMeta(hiveTables, project);
         return loadTablesToProject(allMeta, project);
     }
@@ -191,7 +193,9 @@ public class TableService extends BasicService {
 
     private String[] loadTablesToProject(List<Pair<TableDesc, TableExtDesc>> allMeta, String project)
             throws IOException {
-        aclEvaluate.checkProjectAdminPermission(project);
+        if (!aclEvaluate.checkProjectWritePermissionInProd()) {
+            aclEvaluate.checkProjectAdminPermission(project);
+        }
         // do schema check
         TableMetadataManager metaMgr = getTableManager();
         CubeManager cubeMgr = getCubeManager();
@@ -600,7 +604,9 @@ public class TableService extends BasicService {
         }
         // To deal with case sensitive issue for table resource path
         final String project = prjInstance.getName();
-        aclEvaluate.checkProjectWritePermission(project);
+        if (!aclEvaluate.checkProjectWritePermissionInProd()) {
+            aclEvaluate.checkProjectWritePermission(project);
+        }
 
         // Check whether it's able to do the change
         Set<CubeInstance> infCubes = cubeService.listAllCubes(project).stream()

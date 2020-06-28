@@ -45,7 +45,9 @@ public class HybridService extends BasicService {
 
     public HybridInstance createHybridInstance(String hybridName, String projectName, String modelName,
             String[] cubeNames) {
-        aclEvaluate.checkProjectWritePermission(projectName);
+        if (!aclEvaluate.checkProjectWritePermissionInProd()) {
+            aclEvaluate.checkProjectWritePermission(projectName);
+        }
         List<String> args = new ArrayList<String>();
         args.add("-name");
         args.add(hybridName);
@@ -68,7 +70,9 @@ public class HybridService extends BasicService {
 
     public HybridInstance updateHybridInstance(String hybridName, String projectName, String modelName,
             String[] cubeNames) {
-        aclEvaluate.checkProjectWritePermission(projectName);
+        if (!aclEvaluate.checkProjectWritePermissionInProd()) {
+            aclEvaluate.checkProjectWritePermission(projectName);
+        }
         List<String> args = new ArrayList<String>();
         args.add("-name");
         args.add(hybridName);

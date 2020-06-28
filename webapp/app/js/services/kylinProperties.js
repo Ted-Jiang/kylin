@@ -83,6 +83,14 @@ KylinApp.service('kylinConfig', function (AdminService, $log) {
     return this.deployEnv.toUpperCase().trim();
   }
 
+  this.isProd = function() {
+    var status = this.getProperty("kylin.env.is-prod").trim();
+    if(status!=='false'){
+      return true;
+    }
+    return false;
+  }
+
   this.getHiveLimit = function () {
     this.hiveLimit = this.getProperty("kylin.web.hive-limit");
     if (!this.hiveLimit) {

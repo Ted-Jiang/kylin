@@ -160,4 +160,15 @@ public class AclEvaluate {
         aclUtil.checkIsGlobalAdmin();
     }
 
+    /**
+     * @return indicates whether the environment is in production or not
+     * if in production, if the user is not global admin, AccessDeniedException will be thrown
+     */
+    public boolean checkProjectWritePermissionInProd() {
+        if (KylinConfig.getInstanceFromEnv().isProdEnv()) {
+            checkIsGlobalAdmin();
+            return true;
+        }
+        return false;
+    }
 }

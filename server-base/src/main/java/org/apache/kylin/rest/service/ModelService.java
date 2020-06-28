@@ -131,7 +131,9 @@ public class ModelService extends BasicService {
     }
 
     public DataModelDesc createModelDesc(String projectName, DataModelDesc desc) throws IOException {
-        aclEvaluate.checkProjectWritePermission(projectName);
+        if (!aclEvaluate.checkProjectWritePermissionInProd()) {
+            aclEvaluate.checkProjectWritePermission(projectName);
+        }
         Message msg = MsgPicker.getMsg();
         if (getDataModelManager().getDataModelDesc(desc.getName()) != null) {
             throw new BadRequestException(String.format(Locale.ROOT, msg.getDUPLICATE_MODEL_NAME(), desc.getName()));
@@ -146,7 +148,9 @@ public class ModelService extends BasicService {
     }
 
     public DataModelDesc updateModelAndDesc(String project, DataModelDesc desc) throws IOException {
-        aclEvaluate.checkProjectWritePermission(project);
+        if (!aclEvaluate.checkProjectWritePermissionInProd()) {
+            aclEvaluate.checkProjectWritePermission(project);
+        }
         validateModel(project, desc);
         checkModelCompatibility(project, desc);
         getDataModelManager().updateDataModelDesc(desc);
@@ -381,8 +385,9 @@ public class ModelService extends BasicService {
     }
 
     public DataModelDesc updateModelToResourceStore(DataModelDesc modelDesc, String projectName) throws IOException {
-
-        aclEvaluate.checkProjectWritePermission(projectName);
+        if (!aclEvaluate.checkProjectWritePermissionInProd()) {
+            aclEvaluate.checkProjectWritePermission(projectName);
+        }
         Message msg = MsgPicker.getMsg();
 
         modelDesc.setDraft(false);

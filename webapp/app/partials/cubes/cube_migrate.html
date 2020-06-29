@@ -39,6 +39,14 @@
             <br/>
             <button style="height:40px;width:150px;" class="btn btn-info" ng-click="validate()">Validate</button>
           </div>
+          <div ng-show="migrate.googleDoc" class="form-group">
+            <b>Business Justification:</b>
+            <br/>
+            <a href="https://docs.google.com/a/ebay.com/forms/d/e/1FAIpQLSegYgCFpsbFsIZi5TxLs2rJtkNXP-92bTZQIzD-aHPjiKsKYQ/viewform" target="_blank"><input type="button" style="height:40px;width:150px;" class="btn btn-info" value="Open google form"></a>
+            <div>
+              <input type="checkbox"  ng-model="checked">I acknowledge I have submitted google form for onboard approval.</input>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -1164,6 +1164,7 @@ var cubeMigrateCtrl = function ($scope, $modalInstance, CubeService, cube, Proje
   $scope.migrate={
     targetProject: ProjectModel.selectedProject,
     cubeValidate: true,
+    googleDoc: false,
     lockProjectName: false
   }
 
@@ -1179,6 +1180,7 @@ var cubeMigrateCtrl = function ($scope, $modalInstance, CubeService, cube, Proje
     CubeService.ruleCheck({cubeId: cube.name, projectName: $scope.migrate.targetProject}, function(result) {
       loadingRequest.hide();
       $scope.migrate.cubeValidate = false;
+      $scope.migrate.googleDoc = true;
       $scope.migrate.lockProjectName = true;
       if (result.length > 0) {
         SweetAlert.swal('Attention', result, 'warning');

@@ -613,13 +613,6 @@ public abstract class KylinConfigBase implements Serializable {
         return new String[0];
     }
 
-    /**
-     * @return the hdfs path for Hive Global dictionary table
-     */
-    public String getGlobalDictHiveDatabaseDir() {
-        return this.getOptional("kylin.source.hive.global-dict-database-dir", getHiveDatabaseDir(getMrHiveDictDB()));
-    }
-
     public String[] getMrHiveDictColumnsExcludeRefColumns() {
         String[] excludeRefCols = null;
         String[] hiveDictColumns = getMrHiveDictColumns();
@@ -713,7 +706,7 @@ public abstract class KylinConfigBase implements Serializable {
     }
 
     public String getMrHiveDistinctValueTableSuffix() {
-        return getOptional("kylin.dictionary.mr-hive.intermediate.table.suffix", "__distinct_value");
+        return getOptional("kylin.dictionary.mr-hive.intermediate.table.suffix", "_distinct_value");
     }
 
     // ============================================================================
@@ -1144,6 +1137,10 @@ public abstract class KylinConfigBase implements Serializable {
 
     public String getHiveDatabaseForIntermediateTable() {
         return CliCommandExecutor.checkHiveProperty(this.getOptional("kylin.source.hive.database-for-flat-table", DEFAULT));
+    }
+
+    public String getIntermediateTableDatabaseDir() {
+        return getHiveDatabaseDir(getHiveDatabaseForIntermediateTable());
     }
 
     public String getFlatTableStorageFormat() {

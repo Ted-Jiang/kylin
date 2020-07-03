@@ -520,7 +520,7 @@ public class KylinConfig extends KylinConfigBase {
     }
 
     public String exportAllToString() {
-        final Properties allProps = getProperties(null);
+        final Properties allProps = getAllProperties();
         final OrderedProperties orderedProperties = KylinConfig.buildSiteOrderedProps();
 
         for (Map.Entry<Object, Object> entry : allProps.entrySet()) {

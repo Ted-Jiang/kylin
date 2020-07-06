@@ -378,7 +378,7 @@ public class MigrationRuleSet {
 
             // load all tables first
             List<Pair<TableDesc, TableExtDesc>> allMeta = Lists.newArrayList();
-            ISourceMetadataExplorer explr = SourceManager.getDefaultSource().getSourceMetadataExplorer();
+            ISourceMetadataExplorer explr = SourceManager.getSource(ctx.getSrcProject()).getSourceMetadataExplorer();
             try {
                 for (Map.Entry<String, String> entry : db2tables.entries()) {
                     Pair<TableDesc, TableExtDesc> pair = explr.loadTableMetadata(entry.getKey(), entry.getValue(),
@@ -423,7 +423,7 @@ public class MigrationRuleSet {
         private final String targetAddress; // the target kylin host with port
         private final ResourceStore targetResourceStore;
         private final String tgtProjectName; // the target project name
-        private final String srcProjectName; // the source project name
+        private final ProjectInstance srcProject; // the source project
 
         public Context(QueryService queryService, CubeInstance cubeInstance, String targetHost, String tgtProjectName) {
             this.queryService = queryService;
@@ -439,7 +439,7 @@ public class MigrationRuleSet {
                 throw new InternalErrorException("Cube " + cubeInstance.getName()
                         + " should belong to only one project. However, it's belong to " + projList);
             }
-            this.srcProjectName = projList.get(0).getName();
+            this.srcProject = projList.get(0);
         }
 
         public QueryService getQueryService() {
@@ -463,7 +463,11 @@ public class MigrationRuleSet {
         }
 
         public String getSrcProjectName() {
-            return srcProjectName;
+            return srcProject.getName();
+        }
+
+        public ProjectInstance getSrcProject() {
+            return srcProject;
         }
     }
 }

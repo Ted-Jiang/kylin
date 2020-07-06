@@ -2309,7 +2309,7 @@ public abstract class KylinConfigBase implements Serializable {
 
     public String getPropertiesWhiteList() {
         return getOptional("kylin.web.properties.whitelist", "kylin.web.timezone,kylin.query.cache-enabled,kylin.env,"
-                + "kylin.cube.migration.enabled,"
+                + "kylin.cube.migration.enabled,kylin.env.is-prod,"
                 + "kylin.web.hive-limit,kylin.storage.default,"
                 + "kylin.engine.default,kylin.web.link-hadoop,kylin.web.link-diagnostic,"
                 + "kylin.web.contact-mail,kylin.web.help.length,kylin.web.help.0,kylin.web.help.1,kylin.web.help.2,"

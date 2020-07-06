@@ -77,7 +77,8 @@ public class AdminServiceTest extends ServiceTestBase {
                     "kylin.web.help.2=tableau|Tableau Guide|http://kylin.apache.org/docs/tutorial/tableau_91.html\n" +
                     "kylin.web.help.1=odbc|ODBC Driver|http://kylin.apache.org/docs/tutorial/odbc.html\n" +
                     "kylin.web.help.0=start|Getting Started|http://kylin.apache.org/docs/tutorial/kylin_sample.html\n" +
-                    "kylin.security.profile=testing\n";
+                    "kylin.security.profile=testing\n" +
+                    "kylin.env.is-prod=\n";
             Assert.assertEquals(expected, adminService.getPublicConfig());
         }
     }

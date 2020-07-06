@@ -721,6 +721,7 @@ public class CubeController extends BasicController {
         try {
             model = JsonUtil.readValue(cubeWithAllRequest.getModelDescData(), DataModelDesc.class);
             model.setUuid(UUID.randomUUID().toString());
+            model.setProjectName(projectName);
         } catch (Exception e) {
             throw new BadRequestException("Fail to deserialize modelDescData");
         }

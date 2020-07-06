@@ -48,7 +48,7 @@
         <li class="{{cube.visiblePage=='planner'? 'active':''}}" ng-if="(userService.hasRole('ROLE_ADMIN') || hasPermission('cube', cube, permissions.ADMINISTRATION.mask) && !newAccess) && isShowCubeplanner">
             <a href="" ng-click="cube.visiblePage='planner';getCubePlanner(cube);">Planner</a>
         </li>
-        <li class="{{cube.visiblePage=='trend'? 'active':''}}" ng-if="userService.hasRole('ROLE_ADMIN') || hasPermission(cube, permissions.ADMINISTRATION.mask)">
+        <li class="{{cube.visiblePage=='trend'? 'active':''}}" ng-if="(userService.hasRole('ROLE_ADMIN') || hasPermission('cube', cube, permissions.ADMINISTRATION.mask) && !newAccess) && isShowCubeplanner">
           <a href="" ng-click="cube.visiblePage='trend';getOptimizationTrend(cube);">Trend</a>
         </li>
         <li class="{{cube.visiblePage=='streaming'? 'active':''}}" ng-if="(userService.hasRole('ROLE_ADMIN') || hasPermission('cube', cube, permissions.ADMINISTRATION.mask)  && !newAccess) && cube.streamingV2">

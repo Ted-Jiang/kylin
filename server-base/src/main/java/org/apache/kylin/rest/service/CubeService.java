@@ -1045,11 +1045,12 @@ public class CubeService extends BasicService implements InitializingBean {
     /** cube planner services */
     public RecommendResult getRecommendCuboidStatistics(CubeInstance cube, Map<Long, Long> hitFrequencyMap,
             Map<Long, Map<Long, Pair<Long, Long>>> rollingUpCountSourceMap) throws IOException {
-        aclEvaluate.checkProjectAdminPermission(cube.getProject());
+        aclEvaluate.checkProjectOperationPermission(cube.getProject());
         return CuboidRecommenderUtil.getRecommendCuboidList(cube, hitFrequencyMap, rollingUpCountSourceMap);
     }
 
     public TreeMap<String, Double> getQueryLatencyTrendForOptimization(CubeInstance cube, long endTimestamp) {
+        aclEvaluate.checkProjectOperationPermission(cube.getProject());
         PrepareSqlRequest prepareSqlRequest = SqlCreationUtil.createPrepareSqlRequestOfQueryLatencyTrend(cube,
                 endTimestamp);
 
@@ -1057,6 +1058,7 @@ public class CubeService extends BasicService implements InitializingBean {
     }
 
     public TreeMap<String, Double> getStorageUsageTrendForOptimization(CubeInstance cube, long endTimestamp) {
+        aclEvaluate.checkProjectOperationPermission(cube.getProject());
         PrepareSqlRequest prepareSqlRequest = SqlCreationUtil.createPrepareSqlRequestOfStorageUsageTrend(cube,
                 endTimestamp);
 

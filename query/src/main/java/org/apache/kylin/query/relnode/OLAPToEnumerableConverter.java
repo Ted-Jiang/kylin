@@ -37,6 +37,7 @@ import org.apache.calcite.sql.SqlExplainLevel;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.QueryContextFacade;
 import org.apache.kylin.common.util.ClassUtil;
+import org.apache.kylin.metadata.expression.TupleExpression;
 import org.apache.kylin.query.routing.RealizationChooser;
 import org.apache.kylin.query.security.QueryInterceptor;
 import org.apache.kylin.query.security.QueryInterceptorUtil;
@@ -125,6 +126,7 @@ public class OLAPToEnumerableConverter extends ConverterImpl implements Enumerab
         if (sqlParseSpan != null) {
             sqlParseSpan.finish();
         }
+        TupleExpression.removeKylinConfig();
         return result;
     }
 

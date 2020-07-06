@@ -70,6 +70,7 @@ import org.apache.calcite.rel.type.RelDataTypeFieldImpl;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.StringUtil;
+import org.apache.kylin.metadata.expression.TupleExpression;
 import org.apache.kylin.metadata.model.ColumnDesc;
 import org.apache.kylin.metadata.model.DataModelDesc;
 import org.apache.kylin.metadata.model.TableRef;
@@ -304,6 +305,7 @@ public class OLAPTableScan extends TableScan implements OLAPRel, EnumerableRel {
         if (context.olapSchema == null) {
             OLAPSchema schema = olapTable.getSchema();
             context.olapSchema = schema;
+            TupleExpression.setKylinConfig(schema.getProjectInstance().getConfig());
             context.storageContext.setConnUrl(schema.getStorageUrl());
         }
 

@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.DecimalUtil;
 import org.apache.kylin.metadata.datatype.DataType;
 import org.apache.kylin.metadata.datatype.DataTypeSerializer;
@@ -57,6 +58,8 @@ public abstract class TupleExpression {
         }
     }
 
+    protected static final ThreadLocal<KylinConfig> kylinConfigThreadLocal = new ThreadLocal<>();
+
     protected final ExpressionOperatorEnum operator;
     protected final List<TupleExpression> children;
     protected final DataType dataType;
@@ -70,6 +73,14 @@ public abstract class TupleExpression {
                 || dataType.equals(DataType.ANY) ? null : DataTypeSerializer.create(dataType);
         this.operator = op;
         this.children = exprs;
+    }
+
+    public static void setKylinConfig(KylinConfig kylinConfig) {
+        kylinConfigThreadLocal.set(kylinConfig);
+    }
+
+    public static void removeKylinConfig() {
+        kylinConfigThreadLocal.remove();
     }
 
     protected boolean ifAbleToPushDown() {

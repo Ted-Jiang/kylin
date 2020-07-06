@@ -361,6 +361,12 @@ public class OLAPAggregateRel extends Aggregate implements OLAPRel {
                 if (this.context.isDynamicColumnEnabled() && argList.size() == 1) {
                     int iRowIdx = argList.get(0);
                     TupleExpression tupleExpr = inputColumnRowType.getTupleExpressionByIndex(iRowIdx);
+                    if (!tupleExpr.ifForDynamicColumn()) {
+                        String expression = getAggrFuncName(aggCall);
+                        FunctionDesc aggFunc = FunctionDesc.newInstance(expression, parameter, null);
+                        this.aggregations.add(aggFunc);
+                        continue;
+                    }
                     if (aggCall.getAggregation() instanceof SqlSumAggFunction
                             || aggCall.getAggregation() instanceof SqlSumEmptyIsZeroAggFunction) {
                         // sum (expression)

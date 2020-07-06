@@ -1860,6 +1860,10 @@ public abstract class KylinConfigBase implements Serializable {
         return Boolean.parseBoolean(getOptional("kylin.query.enable-dynamic-column", FALSE));
     }
 
+    public boolean isNullAsZeroInExpression() {
+        return Boolean.parseBoolean(getOptional("kylin.query.is-null-as-zero-in-expression", FALSE));
+    }
+
     //check KYLIN-1684, in most cases keep the default value
     public boolean isSkippingEmptySegments() {
         return Boolean.parseBoolean(getOptional("kylin.query.skip-empty-segments", TRUE));

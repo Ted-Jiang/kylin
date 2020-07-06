@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.exception.QueryOnCubeException;
 import org.apache.kylin.metadata.datatype.DataType;
 import org.apache.kylin.metadata.filter.IFilterCodeSystem;
@@ -54,6 +55,18 @@ public class BinaryTupleExpression extends TupleExpression {
     @Override
     public boolean ifForDynamicColumn() {
         return ifAbleToPushDown();
+    }
+
+    @Override
+    protected boolean ifAbleToPushDown() {
+        KylinConfig kylinConfig = kylinConfigThreadLocal.get();
+        if (kylinConfig == null) {
+            kylinConfig = KylinConfig.getInstanceFromEnv();
+        }
+        if (!kylinConfig.isNullAsZeroInExpression()) {
+            ifAbleToPushDown = false;
+        }
+        return super.ifAbleToPushDown();
     }
 
     @Override

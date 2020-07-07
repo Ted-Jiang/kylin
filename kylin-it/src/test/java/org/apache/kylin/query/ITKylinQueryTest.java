@@ -449,6 +449,25 @@ public class ITKylinQueryTest extends KylinTestBase {
     }
 
     @Test
+    public void testExpressionNullAsZeroQuery() throws Exception {
+        boolean ifDynamicColumnEnabled = config.isDynamicColumnEnabled();
+        boolean ifNullAsZero = config.isNullAsZeroInExpression();
+        if (!ifDynamicColumnEnabled) {
+            config.setProperty("kylin.query.enable-dynamic-column", "true");
+        }
+        if (!ifNullAsZero) {
+            config.setProperty("kylin.query.is-null-as-zero-in-expression", "true");
+        }
+        batchExecuteQuery(getQueryFolderPrefix() + "src/test/resources/query/sql_expression_null_as_zero");
+        if (!ifDynamicColumnEnabled) {
+            config.setProperty("kylin.query.enable-dynamic-column", "false");
+        }
+        if (!ifNullAsZero) {
+            config.setProperty("kylin.query.is-null-as-zero-in-expression", "false");
+        }
+    }
+
+    @Test
     public void testDictionaryEnumerator() throws Exception {
         boolean ifDictEnumeratorEnabled = config.isDictionaryEnumeratorEnabled();
         if (!ifDictEnumeratorEnabled) {

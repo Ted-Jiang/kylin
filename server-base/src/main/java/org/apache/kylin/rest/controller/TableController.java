@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.kylin.common.util.DateFormat;
 import org.apache.kylin.common.util.StringUtil;
@@ -35,6 +36,7 @@ import org.apache.kylin.rest.exception.NotFoundException;
 import org.apache.kylin.rest.request.CardinalityRequest;
 import org.apache.kylin.rest.request.HiveTableRequest;
 import org.apache.kylin.rest.request.TableUpdateRequest;
+import org.apache.kylin.rest.response.LineageResponse;
 import org.apache.kylin.rest.response.TableSnapshotResponse;
 import org.apache.kylin.rest.service.TableACLService;
 import org.apache.kylin.rest.service.TableService;
@@ -266,6 +268,31 @@ public class TableController extends BasicController {
     @ResponseBody
     public String[] getSupportedDatetimePatterns() {
         return DateFormat.SUPPORTED_DATETIME_PATTERN;
+    }
+
+    @RequestMapping(value = "/lineage", method = { RequestMethod.GET })
+    @ResponseBody
+    public List<String> getTablesByCube(@RequestParam(value = "cubeName") String cubeName) {
+        return tableService.getCubeManager().getTablesByCube(cubeName);
+    }
+
+    @RequestMapping(value = "/{tableName}/lineage", method = { RequestMethod.GET })
+    @ResponseBody
+    public LineageResponse getCubesByTable(@PathVariable final String tableName) {
+        List<LineageResponse.CubeInfo> cubeInfos = tableService.getCubeManager().listAllCubes().stream()
+                .filter(cube -> cube.getModel().containsTable(tableName)).map(cube -> {
+                    LineageResponse.CubeInfo cubeInfo = new LineageResponse.CubeInfo();
+                    cubeInfo.setName(cube.getName());
+                    cubeInfo.setOwner(cube.getOwner());
+                    cubeInfo.setStatus(cube.getStatus());
+                    cubeInfo.setModel(cube.getModel().getName());
+                    cubeInfo.setProject(tableService.getProjectManager().getProjectOfModel(cubeInfo.model).getName());
+                    return cubeInfo;
+                }).collect(Collectors.toList());
+        LineageResponse lineage = new LineageResponse();
+        lineage.setName(tableName);
+        lineage.setCubeInfos(cubeInfos);
+        return lineage;
     }
 
     public void setTableService(TableService tableService) {

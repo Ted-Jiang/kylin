@@ -26,6 +26,8 @@ KylinApp.factory('TableService', ['$resource', function ($resource, config) {
     showHiveDatabases: {method: 'GET', params: {action:'hive'}, cache: true, isArray: true},
     showHiveTables: {method: 'GET', params: {action:'hive'}, cache: true, isArray: true},
     getSnapshots: {method: 'GET', params: {action: 'snapshots'}, isArray: true},
+    lineageCubes: {method: 'GET', params: {action: 'lineage'}, isArray: false},
+    lineageTables: {method: 'GET', params: {action: 'lineage'}, isArray: true},
     getSupportedDatetimePatterns: {method: 'GET', params: {action: 'supported_datetime_patterns'}, isArray: true}
   });
 }]);

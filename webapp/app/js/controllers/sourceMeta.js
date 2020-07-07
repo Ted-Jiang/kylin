@@ -1516,6 +1516,534 @@ KylinApp
     });
   });
 
+/*Lineage controller*/
+KylinApp
+  .controller('TableLineageCtrl', function ($scope, TableService, CubeService, uiGridConstants) {
+    $scope.$watch('tableModel.selectedSrcTable', function (newValue, oldValue) {
+      if (!newValue || !newValue.name) {
+        return;
+      }
+
+      //data lineage
+      $scope.lineage = {
+        items: [],
+        matrix: [],
+        config: {
+          margin: {
+            left: 150,
+            top: 10,
+            right: 150,
+            bottom: 10
+          },
+          width: 700,
+          height: 646.66,
+          outerRadius: 223.33,
+          innerRadius: 212.16,
+          pullOutSize: 50,
+          opacityDefault: 0.7,
+          opacityLow: 0.02
+        }
+      };
+
+      $scope.lineageGridOptions = {
+        enableFiltering: true,
+        treeRowHeaderAlwaysVisible: false,
+        enableRowHashing: false,
+        columnDefs: [
+          {name: 'table',
+            grouping: {
+              groupPriority: 0
+            },
+            sort: {
+              priority: 0,
+              direction: 'asc'
+            },
+            width: '25%',
+            cellTemplate:
+              '<div><div ng-if="!col.grouping || col.grouping.groupPriority === undefined || col.grouping.groupPriority === null || ( row.groupHeader && col.grouping.groupPriority === row.treeLevel )" class="ui-grid-cell-contents" title="TOOLTIP">{{COL_FIELD CUSTOM_FILTERS}}</div></div>'},
+          { displayName: 'cube', name: 'name', width: '25%' },
+          { name: 'model', width: '18%' },
+          { name: 'project', width: '12%'},
+          { name: 'owner', width: '10%'},
+          { name: 'status'}
+        ],
+        onRegisterApi: function(gridApi) {
+          $scope.lineageGridApi = gridApi;
+          $scope.lineageGridApi.core.on.filterChanged($scope, function() {
+            var grid = this.grid;
+            var isfilterclear = true;
+            angular.forEach(grid.columns, function( col ) {
+              if(col.filters[0].term){
+                isfilterclear = false;
+              }
+            });
+            if(isfilterclear) {
+              $scope.lineageGridApi.grid.columns[1].filters[0] = {
+                condition: uiGridConstants.filter.STARTS_WITH
+              };
+              $scope.lineageGridApi.grid.columns[2].filters[0] = {
+                condition: uiGridConstants.filter.STARTS_WITH
+              };
+            }
+          });
+        }
+      };
+
+      $scope.initLineage = function() {
+        d3.select('#lineageChart').select('svg').remove();
+        var tableFullName = $scope.tableModel.selectedSrcTable.database + '.' + $scope.tableModel.selectedSrcTable.name
+        TableService.lineageCubes({tableName: tableFullName}, {}, function (data) {
+          $scope.lineageData = [data.toJSON()];
+          $scope.lineageData = _.sortBy($scope.lineageData, 'name').reverse();
+          $scope.transformChartData($scope.lineageData);
+          $scope.draw();
+          $scope.transformGridData($scope.lineageData);
+        });
+      };
+
+      $scope.transformGridData = function(orgData) {
+        $scope.lineageGridOptions.data = [];
+        // delete $$hashKey otherwise, the array will not correct
+        orgData = JSON.parse(angular.toJson(orgData));
+        angular.forEach(orgData, function(table){
+          angular.forEach(table.cubes, function(cube) {
+            cube.table = table.name.split('.')[1];
+            $scope.lineageGridOptions.data.push(cube);
+          });
+        });
+      };
+
+      $scope.transformChartData = function(orgData) {
+        $scope.lineage.matrix = [];
+        $scope.lineage.items = [];
+        var tables = [];
+        var cubes = [];
+        angular.forEach(orgData, function(table) {
+          tables.push(table.name);
+          table.cubes.forEach(function(cube) {
+            cubes.push(cube);
+          });
+        });
+
+        cubes = _.uniq(cubes, false, function(cube){ return cube.name; });
+
+        $scope.lineage.items = cubes.concat('').concat(tables).concat('');
+
+        $scope.lineage.config.emptyPerc = 0.4;
+        if (tables.length === 1 && cubes.length ===1) {
+          $scope.lineage.config.respondents = 1;
+          $scope.lineage.config.emptyStroke =$scope.lineage.config.respondents * $scope.lineage.config.emptyPerc;
+        } else {
+          $scope.lineage.config.respondents = 0;
+          angular.forEach(orgData, function(table) {
+            $scope.lineage.config.respondents += table.cubes.length;
+          });
+          $scope.lineage.config.emptyStroke = Math.round($scope.lineage.config.respondents * $scope.lineage.config.emptyPerc);
+        }
+        $scope.lineage.config.cubeCount = cubes.length;
+        $scope.lineage.config.tableCount = tables.length;
+
+        angular.forEach($scope.lineage.items, function(name, ind){
+          var matrix = [];
+          if (ind < cubes.length) {
+            for (var i = 0; i < cubes.length; i++) {
+              matrix.push(0);
+            }
+            matrix.push(0);
+            for (var i = 0; i < tables.length; i++) {
+              var cubeRelated = false;
+              $scope.lineageData[i].cubes.forEach(function(cube) {
+                if (cubes[ind].name === cube.name)
+                  cubeRelated = true;
+              });
+              if (cubeRelated) {
+                matrix.push(1);
+              } else {
+                matrix.push(0);
+              }
+            }
+            matrix.push(0);
+          } else if (ind === cubes.length) {
+            for (var i = 0; i < $scope.lineage.items.length-1; i++) {
+              matrix.push(0);
+            }
+            matrix.push($scope.lineage.config.emptyStroke);
+          } else if (ind < $scope.lineage.items.length - 1) {
+            for (var i = 0; i < cubes.length; i++) {
+              var tableRelated = false;
+              $scope.lineageData[ind - cubes.length -1].cubes.forEach(function(cube){
+                if (cube.name === cubes[i].name)
+                  tableRelated = true;
+              });
+              if (tableRelated) {
+                matrix.push(1);
+              } else {
+                matrix.push(0);
+              }
+            }
+            matrix.push(0);
+            for (var i = 0; i < tables.length; i++) {
+              matrix.push(0);
+            }
+            matrix.push(0);
+          } else if (ind === $scope.lineage.items.length -1) {
+            for (var i = 0; i < cubes.length; i++) {
+              matrix.push(0);
+            }
+            matrix.push($scope.lineage.config.emptyStroke);
+            for (var i = 0; i < tables.length; i++) {
+              matrix.push(0);
+            }
+            matrix.push(0);
+          }
+          $scope.lineage.matrix.push(matrix);
+        });
+      };
+
+      $scope.draw = function() {
+        var svg = d3.select('#lineageChart').append('svg')
+          .attr('width', ($scope.lineage.config.width + $scope.lineage.config.margin.left + $scope.lineage.config.margin.right))
+          .attr('height', ($scope.lineage.config.height + $scope.lineage.config.margin.top + $scope.lineage.config.margin.bottom));
+
+        var wrapper = svg.append('g').attr('class', 'chordWrapper')
+          .attr('transform', 'translate(' + ($scope.lineage.config.width / 2 + $scope.lineage.config.margin.left) + ',' + ($scope.lineage.config.height / 2 + $scope.lineage.config.margin.top) + ')');
+
+
+        var chord = customChordLayout().padding(.02).sortChords(d3.ascending).matrix($scope.lineage.matrix);
+
+        $scope.lineage.config.offset = (2 * Math.PI) * ($scope.lineage.config.emptyStroke/($scope.lineage.config.respondents + $scope.lineage.config.emptyStroke))/4;
+
+
+        // title
+        var titleWrapper = svg.append('g').attr('class', 'lineage-title'), titleOffset = 40;
+
+        titleWrapper.append('text')
+          .attr('class', 'lineage-title left')
+          .style('font-size', '16px')
+          .attr('x', ($scope.lineage.config.width/2 + $scope.lineage.config.margin.left - $scope.lineage.config.outerRadius - $scope.lineage.config.margin.left))
+          .attr('y', titleOffset)
+          .text('Tables');
+        titleWrapper.append('line')
+          .attr('class','lineage-title-line left')
+          .attr('x1', ($scope.lineage.config.width/2 + $scope.lineage.config.margin.left - $scope.lineage.config.outerRadius)*0.9 - $scope.lineage.config.margin.left)
+          .attr('x2', ($scope.lineage.config.width/2 + $scope.lineage.config.margin.left - $scope.lineage.config.outerRadius)*1.1 - $scope.lineage.config.margin.left)
+          .attr('y1', titleOffset+8)
+          .attr('y2', titleOffset+8);
+        //Title top right
+        titleWrapper.append('text')
+          .attr('class', 'lineage-title lineage-right')
+          .style('font-size', '16px')
+          .attr('x', ($scope.lineage.config.width/2 + $scope.lineage.config.margin.left + $scope.lineage.config.outerRadius + $scope.lineage.config.margin.left))
+          .attr('y', titleOffset)
+          .text('Cubes');
+        titleWrapper.append('line')
+          .attr('class','lineage-title-line right')
+          .attr('x1', ($scope.lineage.config.width/2 +$scope.lineage.config. margin.left - $scope.lineage.config.outerRadius)*0.9 + 2*($scope.lineage.config.outerRadius) + $scope.lineage.config.margin.left)
+          .attr('x2', ($scope.lineage.config.width/2 + $scope.lineage.config.margin.left - $scope.lineage.config.outerRadius)*1.1 + 2*($scope.lineage.config.outerRadius) + $scope.lineage.config.margin.left)
+          .attr('y1', titleOffset+8)
+          .attr('y2', titleOffset+8);
+
+        var defs = wrapper.append('defs');
+        var linearGradient = defs.append('linearGradient')
+          .attr('id', 'animatedGradient')
+          .attr('x1', '0%')
+          .attr('y1', '0%')
+          .attr('x2', '100%')
+          .attr('y2', '0')
+          .attr('spreadMethod', 'reflect');
+
+        linearGradient.append('animate')
+          .attr('attributeName', 'x1')
+          .attr('values', '0%;100%')
+          .attr('dur', '7s')
+          .attr('repeatCount', 'indefinite');
+
+        linearGradient.append('animate')
+          .attr('attributeName', 'x2')
+          .attr('values', '100%;200%')
+          .attr('dur', '7s')
+          .attr('repeatCount', 'indefinite');
+
+        linearGradient.append('stop')
+          .attr('offset', '5%')
+          .attr('stop-color', '#E8E8E8');
+        linearGradient.append('stop')
+          .attr('offset', '45%')
+          .attr('stop-color', '#A3A3A3');
+        linearGradient.append('stop')
+          .attr('offset', '55%')
+          .attr('stop-color', '#A3A3A3');
+        linearGradient.append('stop')
+          .attr('offset', '95%')
+          .attr('stop-color', '#E8E8E8');
+
+        // Define the div for the tooltip
+        if (!document.getElementById('lineage-tooltip')){
+          var tooltips = d3.select('body').append('div')
+            .attr('id', 'lineage-tooltip')
+            .style('opacity', 0);
+        } else {
+          var tooltips = d3.select('#lineage-tooltip');
+        }
+
+        var arc = d3.svg.arc()
+          .innerRadius($scope.lineage.config.innerRadius)
+          .outerRadius($scope.lineage.config.outerRadius)
+          .startAngle(startAngle)
+          .endAngle(endAngle);
+
+        var path = stretchedChord()
+          .radius($scope.lineage.config.innerRadius)
+          .startAngle(startAngle)
+          .endAngle(endAngle)
+          .pullOutSize($scope.lineage.config.pullOutSize);
+
+        var g = wrapper.selectAll('g.group')
+          .data(chord.groups)
+          .enter().append('g')
+          .attr('class', 'group')
+          .on('mouseover', function(d, i) {
+            d3.select(this).style('cursor', 'pointer');
+            fade($scope.lineage.config.opacityLow, d, i, svg);
+            tooltips.transition()
+              .duration(200)
+              .style('opacity', .9);
+            var htmlContent = '';
+            if (d.index < $scope.lineage.config.cubeCount) {
+              var cube = $scope.lineage.items[d.index];
+              htmlContent += cube.name + '</br>';
+              htmlContent += 'Status: ' + cube.status + '</br>';
+              htmlContent += 'Owner: ' + cube.owner + '</br>';
+              htmlContent += 'Project: ' + cube.project + '</br>';
+              htmlContent += 'Model: ' + cube.model;
+              tooltips.attr('class', 'lineage-cube-tooltip');
+            } else if (d.index > $scope.lineage.config.cubeCount) {
+              htmlContent = $scope.lineage.items[d.index];
+              tooltips.attr('class', 'lineage-table-tooltip');
+            }
+            tooltips.html(htmlContent)
+              .style('left', (d3.event.pageX + 'px'))
+              .style('top', (d3.event.pageY + 'px'));
+          })
+          .on('mouseout', function(d, i) {
+            d3.select(this).style('cursor', 'default');
+            fade($scope.lineage.config.opacityDefault, d, i, svg);
+            tooltips.transition()
+              .duration(500)
+              .style('opacity', 0);
+          });
+
+        g.append('path')
+          .style('stroke', function(d,i) {
+            return ($scope.lineage.items[i] === '' ? 'none' : '#00A1DE');
+          })
+          .style('fill', function(d,i) {
+            return ($scope.lineage.items[i] === '' ? 'none' : '#00A1DE');
+          })
+          .style('pointer-events', function(d,i) {
+            return ($scope.lineage.items[i] === '' ? 'none' : 'auto');
+          })
+          .attr('d', arc)
+          .attr('transform', function(d, i) {
+            d.pullOutSize = $scope.lineage.config.pullOutSize * ( i > $scope.lineage.config.cubeCount ? -1 : 1);
+            return 'translate(' + d.pullOutSize + ',' + 0 + ')';
+          });
+
+        g.append('text')
+          .each(function(d) {
+            d.angle = ((d.startAngle + d.endAngle) / 2) + $scope.lineage.config.offset;
+          })
+          .attr('dy', '.15em')
+          .attr('class', 'titles')
+          .attr('text-anchor', function(d) {
+            return d.angle > Math.PI ? 'end' : null;
+          })
+          .attr('transform', function(d,i) {
+            var c = arc.centroid(d);
+            return 'translate(' + (c[0] + d.pullOutSize) + ',' + c[1] + ')'
+              + 'rotate(' + (d.angle * 180 / Math.PI - 90) + ')'
+              + 'translate(' + 15 + ',0)'
+              + (d.angle > Math.PI ? 'rotate(180)' : '')
+          })
+          .text(function(d,i) {
+            if (i < $scope.lineage.config.cubeCount) {
+              var cubeName = $scope.lineage.items[i].name;
+              return cubeName.length > 20 ? cubeName.substring(0, 20) + '...' : cubeName;
+            } else if (i > $scope.lineage.config.cubeCount && i < $scope.lineage.items.length -1){
+              var tableName = $scope.lineage.items[i].split('.')[1];
+              return tableName.length > 20 ? tableName.substring(0, 20) + '...' : tableName;
+            }
+          });
+
+        var chords = wrapper.selectAll('path.chord')
+          .data(chord.chords)
+          .enter().append('path')
+          .attr('class', 'chord')
+          .style('stroke', 'none')
+          .style('fill', 'url(#animatedGradient)')
+          .style('opacity', function(d) {
+            return ($scope.lineage.items[d.source.index] === '' ? 0 : $scope.lineage.config.opacityDefault);
+          })
+          .style('pointer-events', function(d,i) {
+            return ($scope.lineage.items[d.source.index] === '' ? 'none' : 'auto');
+          })
+          .attr('d', path);
+
+        var clicks = 0;
+        var timer = null;
+
+        g.on('click', function(d, i){
+          clicks++;
+          if (clicks === 1) {
+            timer = setTimeout(function() {
+              if (i < $scope.lineage.config.cubeCount) {
+                $scope.lineageData = [];
+                getTablesByCube($scope.lineage.items[i].name);
+              } else if (i > $scope.lineage.config.cubeCount) {
+                getCubesByTable($scope.lineage.items[i], true);
+              }
+              clicks = 0;
+            }, 500);
+          } else {
+            clearTimeout(timer);
+            clicks = 0;
+          }
+        });
+
+        g.on('dblclick', function(d, i) {
+          if (i < $scope.lineage.config.cubeCount) {
+            getTablesByCube($scope.lineage.items[i].name);
+          } else if (i > $scope.lineage.config.cubeCount) {
+            getCubesByTable($scope.lineage.items[i]);
+          }
+        });
+
+        chords.append('title')
+          .text(function(d, i) {
+            var sourceName = '';
+            if (d.target.index < $scope.lineage.config.cubeCount) {
+              sourceName = $scope.lineage.items[d.target.index].name;
+            } else if (d.target.index > $scope.lineage.config.cubeCount) {
+              sourceName = $scope.lineage.items[d.target.index];
+            }
+            var targetName = '';
+            if (d.source.index < $scope.lineage.config.cubeCount) {
+              targetName = $scope.lineage.items[d.source.index].name;
+            } else if (d.source.index > $scope.lineage.config.cubeCount) {
+              targetName = $scope.lineage.items[d.source.index];
+            }
+            return [sourceName, ' => ', targetName].join('');
+          });
+      };
+
+      function getTablesByCube(cubeName) {
+        var cube = _.find($scope.lineage.items.slice(0, $scope.lineage.config.cubeCount), function(item) {
+          return item.name === cubeName;
+        });
+        TableService.lineageTables({cubeName: cubeName}, {}, function (data) {
+          angular.forEach(angular.fromJson(data), function(tableName) {
+            var tableExist = false;
+            angular.forEach($scope.lineageData, function(table, ind) {
+              if (table.name === tableName) {
+                tableExist = true;
+                var cubeExist = _.find(table.cubes, function(item) {
+                  return item.name === cubeName;
+                });
+                if (!cubeExist) {
+                  $scope.lineageData[ind].cubes.push(cube);
+                }
+              }
+            });
+            if (!tableExist) {
+              $scope.lineageData.push({
+                name: tableName,
+                cubes: [
+                  cube
+                ]
+              });
+            }
+          });
+          d3.select('#lineageChart').select('svg').remove();
+          $scope.lineageData = _.sortBy($scope.lineageData, 'name').reverse();
+          $scope.transformChartData($scope.lineageData);
+          $scope.draw();
+          $scope.transformGridData($scope.lineageData);
+          addGridFilter('cube', cubeName);
+        });
+      };
+
+      function getCubesByTable(tableName, only) {
+        TableService.lineageCubes({tableName: tableName}, {}, function(data){
+          var tableInfo = data.toJSON();
+          var tableExist = false;
+          angular.forEach($scope.lineageData, function(table, ind) {
+            if (tableInfo.name === table.name) {
+              $scope.lineageData.splice(ind, 1, tableInfo);
+              tableExist = true;
+            }
+          });
+          if (!tableExist) {
+            $scope.lineageData.push(talbeInfo);
+          }
+          if (only) {
+            var selectTable = _.find($scope.lineageData, function(item) {
+              return item.name === tableName;
+            });
+            $scope.lineageData = [selectTable];
+          }
+          d3.select('#lineageChart').select('svg').remove();
+          $scope.lineageData = _.sortBy($scope.lineageData, 'name').reverse();
+          $scope.transformChartData($scope.lineageData);
+          $scope.draw();
+          $scope.transformGridData($scope.lineageData);
+          addGridFilter('table', tableName.split('.')[1]);
+        });
+      };
+
+      function addGridFilter(type, content) {
+        if (type === 'table') {
+          $scope.lineageGridApi.grid.columns[1].filters[0] = {
+            condition: uiGridConstants.filter.EXACT,
+            term: content
+          };
+          $scope.lineageGridApi.grid.columns[2].filters[0] = {
+            condition: uiGridConstants.filter.EXACT,
+            term: ''
+          };
+        } else if (type === 'cube') {
+          $scope.lineageGridApi.grid.columns[1].filters[0] = {
+            condition: uiGridConstants.filter.EXACT,
+            term: ''
+          };
+          $scope.lineageGridApi.grid.columns[2].filters[0] = {
+            condition: uiGridConstants.filter.EXACT,
+            term: content
+          };
+        }
+        $scope.lineageGridApi.grid.refresh();
+      };
+
+      function startAngle(d) {
+        return d.startAngle + $scope.lineage.config.offset;
+      };
+
+      function endAngle(d) {
+        return d.endAngle + $scope.lineage.config.offset;
+      };
+
+      function fade(opacity, d, i, svg) {
+        svg.selectAll('path.chord')
+          .filter(function(d) {
+            return d.source.index !== i && d.target.index !== i && $scope.lineage.items[d.source.index] !== "";
+          })
+          .transition('fadeOnArc')
+          .style('opacity', opacity);
+      };
+
+      $scope.initLineage();
+    });
+  });
+
 /*Avoid watch method call twice*/
 KylinApp
   .controller('StreamConfigDisplayCtrl', function ($scope, StreamingServiceV2, tableConfig) {

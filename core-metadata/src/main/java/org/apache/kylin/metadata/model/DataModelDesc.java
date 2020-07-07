@@ -280,6 +280,14 @@ public class DataModelDesc extends RootPersistentEntity {
         return false;
     }
 
+    public boolean containsTable(String fullTableName) {
+        for (TableRef t : allTableRefs) {
+            if (t.getTableIdentity().equals(fullTableName))
+                return true;
+        }
+        return false;
+    }
+
     public String getFilterCondition() {
         return filterCondition;
     }

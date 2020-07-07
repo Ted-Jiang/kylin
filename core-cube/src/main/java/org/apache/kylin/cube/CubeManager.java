@@ -32,6 +32,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kylin.common.KylinConfig;
@@ -70,6 +71,7 @@ import org.apache.kylin.metadata.model.SegmentRange.TSRange;
 import org.apache.kylin.metadata.model.SegmentStatusEnum;
 import org.apache.kylin.metadata.model.Segments;
 import org.apache.kylin.metadata.model.TableDesc;
+import org.apache.kylin.metadata.model.TableRef;
 import org.apache.kylin.metadata.model.TblColRef;
 import org.apache.kylin.metadata.project.ProjectInstance;
 import org.apache.kylin.metadata.project.ProjectManager;
@@ -222,6 +224,16 @@ public class CubeManager implements IRealizationProvider {
             }
             return null;
         }
+    }
+
+    public List<String> getTablesByCube(String cubeName) {
+        List<String> ret = new ArrayList<>();
+
+        CubeInstance cube = getCube(cubeName);
+        if (cube != null) {
+            ret = cube.getModel().getAllTables().stream().map(TableRef::getTableIdentity).collect(Collectors.toList());
+        }
+        return ret;
     }
 
     public List<String> getErrorCubes() {

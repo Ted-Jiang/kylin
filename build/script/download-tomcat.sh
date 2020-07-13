@@ -63,6 +63,10 @@ sed -i "s/org\.apache\.catalina\.startup\.ContextConfig\.jarsToSkip=.*/org\.apac
 sed -i "s/org\.apache\.catalina\.startup\.TldConfig\.jarsToSkip=.*/org\.apache\.catalina\.startup\.TldConfig\.jarsToSkip=*.jar/g" build/tomcat/conf/catalina.properties
 echo "catalina.properties overwritten..."
 
+cp build/deploy/memcached-session-manager-2.3.2.jar build/tomcat/lib/memcached-session-manager-2.3.2.jar
+cp build/deploy/memcached-session-manager-tc7-2.3.2.jar build/tomcat/lib/memcached-session-manager-tc7-2.3.2.jar
+cp build/deploy/spymemcached-2.12.3.jar build/tomcat/lib/spymemcached-2.12.3.jar
+echo "add memcached session manager libraries"
 
 if [ -z "$version" ]
 then

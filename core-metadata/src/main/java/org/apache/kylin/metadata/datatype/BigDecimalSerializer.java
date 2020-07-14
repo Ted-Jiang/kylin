@@ -90,7 +90,10 @@ public class BigDecimalSerializer extends DataTypeSerializer<BigDecimal> {
         @SuppressWarnings("unused")
         int scale = BytesUtil.readVInt(in);
         int n = BytesUtil.readVInt(in);
-        int len = in.position() - mark + n;
+        int len = in.position() - mark;
+        if (n >= 0) {
+            len += n;
+        }
 
         in.position(mark);
         return len;

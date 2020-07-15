@@ -45,6 +45,8 @@ public class CubeBuildingCLI extends AbstractApplication {
 
     private static final Logger logger = LoggerFactory.getLogger(CubeBuildingCLI.class);
 
+    private static final Option OPTION_SERVER_URI = OptionBuilder.withArgName("serverUri").hasArg().isRequired(false)
+            .withDescription("Specify the server uri").create("serverUri");
     private static final Option OPTION_CUBE = OptionBuilder.withArgName("cube").hasArg().isRequired(true)
             .withDescription("Specify for which cube to build").create("cube");
     private static final Option OPTION_BUILD_TYPE = OptionBuilder.withArgName("buildType").hasArg().isRequired(false)
@@ -62,14 +64,11 @@ public class CubeBuildingCLI extends AbstractApplication {
 
     public CubeBuildingCLI() {
         options = new Options();
+        options.addOption(OPTION_SERVER_URI);
         options.addOption(OPTION_CUBE);
         options.addOption(OPTION_BUILD_TYPE);
         options.addOption(OPTION_TIME_START);
         options.addOption(OPTION_TIME_END);
-
-        kylinConfig = KylinConfig.getInstanceFromEnv();
-        cubeManager = CubeManager.getInstance(kylinConfig);
-        executableManager = ExecutableManager.getInstance(kylinConfig);
     }
 
     protected Options getOptions() {
@@ -77,6 +76,14 @@ public class CubeBuildingCLI extends AbstractApplication {
     }
 
     protected void execute(OptionsHelper optionsHelper) throws Exception {
+        if (optionsHelper.hasOption(OPTION_SERVER_URI)) {
+            kylinConfig = KylinConfig.createInstanceFromUri(optionsHelper.getOptionValue(OPTION_SERVER_URI));
+        } else {
+            kylinConfig = KylinConfig.getInstanceFromEnv();
+        }
+        cubeManager = CubeManager.getInstance(kylinConfig);
+        executableManager = ExecutableManager.getInstance(kylinConfig);
+
         String cubeName = optionsHelper.getOptionValue(OPTION_CUBE);
         String buildType = optionsHelper.getOptionValue(OPTION_BUILD_TYPE);
         if (Strings.isNullOrEmpty(buildType)) {
@@ -99,8 +106,8 @@ public class CubeBuildingCLI extends AbstractApplication {
         submitJob(cube, new TSRange(startDate, endDate), buildTypeEnum, false, "SYSTEM2");
     }
 
-    private void submitJob(CubeInstance cube, TSRange tsRange, CubeBuildTypeEnum buildType,
-            boolean forceMergeEmptySeg, String submitter) throws IOException, JobException {
+    private void submitJob(CubeInstance cube, TSRange tsRange, CubeBuildTypeEnum buildType, boolean forceMergeEmptySeg,
+            String submitter) throws IOException, JobException {
         checkCubeDescSignature(cube);
 
         DefaultChainedExecutable job;

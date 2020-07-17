@@ -132,8 +132,8 @@
                     <ul class="dropdown-menu" role="menu" style="right:0;left:auto;">
                         <li ng-if="cube.status!='READY'"><a href="cubes/edit/{{cube.name}}/descriptionjson">Edit CubeDesc</a></li>
                         <li><a href="cubes/view/{{cube.name}}/instancejson">View Cube</a></li>
-                        <li ng-if="cube.status=='READY' && kylinConfig.isCubeMigrationEnabled()"><a ng-click="startMigrateCube(cube, 1)">Approve Migration</a></li>
-                        <li ng-if="cube.status=='READY' && kylinConfig.isCubeMigrationEnabled()"><a ng-click="startMigrateCube(cube, -1)">Reject Migration</a></li>
+                        <li ng-if="userService.hasRole('ROLE_ADMIN') && cube.status=='READY' && kylinConfig.isCubeMigrationEnabled()"><a ng-click="startMigrateCube(cube, 1)">Approve Migration</a></li>
+                        <li ng-if="userService.hasRole('ROLE_ADMIN') && cube.status=='READY' && kylinConfig.isCubeMigrationEnabled()"><a ng-click="startMigrateCube(cube, -1)">Reject Migration</a></li>
                     </ul>
                 </div>
             </td>

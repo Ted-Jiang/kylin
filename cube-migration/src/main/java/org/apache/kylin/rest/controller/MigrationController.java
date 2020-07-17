@@ -36,6 +36,7 @@ import org.apache.kylin.rest.service.MigrationService;
 import org.apache.kylin.rest.service.ModelService;
 import org.apache.kylin.rest.service.QueryService;
 import org.apache.kylin.rest.service.TableService;
+import org.apache.kylin.rest.util.AclEvaluate;
 import org.apache.kylin.tool.migration.CompatibilityCheckRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,6 +74,9 @@ public class MigrationController extends BasicController {
     @Autowired
     private TableService tableService;
 
+    @Autowired
+    private AclEvaluate aclEvaluate;
+
     private final String targetHost = KylinConfig.getInstanceFromEnv().getMigrationTargetAddress();
 
     private CubeInstance getCubeInstance(String cubeName) {
@@ -97,7 +101,7 @@ public class MigrationController extends BasicController {
             throw new BadRequestException(e.getMessage());
         }
     }
-    
+
     @RequestMapping(value = "/{cubeName}/migrateRequest", method = { RequestMethod.PUT })
     @ResponseBody
     public String requestMigration(@PathVariable String cubeName, @RequestBody MigrationRequest request) {
@@ -116,6 +120,8 @@ public class MigrationController extends BasicController {
     @RequestMapping(value = "/{cubeName}/migrateReject", method = { RequestMethod.PUT })
     @ResponseBody
     public void reject(@PathVariable String cubeName, @RequestBody MigrationRequest request) {
+        aclEvaluate.checkIsGlobalAdmin();
+
         boolean reject = migrationService.reject(cubeName, request.getProjectName(), request.getReason());
         if (!reject) {
             throw new InternalErrorException("Email send out failed. See logs.");
@@ -125,6 +131,8 @@ public class MigrationController extends BasicController {
     @RequestMapping(value = "/{cubeName}/migrateApprove", method = { RequestMethod.PUT })
     @ResponseBody
     public String approve(@PathVariable String cubeName, @RequestBody MigrationRequest request) {
+        aclEvaluate.checkIsGlobalAdmin();
+
         CubeInstance cube = getCubeInstance(cubeName);
         try {
             MigrationRuleSet.Context ctx = new MigrationRuleSet.Context(queryService, cube,

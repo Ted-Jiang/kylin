@@ -280,7 +280,7 @@ public class TableController extends BasicController {
     @ResponseBody
     public LineageResponse getCubesByTable(@PathVariable final String tableName) {
         List<LineageResponse.CubeInfo> cubeInfos = tableService.getCubeManager().listAllCubes().stream()
-                .filter(cube -> cube.getModel().containsTable(tableName)).map(cube -> {
+                .filter(cube -> cube.getModel() != null && cube.getModel().containsTable(tableName)).map(cube -> {
                     LineageResponse.CubeInfo cubeInfo = new LineageResponse.CubeInfo();
                     cubeInfo.setName(cube.getName());
                     cubeInfo.setOwner(cube.getOwner());

@@ -570,7 +570,15 @@ public class OLAPAggregateRel extends Aggregate implements OLAPRel {
                     }
                     newAggrs.add(aggFunc);
                 } else {
-                    newAggrs.add(findInMeasures(aggFunc, measures));
+                    FunctionDesc newAggFunc = findInMeasures(aggFunc, measures);
+                    if (newAggFunc == aggFunc && aggFunc.isSum()) {
+                        TblColRef numericCol = aggFunc.getParameter().getColRefs().get(0);
+                        numericCol.fixTableRef(numericCol.getTableRef());
+                        newAggFunc = FunctionDesc.newInstance(FunctionDesc.FUNC_SUM,
+                                ParameterDesc.newInstance(numericCol), numericCol.getType().toString());
+                        newAggFunc.setIsDisableRewrite(true);
+                    }
+                    newAggrs.add(newAggFunc);
                 }
             }
             this.aggregations.clear();

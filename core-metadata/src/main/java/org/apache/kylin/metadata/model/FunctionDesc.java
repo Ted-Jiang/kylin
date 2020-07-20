@@ -88,6 +88,7 @@ public class FunctionDesc implements Serializable {
     private DataType returnDataType;
     private MeasureType<?> measureType;
     private boolean isDimensionAsMetric = false;
+    private boolean isDisableRewrite = false;
 
     /**
      * The flag of Hive Global Dictionary for COUNT_DISTINCT
@@ -142,7 +143,18 @@ public class FunctionDesc implements Serializable {
         return measureType;
     }
 
+    public void setIsDisableRewrite(boolean isDisableRewrite) {
+        this.isDisableRewrite = isDisableRewrite;
+    }
+
+    public boolean isDisableRewrite() {
+        return isDisableRewrite;
+    }
+
     public boolean needRewrite() {
+        if (isDisableRewrite) {
+            return false;
+        }
         if (getMeasureType() == null)
             return false;
 

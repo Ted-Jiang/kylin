@@ -432,6 +432,7 @@ public class TopNMeasureType extends MeasureType<TopNCounter<ByteArray>> {
                     continue;
                 }
 
+                topnFunc.setIsDisableRewrite(origFunc.isDisableRewrite());
                 logger.info("Rewrite function " + origFunc + " to " + topnFunc);
             }
 
@@ -468,10 +469,15 @@ public class TopNMeasureType extends MeasureType<TopNCounter<ByteArray>> {
         // for TopN, the aggr must be SUM
         final int numericTupleIdx;
         if (numericCol != null) {
-            FunctionDesc sumFunc = FunctionDesc.newInstance(FunctionDesc.FUNC_SUM,
-                    ParameterDesc.newInstance(numericCol), numericCol.getType().toString());
-            String sumFieldName = sumFunc.getRewriteFieldName();
-            numericTupleIdx = tupleInfo.hasField(sumFieldName) ? tupleInfo.getFieldIndex(sumFieldName) : -1;
+            if (function.isDisableRewrite()) {
+                numericTupleIdx = tupleInfo.hasColumn(numericCol) ? tupleInfo.getColumnIndex(numericCol) : -1;
+            } else {
+                FunctionDesc sumFunc = FunctionDesc.newInstance(FunctionDesc.FUNC_SUM,
+                        ParameterDesc.newInstance(numericCol), numericCol.getType().toString());
+                String sumFieldName = sumFunc.getRewriteFieldName();
+                numericTupleIdx = tupleInfo.hasField(sumFieldName) ? tupleInfo.getFieldIndex(sumFieldName)
+                        : tupleInfo.hasColumn(numericCol) ? tupleInfo.getColumnIndex(numericCol) : -1;
+            }
         } else {
             FunctionDesc countFunction = FunctionDesc.newInstance(FunctionDesc.FUNC_COUNT,
                     ParameterDesc.newInstance("1"), "bigint");
@@ -509,6 +515,9 @@ public class TopNMeasureType extends MeasureType<TopNCounter<ByteArray>> {
                     offset += dimensionEncodings[i].getLengthOfEncoding();
                 }
                 tuple.setMeasureValue(numericTupleIdx, counter.getCount());
+                if (expectRow < 5) {
+                    logger.debug("Fill tuple measure value at {} with {}", numericTupleIdx, counter.getCount());
+                }
             }
         };
     }

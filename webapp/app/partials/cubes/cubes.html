@@ -102,7 +102,7 @@
                         <li ng-if="cube.status=='DISABLED' && (userService.hasRole('ROLE_ADMIN') || hasPermission('cube',cube, permissions.ADMINISTRATION.mask, permissions.MANAGEMENT.mask))"><a ng-click="startDeleteSegment(cube)">Delete Segment</a></li>
                         <li ng-if="cube.status=='DISABLED' && (userService.hasRole('ROLE_ADMIN') || hasPermission('cube',cube, permissions.ADMINISTRATION.mask, permissions.MANAGEMENT.mask))"><a ng-click="purge(cube)">Purge</a></li>
                         <li ng-if="cube.status!='DESCBROKEN' && (userService.hasRole('ROLE_ADMIN') || (!kylinConfig.isProd() && hasPermission('cube',cube, permissions.ADMINISTRATION.mask, permissions.MANAGEMENT.mask)))"><a ng-click="cloneCube(cube)">Clone</a></li>
-                        <li ng-if="cube.status=='READY' && kylinConfig.isCubeMigrationEnabled() && (userService.hasRole('ROLE_ADMIN') || hasPermission(cube, permissions.ADMINISTRATION.mask) || hasPermission(cubeProjectEntity, permissions.ADMINISTRATION.mask))"><a ng-click="startMigrateCube(cube, 0);">Migrate</a></li>
+                        <li ng-if="cube.status=='READY' && kylinConfig.isCubeMigrationEnabled() && !kylinConfig.isProd() && (userService.hasRole('ROLE_ADMIN') || hasPermission(cube, permissions.ADMINISTRATION.mask) || hasPermission(cubeProjectEntity, permissions.ADMINISTRATION.mask))"><a ng-click="startMigrateCube(cube, 0);">Migrate</a></li>
 
                     </ul>
                     <ul ng-if="(userService.hasRole('ROLE_ADMIN') || hasPermission('cube', cube, permissions.ADMINISTRATION.mask, permissions.MANAGEMENT.mask, permissions.OPERATION.mask)) && cube.streamingV2 && actionLoaded" class="dropdown-menu" role="menu" style="right:0;left:auto;">

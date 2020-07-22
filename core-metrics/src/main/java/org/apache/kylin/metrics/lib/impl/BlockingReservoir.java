@@ -39,7 +39,6 @@ import org.apache.kylin.shaded.com.google.common.util.concurrent.ThreadFactoryBu
 public class BlockingReservoir extends AbstractActiveReservoir {
 
     private static final Logger logger = LoggerFactory.getLogger(BlockingReservoir.class);
-    private static final int MAX_QUEUE_SIZE = 50000;
 
     /**
      * Cache for metrics message with max size is maxReportSize
@@ -68,7 +67,7 @@ public class BlockingReservoir extends AbstractActiveReservoir {
         this.maxReportSize = maxReportSize;
         this.maxReportTime = maxReportTime * 60 * 1000L;
 
-        this.recordsQueue = new LinkedBlockingQueue<>(MAX_QUEUE_SIZE);
+        this.recordsQueue = new LinkedBlockingQueue<>();
         this.listeners = Lists.newArrayList();
 
         this.records = Lists.newArrayListWithExpectedSize(this.maxReportSize);

@@ -33,6 +33,8 @@ import org.apache.kylin.metadata.tuple.IEvaluatableTuple;
 import org.apache.kylin.shaded.com.google.common.collect.ImmutableList;
 import org.apache.kylin.shaded.com.google.common.collect.Lists;
 
+import static org.apache.kylin.metadata.expression.ConstantTupleExpression.ZERO;
+
 public class CaseTupleExpression extends TupleExpression {
 
     private List<Pair<TupleFilter, TupleExpression>> whenList;
@@ -46,7 +48,7 @@ public class CaseTupleExpression extends TupleExpression {
             TupleExpression elseExpr) {
         super(dataType, ExpressionOperatorEnum.CASE, Collections.<TupleExpression> emptyList());
         this.whenList = whenList;
-        this.elseExpr = elseExpr;
+        this.elseExpr = elseExpr == null && !dataType.isDecimal() ? ZERO : elseExpr;
     }
 
     @Override

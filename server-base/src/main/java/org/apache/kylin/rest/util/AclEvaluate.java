@@ -18,6 +18,7 @@
 
 package org.apache.kylin.rest.util;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
@@ -67,8 +68,16 @@ public class AclEvaluate {
 
     //for raw project
     public void checkProjectReadPermission(String projectName) {
-        ProjectInstance projectInstance = getProjectInstance(projectName);
-        aclUtil.hasProjectReadPermission(projectInstance);
+        try {
+            ProjectInstance projectInstance = getProjectInstance(projectName);
+            aclUtil.hasProjectReadPermission(projectInstance);
+        } catch (AccessDeniedException e) {
+            String userName = aclUtil.getCurrentUserName();
+            if (StringUtils.isEmpty(username)) {
+                username = "";
+            }
+            throw new AccessDeniedException("Access is denied for user:" + userName);
+        }
     }
 
     public void checkProjectWritePermission(String projectName) {

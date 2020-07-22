@@ -48,7 +48,7 @@ public class CaseTupleExpression extends TupleExpression {
             TupleExpression elseExpr) {
         super(dataType, ExpressionOperatorEnum.CASE, Collections.<TupleExpression> emptyList());
         this.whenList = whenList;
-        this.elseExpr = elseExpr == null && !dataType.isDecimal() ? ZERO : elseExpr;
+        this.elseExpr = elseExpr == null && dataType.isNumberFamily() && !dataType.isDecimal() ? ZERO : elseExpr;
     }
 
     @Override

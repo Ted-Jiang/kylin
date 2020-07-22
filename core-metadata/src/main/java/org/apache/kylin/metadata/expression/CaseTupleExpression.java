@@ -29,11 +29,8 @@ import org.apache.kylin.metadata.filter.IFilterCodeSystem;
 import org.apache.kylin.metadata.filter.TupleFilter;
 import org.apache.kylin.metadata.filter.TupleFilterSerializer;
 import org.apache.kylin.metadata.tuple.IEvaluatableTuple;
-
 import org.apache.kylin.shaded.com.google.common.collect.ImmutableList;
 import org.apache.kylin.shaded.com.google.common.collect.Lists;
-
-import static org.apache.kylin.metadata.expression.ConstantTupleExpression.ZERO;
 
 public class CaseTupleExpression extends TupleExpression {
 
@@ -48,7 +45,7 @@ public class CaseTupleExpression extends TupleExpression {
             TupleExpression elseExpr) {
         super(dataType, ExpressionOperatorEnum.CASE, Collections.<TupleExpression> emptyList());
         this.whenList = whenList;
-        this.elseExpr = elseExpr == null && dataType.isNumberFamily() && !dataType.isDecimal() ? ZERO : elseExpr;
+        this.elseExpr = elseExpr;
     }
 
     @Override

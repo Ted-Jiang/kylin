@@ -21,8 +21,8 @@ package org.apache.kylin.metadata.model;
 import java.util.Set;
 
 import org.apache.kylin.metadata.datatype.DataType;
+import org.apache.kylin.metadata.expression.NullExpressionReplacer;
 import org.apache.kylin.metadata.expression.TupleExpression;
-
 import org.apache.kylin.shaded.com.google.common.collect.Sets;
 
 public class SumExpressionDynamicFunctionDesc extends ExpressionDynamicFunctionDesc {
@@ -33,7 +33,7 @@ public class SumExpressionDynamicFunctionDesc extends ExpressionDynamicFunctionD
     private Set<TblColRef> measureColumnSet;
 
     public SumExpressionDynamicFunctionDesc(ParameterDesc parameter, TupleExpression tupleExpression) {
-        super(parameter, FUNC_SUM, null, tupleExpression);
+        super(parameter, FUNC_SUM, null, tupleExpression.accept(new NullExpressionReplacer()));
     }
 
     @Override

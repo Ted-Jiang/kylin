@@ -73,8 +73,8 @@ public class AclEvaluate {
             aclUtil.hasProjectReadPermission(projectInstance);
         } catch (AccessDeniedException e) {
             String userName = aclUtil.getCurrentUserName();
-            if (StringUtils.isEmpty(username)) {
-                username = "";
+            if (StringUtils.isEmpty(userName)) {
+                userName = "";
             }
             throw new AccessDeniedException("Access is denied for user:" + userName);
         }

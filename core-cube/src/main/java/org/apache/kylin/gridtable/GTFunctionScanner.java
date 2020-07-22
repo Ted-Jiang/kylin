@@ -108,6 +108,7 @@ public class GTFunctionScanner implements IGTScanner {
                 for (int c : tupleExpressionMap.keySet()) {
                     TupleExpression tupleExpr = tupleExpressionMap.get(c);
                     Object rtResult = tupleExpr.calculate(oneTuple, filterCodeSystem);
+                    rtResult = TupleExpression.referValue(rtResult, next.getInfo().getColumnType(c));
                     next.setValue(c, rtResult);
                 }
             }

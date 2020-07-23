@@ -102,7 +102,7 @@
                         <li ng-if="cube.status=='DISABLED' && (userService.hasRole('ROLE_ADMIN') || hasPermission('cube',cube, permissions.ADMINISTRATION.mask, permissions.MANAGEMENT.mask))"><a ng-click="startDeleteSegment(cube)">Delete Segment</a></li>
                         <li ng-if="cube.status=='DISABLED' && (userService.hasRole('ROLE_ADMIN') || hasPermission('cube',cube, permissions.ADMINISTRATION.mask, permissions.MANAGEMENT.mask))"><a ng-click="purge(cube)">Purge</a></li>
                         <li ng-if="cube.status!='DESCBROKEN' && (userService.hasRole('ROLE_ADMIN') || (!kylinConfig.isProd() && hasPermission('cube',cube, permissions.ADMINISTRATION.mask, permissions.MANAGEMENT.mask)))"><a ng-click="cloneCube(cube)">Clone</a></li>
-                        <li ng-if="cube.status=='READY' && kylinConfig.isCubeMigrationEnabled() && !kylinConfig.isProd() && (userService.hasRole('ROLE_ADMIN') || hasPermission(cube, permissions.ADMINISTRATION.mask) || hasPermission(cubeProjectEntity, permissions.ADMINISTRATION.mask))"><a ng-click="startMigrateCube(cube, 0);">Migrate</a></li>
+                        <li ng-if="cube.status=='READY' && kylinConfig.isCubeMigrationEnabled() && !kylinConfig.isProd() && (userService.hasRole('ROLE_ADMIN') || hasPermission('cube', cube, permissions.ADMINISTRATION.mask, permissions.MANAGEMENT.mask))"><a ng-click="startMigrateCube(cube, 0);">Migrate</a></li>
 
                     </ul>
                     <ul ng-if="(userService.hasRole('ROLE_ADMIN') || hasPermission('cube', cube, permissions.ADMINISTRATION.mask, permissions.MANAGEMENT.mask, permissions.OPERATION.mask)) && cube.streamingV2 && actionLoaded" class="dropdown-menu" role="menu" style="right:0;left:auto;">
@@ -111,13 +111,12 @@
                         <li ng-if="cube.status!='DISABLED'"><a ng-click="disable(cube, $index)">Disable</a></li>
                         <li ng-if="cube.status!='DISABLED' && userService.hasRole('ROLE_ADMIN')"><a ng-click="viewAssignment(cube, $index);">Assignment</a></li>
                         <li ng-if="cube.status!='DESCBROKEN' && cube.lambda"><a ng-click="startRefresh(cube, $index)">Refresh</a></li>
-                        <li ng-if="cube.status=='DISABLED' && (userService.hasRole('ROLE_ADMIN') || hasPermission(cube, permissions.ADMINISTRATION.mask, permissions.MANAGEMENT.mask)) "><a ng-click="dropCube(cube, $index)" tooltip="Drop the cube, related jobs and data permanently.">Drop</a></li>
-                        <li ng-if="cube.status=='DISABLED' && (userService.hasRole('ROLE_ADMIN') || (!kylinConfig.isProd() && hasPermission(cube, permissions.ADMINISTRATION.mask, permissions.MANAGEMENT.mask)))"><a ng-click="cubeEdit(cube);">Edit</a></li>
+                        <li ng-if="cube.status=='DISABLED' && (userService.hasRole('ROLE_ADMIN') || hasPermission('cube', cube, permissions.ADMINISTRATION.mask, permissions.MANAGEMENT.mask)) "><a ng-click="dropCube(cube, $index)" tooltip="Drop the cube, related jobs and data permanently.">Drop</a></li>
+                        <li ng-if="cube.status=='DISABLED' && (userService.hasRole('ROLE_ADMIN') || (!kylinConfig.isProd() && hasPermission('cube', cube, permissions.ADMINISTRATION.mask, permissions.MANAGEMENT.mask)))"><a ng-click="cubeEdit(cube);">Edit</a></li>
                         <li><a ng-click="startMerge(cube, $index)">Merge</a></li>
                         <li ng-if="cube.status=='DISABLED'"><a ng-click="enable(cube, $index)">Enable</a></li>
                         <li ng-if="cube.status=='DISABLED'"><a ng-click="purge(cube, $index)">Purge</a></li>
                         <li><a ng-click="cloneCube(cube)">Clone</a></li>
-                        <li ng-if="cube.status=='READY' && kylinConfig.isCubeMigrationEnabled() && (userService.hasRole('ROLE_ADMIN') || hasPermission(cube, permissions.ADMINISTRATION.mask))"><a ng-click="startMigrateCube(cube, 0);">Migrate</a></li>
                     </ul>
                     <span ng-if="!(userService.hasRole('ROLE_ADMIN') || hasPermission('cube',cube, permissions.ADMINISTRATION.mask, permissions.MANAGEMENT.mask, permissions.OPERATION.mask))" class="dropdown-menu" role="menu">
                       N/A

@@ -27,23 +27,21 @@ import org.apache.kylin.common.util.MailService;
 import org.apache.kylin.common.util.MailTemplateProvider;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.metadata.project.ProjectInstance;
-import org.apache.kylin.rest.constant.Constant;
 import org.apache.kylin.rest.exception.BadRequestException;
 import org.apache.kylin.rest.exception.RuleValidationException;
+import org.apache.kylin.rest.util.AclEvaluate;
 import org.apache.kylin.rest.util.MailNotificationUtil;
+import org.apache.kylin.shaded.com.google.common.collect.Lists;
+import org.apache.kylin.shaded.com.google.common.collect.Maps;
 import org.apache.kylin.tool.CubeMigrationCLI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.acls.domain.PrincipalSid;
 import org.springframework.security.acls.model.AccessControlEntry;
 import org.springframework.security.acls.model.Acl;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 /**
  * Provide migration logic implementation.
@@ -59,6 +57,9 @@ public class MigrationService extends BasicService {
     @Autowired
     private CubeService cubeService;
 
+    @Autowired
+    private AclEvaluate aclEvaluate;
+
     private final String localHost = KylinConfig.getInstanceFromEnv().getMigrationLocalAddress();
     private final String envName = KylinConfig.getInstanceFromEnv().getDeployEnv();
 
@@ -66,8 +67,9 @@ public class MigrationService extends BasicService {
         return MigrationRuleSet.apply(context);
     }
 
-    @PreAuthorize(Constant.ACCESS_HAS_ROLE_ADMIN + " or hasPermission(#cube, 'ADMINISTRATION')")
     public void requestMigration(CubeInstance cube, MigrationRuleSet.Context ctx) throws Exception {
+        aclEvaluate.checkProjectWritePermission(cube);
+
         Map<String, String> root = Maps.newHashMap();
         root.put("projectname", ctx.getTgtProjectName());
         root.put("cubename", ctx.getCubeInstance().getName());
@@ -76,8 +78,9 @@ public class MigrationService extends BasicService {
         sendMigrationMail(MailNotificationUtil.MIGRATION_REQUEST, getEmailRecipients(cube), root);
     }
 
-    @PreAuthorize(Constant.ACCESS_HAS_ROLE_ADMIN)
     public boolean reject(String cubeName, String projectName, String reason) {
+        aclEvaluate.checkIsGlobalAdmin();
+
         try {
             Map<String, String> root = Maps.newHashMap();
             root.put("cubename", cubeName);
@@ -93,8 +96,9 @@ public class MigrationService extends BasicService {
         return true;
     }
 
-    @PreAuthorize(Constant.ACCESS_HAS_ROLE_ADMIN)
     public void approve(CubeInstance cube, MigrationRuleSet.Context ctx) throws Exception {
+        aclEvaluate.checkIsGlobalAdmin();
+
         checkRule(ctx);
 
         String cubeName = cube.getName();

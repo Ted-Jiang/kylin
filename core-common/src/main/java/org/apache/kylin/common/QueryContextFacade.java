@@ -50,6 +50,7 @@ public class QueryContextFacade {
     public static void resetCurrent() {
         QueryContext queryContext = CURRENT_CTX.get();
         if (queryContext != null) {
+            queryContext.stopSpan();
             RUNNING_CTX_MAP.remove(queryContext.getQueryId());
             CURRENT_CTX.remove();
         }
@@ -73,6 +74,7 @@ public class QueryContextFacade {
     public static void stopQuery(String queryId, String info) {
         QueryContext queryContext = RUNNING_CTX_MAP.get(queryId);
         if (queryContext != null) {
+            queryContext.stopSpan();
             queryContext.stopEarly(info);
         } else {
             logger.info("the query:{} is not existed", queryId);

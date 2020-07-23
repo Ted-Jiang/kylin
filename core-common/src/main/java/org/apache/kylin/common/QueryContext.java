@@ -140,7 +140,7 @@ public class QueryContext {
     public String getSql() {
         return sql;
     }
-    
+
     public long getAccumulatedMillis() {
         return System.currentTimeMillis() - queryStartMillis;
     }
@@ -152,7 +152,7 @@ public class QueryContext {
     public String getProject() {
         return project;
     }
-    
+
     public Set<String> getGroups() {
         return groups;
     }
@@ -213,6 +213,10 @@ public class QueryContext {
         return stopReason;
     }
 
+    public void stopSpan() {
+        this.rootSpan.finish();
+    }
+
     /**
      * stop the whole query and related sub threads
      */
@@ -253,7 +257,7 @@ public class QueryContext {
     public long getSpanDuration(Span span) {
         return tracer.getDuration(span);
     }
-    
+
     public Span startFetchCache() {
         return tracer.startSpan(OperationEum.FETCH_CACHE_STEP, rootSpan);
     }

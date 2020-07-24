@@ -99,7 +99,7 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
         GTCubeStorageQueryRequest request = getStorageQueryRequest(context, sqlDigest, returnTupleInfo);
 
         List<CubeSegmentScanner> scanners = Lists.newArrayList();
-        SegmentPruner segPruner = new SegmentPruner(sqlDigest.filter);
+        SegmentPruner segPruner = new SegmentPruner(request.getFilter());
         for (CubeSegment cubeSeg : segPruner.listSegmentsForQuery(cubeInstance)) {
             CubeSegmentScanner scanner = new CubeSegmentScanner(cubeSeg, request.getCuboid(), request.getDimensions(), //
                     request.getGroups(), request.getDynGroups(), request.getDynGroupExprs(), //

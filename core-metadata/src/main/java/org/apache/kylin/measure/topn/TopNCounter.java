@@ -82,7 +82,6 @@ public class TopNCounter<T> implements Iterable<Counter<T>>, java.io.Serializabl
         if (counterNode == null) {
             counterNode = new Counter<T>(item, incrementCount);
             counterMap.put(item, counterNode);
-            counterList.add(counterNode);
         } else {
             counterNode.setCount(counterNode.getCount() + incrementCount);
         }
@@ -93,6 +92,7 @@ public class TopNCounter<T> implements Iterable<Counter<T>>, java.io.Serializabl
      * Sort and keep the expected size;
      */
     public void sortAndRetain() {
+        counterList = Lists.newLinkedList(counterMap.values());
         Collections.sort(counterList, this.descending ? DESC_COMPARATOR : ASC_COMPARATOR);
         retain(capacity);
         ordered = true;
@@ -124,6 +124,9 @@ public class TopNCounter<T> implements Iterable<Counter<T>>, java.io.Serializabl
 
     @Override
     public String toString() {
+        if (ordered == false) {
+            sortAndRetain();
+        }
         StringBuilder sb = new StringBuilder();
         sb.append('[');
         Iterator<Counter<T>> iterator = counterList.iterator();
@@ -145,8 +148,8 @@ public class TopNCounter<T> implements Iterable<Counter<T>>, java.io.Serializabl
      */
     public void offerToHead(T item, double count) {
         Counter<T> c = new Counter<T>(item, count);
-        counterList.addFirst(c);
         counterMap.put(c.item, c);
+        ordered = false;
     }
 
     /**
@@ -157,10 +160,28 @@ public class TopNCounter<T> implements Iterable<Counter<T>>, java.io.Serializabl
     public TopNCounter<T> merge(TopNCounter<T> another) {
         boolean thisFull = this.size() >= this.capacity;
         boolean anotherFull = another.size() >= another.capacity;
-        double m1 = thisFull ? this.counterList.getLast().count : 0.0;
-        double m2 = anotherFull ? another.counterList.getLast().count : 0.0;
+        double m1 = (ordered && thisFull) ? this.counterList.getLast().count : 0.0;
+        double m2 = (another.ordered && anotherFull) ? another.counterList.getLast().count : 0.0;
 
-        if (anotherFull == true) {
+        //m1, m2 are not calculated yet, need to calculate them.
+        if (!another.ordered && anotherFull) {
+            m2 = Double.MAX_VALUE;
+            for (Counter<T> entry : another.counterMap.values()) {
+                if (m2 > entry.count) {
+                    m2 = entry.count;
+                }
+            }
+        }
+        if (!ordered && thisFull) {
+            m1 = Double.MAX_VALUE;
+            for (Counter<T> entry : this.counterMap.values()) {
+                if (m1 > entry.count) {
+                    m1 = entry.count;
+                }
+            }
+        }
+
+        if (anotherFull) {
             for (Counter<T> entry : this.counterMap.values()) {
                 entry.count += m2;
             }
@@ -175,12 +196,12 @@ public class TopNCounter<T> implements Iterable<Counter<T>>, java.io.Serializabl
                 //                this.offer(entry.getValue().getItem(), entry.getValue().count + m1);
                 counter = new Counter<T>(entry.getValue().getItem(), entry.getValue().count + m1);
                 this.counterMap.put(entry.getValue().getItem(), counter);
-                this.counterList.add(counter);
             }
         }
-        this.ordered = false;
 
-        this.sortAndRetain();
+        if (counterMap.size() >= capacity * 2) {
+            this.sortAndRetain();
+        }
         return this;
     }
 
@@ -189,6 +210,11 @@ public class TopNCounter<T> implements Iterable<Counter<T>>, java.io.Serializabl
      * @param newCapacity
      */
     public void retain(int newCapacity) {
+        assert newCapacity > 0;
+        if (!ordered || counterList.isEmpty()) {
+            counterList = Lists.newLinkedList(counterMap.values());
+            Collections.sort(counterList, this.descending ? DESC_COMPARATOR : ASC_COMPARATOR);
+        }
         this.capacity = newCapacity;
         if (this.size() > newCapacity) {
             Counter<T> toRemoved;
@@ -197,7 +223,7 @@ public class TopNCounter<T> implements Iterable<Counter<T>>, java.io.Serializabl
                 this.counterMap.remove(toRemoved.item);
             }
         }
-
+        ordered = true;
     }
 
     /**
@@ -205,6 +231,9 @@ public class TopNCounter<T> implements Iterable<Counter<T>>, java.io.Serializabl
      * @return
      */
     public double[] getCounters() {
+        if (ordered == false) {
+            sortAndRetain();
+        }
         double[] counters = new double[size()];
         int index = 0;
 
@@ -231,6 +260,9 @@ public class TopNCounter<T> implements Iterable<Counter<T>>, java.io.Serializabl
 
     @Override
     public Iterator<Counter<T>> iterator() {
+        if (ordered == false) {
+            sortAndRetain();
+        }
         if (this.descending == true) {
             return this.counterList.descendingIterator();
         } else {

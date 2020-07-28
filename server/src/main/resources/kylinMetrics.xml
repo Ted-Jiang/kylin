@@ -38,6 +38,11 @@
         <constructor-arg index="2">
             <value>10</value>
         </constructor-arg>
+
+        <!-- maxQueueSize, max queue size of LinkedBlockingQueue-->
+        <constructor-arg index="3">
+            <value>500000</value>
+        </constructor-arg>
     </bean>
 
     <bean id="hiveSink" class="org.apache.kylin.metrics.lib.impl.hive.HiveSink"/>

@@ -22,15 +22,15 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import org.apache.kylin.metrics.lib.ActiveReservoirListener;
 import org.apache.kylin.metrics.lib.Record;
+import org.apache.kylin.shaded.com.google.common.collect.Lists;
+import org.apache.kylin.shaded.com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.kylin.shaded.com.google.common.collect.Lists;
-import org.apache.kylin.shaded.com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 
 /**
  * A Reservoir which staged metrics message in memory, and emit them in fixed rate.
@@ -39,6 +39,8 @@ import org.apache.kylin.shaded.com.google.common.util.concurrent.ThreadFactoryBu
 public class BlockingReservoir extends AbstractActiveReservoir {
 
     private static final Logger logger = LoggerFactory.getLogger(BlockingReservoir.class);
+
+    private static final int MAX_QUEUE_SIZE = 500000;
 
     /**
      * Cache for metrics message with max size is maxReportSize
@@ -59,6 +61,10 @@ public class BlockingReservoir extends AbstractActiveReservoir {
     }
 
     public BlockingReservoir(int minReportSize, int maxReportSize, int maxReportTime) {
+        this(minReportSize, maxReportSize, maxReportTime, MAX_QUEUE_SIZE);
+    }
+
+    public BlockingReservoir(int minReportSize, int maxReportSize, int maxReportTime, int maxQueueSize) {
         Preconditions.checkArgument(minReportSize > 0, "minReportSize should be larger than 0");
         Preconditions.checkArgument(maxReportSize >= minReportSize,
                 "maxReportSize should not be less than minBatchSize");
@@ -67,7 +73,7 @@ public class BlockingReservoir extends AbstractActiveReservoir {
         this.maxReportSize = maxReportSize;
         this.maxReportTime = maxReportTime * 60 * 1000L;
 
-        this.recordsQueue = new LinkedBlockingQueue<>();
+        this.recordsQueue = maxQueueSize <= 0 ? new LinkedBlockingQueue<>() : new LinkedBlockingQueue<>(maxQueueSize);
         this.listeners = Lists.newArrayList();
 
         this.records = Lists.newArrayListWithExpectedSize(this.maxReportSize);

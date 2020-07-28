@@ -41,7 +41,7 @@
 
         <!-- maxQueueSize, max queue size of LinkedBlockingQueue-->
         <constructor-arg index="3">
-            <value>500000</value>
+            <value>0</value>
         </constructor-arg>
     </bean>
 

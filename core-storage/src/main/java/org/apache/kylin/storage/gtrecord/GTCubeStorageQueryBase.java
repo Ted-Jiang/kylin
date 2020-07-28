@@ -31,7 +31,6 @@ import java.util.Set;
 import org.apache.kylin.common.QueryContextFacade;
 import org.apache.kylin.common.util.Pair;
 import org.apache.kylin.cube.CubeInstance;
-import org.apache.kylin.cube.CubeManager;
 import org.apache.kylin.cube.CubeSegment;
 import org.apache.kylin.cube.RawQueryLastHacker;
 import org.apache.kylin.cube.common.SegmentPruner;
@@ -96,6 +95,7 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
     }
 
     public ITupleIterator searchInner(StorageContext context, SQLDigest sqlDigest, TupleInfo returnTupleInfo) {
+        context.enableReuseLookupTable(cubeInstance.getConfig().isEnableReuseLookupTable());
         GTCubeStorageQueryRequest request = getStorageQueryRequest(context, sqlDigest, returnTupleInfo);
 
         List<CubeSegmentScanner> scanners = Lists.newArrayList();
@@ -180,7 +180,7 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
         // replace derived columns in filter with host columns; columns on loosened condition must be added to group by
         Set<TblColRef> loosenedColumnD = Sets.newHashSet();
         Set<TblColRef> filterColumnD = Sets.newHashSet();
-        TupleFilter filterD = translateDerived(filter, loosenedColumnD);
+        TupleFilter filterD = translateDerived(filter, loosenedColumnD, context);
         groupsD.addAll(loosenedColumnD);
         TupleFilter.collectColumns(filterD, filterColumnD);
         context.setFilterMask(getQueryFilterMask(filterColumnD));
@@ -213,8 +213,10 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
     }
 
     protected ITupleConverter newCubeTupleConverter(CubeSegment cubeSeg, Cuboid cuboid,
-            Set<TblColRef> selectedDimensions, Set<FunctionDesc> selectedMetrics, int[] gtColIdx, TupleInfo tupleInfo) {
-        return new CubeTupleConverter(cubeSeg, cuboid, selectedDimensions, selectedMetrics, gtColIdx, tupleInfo);
+            Set<TblColRef> selectedDimensions, Set<FunctionDesc> selectedMetrics, int[] gtColIdx, TupleInfo tupleInfo,
+            StorageContext context) {
+        return new CubeTupleConverter(cubeSeg, cuboid, selectedDimensions, selectedMetrics, gtColIdx, tupleInfo,
+                context);
     }
 
     protected void buildDimensionsAndMetrics(SQLDigest sqlDigest, Collection<TblColRef> dimensions,
@@ -343,19 +345,19 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
     }
 
     @SuppressWarnings("unchecked")
-    protected TupleFilter translateDerived(TupleFilter filter, Set<TblColRef> collector) {
+    protected TupleFilter translateDerived(TupleFilter filter, Set<TblColRef> collector, StorageContext context) {
         if (filter == null)
             return filter;
 
         if (filter instanceof CompareTupleFilter) {
-            return translateDerivedInCompare((CompareTupleFilter) filter, collector);
+            return translateDerivedInCompare((CompareTupleFilter) filter, collector, context);
         }
 
         List<TupleFilter> children = (List<TupleFilter>) filter.getChildren();
         List<TupleFilter> newChildren = Lists.newArrayListWithCapacity(children.size());
         boolean modified = false;
         for (TupleFilter child : children) {
-            TupleFilter translated = translateDerived(child, collector);
+            TupleFilter translated = translateDerived(child, collector, context);
             newChildren.add(translated);
             if (child != translated)
                 modified = true;
@@ -380,7 +382,8 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
         }
     }
 
-    private TupleFilter translateDerivedInCompare(CompareTupleFilter compf, Set<TblColRef> collector) {
+    private TupleFilter translateDerivedInCompare(CompareTupleFilter compf, Set<TblColRef> collector,
+            StorageContext context) {
         if (compf.getColumn() == null)
             return compf;
 
@@ -393,7 +396,7 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
 
         DeriveInfo hostInfo = cubeDesc.getHostInfo(derived);
         ILookupTable lookup = cubeDesc.getHostInfo(derived).type == CubeDesc.DeriveType.PK_FK ? null
-                : getLookupStringTableForDerived(derived, hostInfo);
+                : getLookupStringTableForDerived(derived, hostInfo, context);
         Pair<TupleFilter, Boolean> translated = DerivedFilterTranslator.translate(lookup, hostInfo, compf);
         try {
             if (lookup != null) {
@@ -411,10 +414,10 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
     }
 
     @SuppressWarnings("unchecked")
-    protected ILookupTable getLookupStringTableForDerived(TblColRef derived, DeriveInfo hostInfo) {
-        CubeManager cubeMgr = CubeManager.getInstance(this.cubeInstance.getConfig());
+    protected ILookupTable getLookupStringTableForDerived(TblColRef derived, DeriveInfo hostInfo,
+            StorageContext context) {
         CubeSegment seg = cubeInstance.getLatestReadySegment();
-        return cubeMgr.getLookupTable(seg, hostInfo.join);
+        return context.getLookupTable(seg, hostInfo.join);
     }
 
     private void collectColumnsRecursively(TupleFilter filter, Set<TblColRef> collector) {

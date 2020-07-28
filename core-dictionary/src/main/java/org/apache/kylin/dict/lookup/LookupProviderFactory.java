@@ -60,7 +60,7 @@ public class LookupProviderFactory {
 
     public static ILookupTable getInMemLookupTable(TableDesc tableDesc, String[] pkCols, IReadableTable readableTable)
             throws IOException {
-        return new LookupStringTable(tableDesc, pkCols, readableTable);
+        return new ReusableLookupStringTable(tableDesc, pkCols, readableTable);
     }
 
     public static ILookupTable getExtLookupTable(TableDesc tableDesc, ExtTableSnapshotInfo extTableSnapshot) {

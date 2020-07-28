@@ -81,17 +81,16 @@ import org.apache.kylin.metadata.realization.IRealizationProvider;
 import org.apache.kylin.metadata.realization.RealizationRegistry;
 import org.apache.kylin.metadata.realization.RealizationStatusEnum;
 import org.apache.kylin.metadata.realization.RealizationType;
-import org.apache.kylin.source.IReadableTable;
-import org.apache.kylin.source.SourceManager;
-import org.apache.kylin.source.SourcePartition;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.kylin.shaded.com.google.common.annotations.VisibleForTesting;
 import org.apache.kylin.shaded.com.google.common.base.Preconditions;
 import org.apache.kylin.shaded.com.google.common.collect.Lists;
 import org.apache.kylin.shaded.com.google.common.collect.Maps;
 import org.apache.kylin.shaded.com.google.common.collect.Sets;
+import org.apache.kylin.source.IReadableTable;
+import org.apache.kylin.source.SourceManager;
+import org.apache.kylin.source.SourcePartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author yangli9
@@ -591,6 +590,17 @@ public class CubeManager implements IRealizationProvider {
 
             return cube;
         }
+    }
+    
+    public Pair<String, List<String>> getReusableLookupTableMapKey(CubeSegment cubeSegment, JoinDesc join) {
+        String tableName = join.getPKSide().getTableIdentity();
+        CubeDesc cubeDesc = cubeSegment.getCubeDesc();
+        SnapshotTableDesc snapshotTableDesc = cubeDesc.getSnapshotTableDesc(tableName);
+
+        String snapshotResPath = getSnapshotResPath(cubeSegment, tableName, snapshotTableDesc);
+        String[] pkCols = join.getPrimaryKey();
+
+        return new Pair<>(snapshotResPath, Arrays.asList(pkCols));
     }
 
     public ILookupTable getLookupTable(CubeSegment cubeSegment, JoinDesc join) {

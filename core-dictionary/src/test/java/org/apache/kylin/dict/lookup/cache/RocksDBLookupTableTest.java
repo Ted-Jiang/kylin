@@ -30,6 +30,7 @@ import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.Array;
 import org.apache.kylin.common.util.LocalFileMetadataTestCase;
 import org.apache.kylin.dict.lookup.ILookupTable;
+import org.apache.kylin.dict.lookup.ReusableLookupTable;
 import org.apache.kylin.metadata.TableMetadataManager;
 import org.apache.kylin.metadata.model.TableDesc;
 import org.junit.After;
@@ -117,14 +118,14 @@ public class RocksDBLookupTableTest extends LocalFileMetadataTestCase {
     }
 
     private ILookupTable getLookupTableWithRandomData(final int rowNum) {
-        return new ILookupTable() {
+        return new ReusableLookupTable() {
             @Override
             public String[] getRow(Array<String> key) {
                 return new String[0];
             }
 
             @Override
-            public void close() throws IOException {
+            public void closeInner() throws IOException {
 
             }
 

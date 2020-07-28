@@ -18,19 +18,27 @@
 
 package org.apache.kylin.storage;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.StorageURL;
 import org.apache.kylin.common.debug.BackdoorToggles;
+import org.apache.kylin.common.util.Pair;
+import org.apache.kylin.cube.CubeManager;
+import org.apache.kylin.cube.CubeSegment;
 import org.apache.kylin.cube.cuboid.Cuboid;
 import org.apache.kylin.cube.gridtable.CuboidToGridTableMapping;
+import org.apache.kylin.dict.lookup.ILookupTable;
 import org.apache.kylin.gridtable.StorageLimitLevel;
+import org.apache.kylin.metadata.model.JoinDesc;
 import org.apache.kylin.metadata.realization.IRealization;
+import org.apache.kylin.shaded.com.google.common.collect.Range;
 import org.apache.kylin.storage.gtrecord.GTCubeStorageQueryBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.apache.kylin.shaded.com.google.common.collect.Range;
 
 /**
  * @author xjiang
@@ -62,7 +70,11 @@ public class StorageContext {
 
     private Range<Long> reusedPeriod;
 
+    private Map<Pair<String, List<String>>, ILookupTable> reuseLookupTableMap;
+
     private long filterMask;
+
+    CubeManager cubeManager;
 
     public StorageContext() {
         this(0);
@@ -70,6 +82,7 @@ public class StorageContext {
 
     public StorageContext(int ctxId) {
         this.ctxId = ctxId;
+        this.cubeManager = CubeManager.getInstance(KylinConfig.getInstanceFromEnv());
     }
 
     public long getFilterMask() {
@@ -269,5 +282,51 @@ public class StorageContext {
 
     public void enableStreamAggregate() {
         this.enableStreamAggregate = true;
+    }
+
+    public ILookupTable getLookupTable(CubeSegment cubeSegment, JoinDesc join) {
+        Pair<String, List<String>> mapKey = cubeManager.getReusableLookupTableMapKey(cubeSegment, join);
+
+        ILookupTable result;
+        if (isReuseLookupTableEnabled()) {
+            result = reuseLookupTableMap.get(mapKey);
+            if (result != null) {
+                logger.info("Reuse ILookupTable with path {} and primary columns {}", mapKey.getFirst(),
+                        mapKey.getSecond());
+                return result;
+            }
+        }
+        result = cubeManager.getLookupTable(cubeSegment, join);
+        logger.info("Generated ILookupTable with path {} and primary columns {}", mapKey.getFirst(),
+                mapKey.getSecond());
+        if (isReuseLookupTableEnabled()) {
+            reuseLookupTableMap.put(mapKey, result);
+        }
+        return result;
+    }
+
+    public void closeLookupTables(Map<Pair<CubeSegment, JoinDesc>, ILookupTable> lookupTables) {
+        for (Map.Entry<Pair<CubeSegment, JoinDesc>, ILookupTable> entry : lookupTables.entrySet()) {
+            ILookupTable lookupTable = entry.getValue();
+            try {
+                lookupTable.close();
+                if (isReuseLookupTableEnabled() && lookupTable.isClosed()) {
+                    Pair<String, List<String>> mapKey = cubeManager
+                            .getReusableLookupTableMapKey(entry.getKey().getFirst(), entry.getKey().getSecond());
+                    reuseLookupTableMap.remove(mapKey);
+                }
+            } catch (Exception e) {
+                logger.error("error when close lookup table:" + lookupTable);
+            }
+        }
+    }
+
+    private boolean isReuseLookupTableEnabled() {
+        return reuseLookupTableMap != null;
+    }
+
+    public void enableReuseLookupTable(boolean ifEnable) {
+        reuseLookupTableMap = ifEnable ? new HashMap<>() : null;
+        logger.debug("Enable reuse lookup table for query: {} ", ifEnable);
     }
 }

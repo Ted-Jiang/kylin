@@ -14,23 +14,40 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package org.apache.kylin.dict.lookup;
 
-import java.io.Closeable;
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.kylin.common.util.Array;
+public abstract class ReusableLookupTable implements ILookupTable {
 
-public interface ILookupTable extends Iterable<String[]>, Closeable {
-    /**
-     * get row according the key
-     * @param key
-     * @return
-     */
-    String[] getRow(Array<String> key);
+    private AtomicInteger usageNumber = new AtomicInteger(0);
+    private volatile boolean isClosed = false;
 
-    void increaseUsage();
+    protected ReusableLookupTable() {
+    }
 
-    boolean isClosed();
+    @Override
+    public void increaseUsage() {
+        usageNumber.incrementAndGet();
+    }
+
+    @Override
+    public void close() throws IOException {
+        synchronized (this) {
+            if (usageNumber.decrementAndGet() <= 0) {
+                closeInner();
+                isClosed = true;
+            }
+        }
+    }
+
+    @Override
+    public boolean isClosed() {
+        return isClosed;
+    }
+
+    protected abstract void closeInner() throws IOException;
 }

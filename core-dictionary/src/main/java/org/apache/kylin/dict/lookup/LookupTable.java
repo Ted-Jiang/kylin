@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,7 +43,7 @@ import com.google.common.collect.Sets;
  *
  * @author yangli9
  */
-abstract public class LookupTable<T> {
+abstract public class LookupTable<T> implements Iterable<T[]> {
 
     protected TableDesc tableDesc;
     protected String[] keyColumns;
@@ -57,6 +58,11 @@ abstract public class LookupTable<T> {
         init();
     }
 
+    @Override
+    public Iterator<T[]> iterator() {
+        return data.values().iterator();
+    }
+    
     protected void init() throws IOException {
         int[] keyIndex = new int[keyColumns.length];
         for (int i = 0; i < keyColumns.length; i++) {

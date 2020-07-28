@@ -14,23 +14,38 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package org.apache.kylin.dict.lookup;
 
-import java.io.Closeable;
+import java.io.IOException;
+import java.util.Iterator;
 
 import org.apache.kylin.common.util.Array;
+import org.apache.kylin.metadata.model.TableDesc;
+import org.apache.kylin.source.IReadableTable;
 
-public interface ILookupTable extends Iterable<String[]>, Closeable {
-    /**
-     * get row according the key
-     * @param key
-     * @return
-     */
-    String[] getRow(Array<String> key);
+public class ReusableLookupStringTable extends ReusableLookupTable {
 
-    void increaseUsage();
+    private LookupStringTable lookupStringTable;
 
-    boolean isClosed();
+    public ReusableLookupStringTable(TableDesc tableDesc, String[] keyColumns, IReadableTable table)
+            throws IOException {
+        lookupStringTable = new LookupStringTable(tableDesc, keyColumns, table);
+    }
+
+    @Override
+    public String[] getRow(Array<String> key) {
+        return lookupStringTable.getRow(key);
+    }
+
+    @Override
+    public Iterator<String[]> iterator() {
+        return lookupStringTable.iterator();
+    }
+
+    @Override
+    public void closeInner() throws IOException {
+        // do nothing
+    }
 }

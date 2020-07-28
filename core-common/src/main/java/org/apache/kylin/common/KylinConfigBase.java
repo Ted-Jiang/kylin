@@ -1863,6 +1863,10 @@ public abstract class KylinConfigBase implements Serializable {
     public boolean isNullAsZeroInExpression() {
         return Boolean.parseBoolean(getOptional("kylin.query.is-null-as-zero-in-expression", FALSE));
     }
+    
+    public boolean isEnableReuseLookupTable() {
+        return Boolean.parseBoolean(getOptional("kylin.query.enable-reuse-lookup-table", FALSE));
+    }
 
     //check KYLIN-1684, in most cases keep the default value
     public boolean isSkippingEmptySegments() {

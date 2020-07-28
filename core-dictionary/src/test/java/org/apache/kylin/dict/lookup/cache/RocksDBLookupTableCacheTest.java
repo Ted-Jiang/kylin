@@ -41,15 +41,15 @@ import org.apache.kylin.dict.lookup.IExtLookupTableCache;
 import org.apache.kylin.dict.lookup.IExtLookupTableCache.CacheState;
 import org.apache.kylin.dict.lookup.ILookupTable;
 import org.apache.kylin.dict.lookup.LookupProviderFactory;
+import org.apache.kylin.dict.lookup.ReusableLookupTable;
 import org.apache.kylin.metadata.TableMetadataManager;
 import org.apache.kylin.metadata.model.TableDesc;
+import org.apache.kylin.shaded.com.google.common.base.Charsets;
+import org.apache.kylin.shaded.com.google.common.io.Files;
 import org.apache.kylin.source.IReadableTable.TableSignature;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import org.apache.kylin.shaded.com.google.common.base.Charsets;
-import org.apache.kylin.shaded.com.google.common.io.Files;
 
 /**
  */
@@ -185,7 +185,7 @@ public class RocksDBLookupTableCacheTest extends LocalFileMetadataTestCase {
     }
 
     private static ILookupTable getLookupTableWithRandomData(final long rowNum) {
-        return new ILookupTable() {
+        return new ReusableLookupTable() {
             Random random = new Random();
 
             @Override
@@ -194,7 +194,7 @@ public class RocksDBLookupTableCacheTest extends LocalFileMetadataTestCase {
             }
 
             @Override
-            public void close() throws IOException {
+            public void closeInner() throws IOException {
 
             }
 

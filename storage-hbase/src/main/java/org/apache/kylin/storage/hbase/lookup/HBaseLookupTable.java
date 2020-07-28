@@ -31,8 +31,8 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.Array;
-import org.apache.kylin.dict.lookup.ILookupTable;
 import org.apache.kylin.dict.lookup.ExtTableSnapshotInfo;
+import org.apache.kylin.dict.lookup.ReusableLookupTable;
 import org.apache.kylin.metadata.model.TableDesc;
 import org.apache.kylin.storage.hbase.HBaseConnection;
 import org.apache.kylin.storage.hbase.lookup.HBaseLookupRowEncoder.HBaseRow;
@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
 /**
  *  Use HBase as lookup table storage
  */
-public class HBaseLookupTable implements ILookupTable{
+public class HBaseLookupTable extends ReusableLookupTable {
     protected static final Logger logger = LoggerFactory.getLogger(HBaseLookupTable.class);
 
     private TableName lookupTableName;
@@ -86,7 +86,7 @@ public class HBaseLookupTable implements ILookupTable{
     }
 
     @Override
-    public void close() throws IOException{
+    public void closeInner() throws IOException {
         table.close();
     }
 

@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.Iterator;
 
 import org.apache.kylin.common.util.Array;
-import org.apache.kylin.dict.lookup.ILookupTable;
+import org.apache.kylin.dict.lookup.ReusableLookupTable;
 import org.apache.kylin.dict.lookup.cache.RocksDBLookupRowEncoder.KV;
 import org.apache.kylin.metadata.model.TableDesc;
 import org.rocksdb.Options;
@@ -32,7 +32,7 @@ import org.rocksdb.RocksIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RocksDBLookupTable implements ILookupTable {
+public class RocksDBLookupTable extends ReusableLookupTable {
     private static final Logger logger = LoggerFactory.getLogger(RocksDBLookupTable.class);
     static {
         RocksDB.loadLibrary();
@@ -107,7 +107,7 @@ public class RocksDBLookupTable implements ILookupTable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void closeInner() throws IOException {
         options.close();
         if (rocksDB != null) {
             rocksDB.close();

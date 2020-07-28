@@ -26,11 +26,10 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TimeZone;
 
-import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.Array;
 import org.apache.kylin.common.util.DateFormat;
 import org.apache.kylin.common.util.Dictionary;
-import org.apache.kylin.cube.CubeManager;
+import org.apache.kylin.common.util.Pair;
 import org.apache.kylin.cube.CubeSegment;
 import org.apache.kylin.cube.cuboid.Cuboid;
 import org.apache.kylin.cube.model.CubeDesc.DeriveInfo;
@@ -45,11 +44,11 @@ import org.apache.kylin.metadata.model.JoinDesc;
 import org.apache.kylin.metadata.model.TblColRef;
 import org.apache.kylin.metadata.tuple.Tuple;
 import org.apache.kylin.metadata.tuple.TupleInfo;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.kylin.shaded.com.google.common.collect.Lists;
 import org.apache.kylin.shaded.com.google.common.collect.Maps;
+import org.apache.kylin.storage.StorageContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Convert Object[] (decoded GTRecord) to tuple
@@ -69,7 +68,7 @@ public class CubeTupleConverter implements ITupleConverter {
 
     public final List<IAdvMeasureFiller> advMeasureFillers;
     public final List<Integer> advMeasureIndexInGTValues;
-    private List<ILookupTable> usedLookupTables;
+    private Map<Pair<CubeSegment, JoinDesc>, ILookupTable> usedLookupTables;
 
     final Set<Integer> timestampColumn = new HashSet<>();
     String eventTimezone;
@@ -80,13 +79,17 @@ public class CubeTupleConverter implements ITupleConverter {
 
     private final RowKeyDesc rowKeyDesc;
 
+    private StorageContext context;
+
     public CubeTupleConverter(CubeSegment cubeSeg, Cuboid cuboid, //
-            Set<TblColRef> selectedDimensions, Set<FunctionDesc> selectedMetrics, int[] gtColIdx, TupleInfo returnTupleInfo) {
+            Set<TblColRef> selectedDimensions, Set<FunctionDesc> selectedMetrics, int[] gtColIdx,
+            TupleInfo returnTupleInfo, StorageContext context) {
         this.cubeSeg = cubeSeg;
         this.cuboid = cuboid;
         this.gtColIdx = gtColIdx;
         this.tupleInfo = returnTupleInfo;
         this.derivedColFillers = Lists.newArrayList();
+        this.context = context;
 
         nSelectedDims = selectedDimensions.size();
         tupleIdx = new int[selectedDimensions.size() + selectedMetrics.size()];
@@ -96,7 +99,7 @@ public class CubeTupleConverter implements ITupleConverter {
 
         advMeasureFillers = Lists.newArrayListWithCapacity(1);
         advMeasureIndexInGTValues = Lists.newArrayListWithCapacity(1);
-        usedLookupTables = Lists.newArrayList();
+        usedLookupTables = Maps.newHashMap();
         eventTimezone = cubeSeg.getConfig().getStreamingDerivedTimeTimezone();
         autoJustByTimezone = eventTimezone.length() > 0
                 && cubeSeg.getCubeDesc().getModel().getRootFactTable().getTableDesc().isStreamingTable();
@@ -132,7 +135,8 @@ public class CubeTupleConverter implements ITupleConverter {
 
             MeasureType<?> measureType = metric.getMeasureType();
             if (measureType.needAdvancedTupleFilling()) {
-                Map<TblColRef, Dictionary<String>> dictionaryMap = buildDictionaryMap(measureType.getColumnsNeedDictionary(metric));
+                Map<TblColRef, Dictionary<String>> dictionaryMap = buildDictionaryMap(
+                        measureType.getColumnsNeedDictionary(metric));
                 advMeasureFillers.add(measureType.getAdvancedTupleFiller(metric, returnTupleInfo, dictionaryMap));
                 advMeasureIndexInGTValues.add(i);
             } else {
@@ -143,7 +147,8 @@ public class CubeTupleConverter implements ITupleConverter {
         }
 
         // prepare derived columns and filler
-        Map<Array<TblColRef>, List<DeriveInfo>> hostToDerivedInfo = cuboid.getCubeDesc().getHostToDerivedInfo(cuboid.getColumns(), null);
+        Map<Array<TblColRef>, List<DeriveInfo>> hostToDerivedInfo = cuboid.getCubeDesc()
+                .getHostToDerivedInfo(cuboid.getColumns(), null);
         for (Entry<Array<TblColRef>, List<DeriveInfo>> entry : hostToDerivedInfo.entrySet()) {
             TblColRef[] hostCols = entry.getKey().data;
             for (DeriveInfo deriveInfo : entry.getValue()) {
@@ -247,13 +252,7 @@ public class CubeTupleConverter implements ITupleConverter {
 
     @Override
     public void close() throws IOException {
-        for (ILookupTable usedLookupTable : usedLookupTables) {
-            try {
-                usedLookupTable.close();
-            } catch (Exception e) {
-                logger.error("error when close lookup table:" + usedLookupTable);
-            }
-        }
+        context.closeLookupTables(usedLookupTables);
     }
 
     protected interface IDerivedColumnFiller {
@@ -346,8 +345,9 @@ public class CubeTupleConverter implements ITupleConverter {
     }
 
     public ILookupTable getAndAddLookupTable(CubeSegment cubeSegment, JoinDesc join) {
-        ILookupTable lookupTable = CubeManager.getInstance(KylinConfig.getInstanceFromEnv()).getLookupTable(cubeSegment, join);
-        usedLookupTables.add(lookupTable);
+        ILookupTable lookupTable = context.getLookupTable(cubeSegment, join);
+        lookupTable.increaseUsage();
+        usedLookupTables.put(new Pair<>(cubeSegment, join), lookupTable);
         return lookupTable;
     }
 

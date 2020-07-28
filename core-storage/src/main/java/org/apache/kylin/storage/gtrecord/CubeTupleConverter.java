@@ -36,6 +36,7 @@ import org.apache.kylin.cube.model.CubeDesc.DeriveInfo;
 import org.apache.kylin.cube.model.RowKeyColDesc;
 import org.apache.kylin.cube.model.RowKeyDesc;
 import org.apache.kylin.dict.lookup.ILookupTable;
+import org.apache.kylin.dict.lookup.StubLookupTable;
 import org.apache.kylin.dimension.TimeDerivedColumnType;
 import org.apache.kylin.measure.MeasureType;
 import org.apache.kylin.measure.MeasureType.IAdvMeasureFiller;
@@ -255,8 +256,17 @@ public class CubeTupleConverter implements ITupleConverter {
         context.closeLookupTables(usedLookupTables);
     }
 
+    @Override
+    public void reInit() {
+        for (IDerivedColumnFiller derivedColFiller : derivedColFillers) {
+            derivedColFiller.reInit();
+        }
+    }
+
     protected interface IDerivedColumnFiller {
         public void fillDerivedColumns(Object[] gtValues, Tuple tuple);
+
+        public void reInit();
     }
 
     protected IDerivedColumnFiller newDerivedColumnFiller(TblColRef[] hostCols, final DeriveInfo deriveInfo) {
@@ -320,6 +330,14 @@ public class CubeTupleConverter implements ITupleConverter {
                         }
                     }
                 }
+
+                @Override
+                public void reInit() {
+                    if (lookupTable instanceof StubLookupTable) {
+                        lookupTable = getAndAddLookupTable(cubeSeg, deriveInfo.join);
+                        logger.info("Successfully get lookup table to replace StubLookupTable");
+                    }
+                }
             };
         case PK_FK:
             return new IDerivedColumnFiller() {
@@ -327,6 +345,10 @@ public class CubeTupleConverter implements ITupleConverter {
                 public void fillDerivedColumns(Object[] gtValues, Tuple tuple) {
                     // composite keys are split, so only copy [0] is enough, see CubeDesc.initDimensionColumns()
                     tuple.setDimensionValue(derivedTupleIdx[0], CubeTupleConverter.toString(gtValues[hostTmpIdx[0]]));
+                }
+
+                @Override
+                public void reInit() {
                 }
             };
         default:
@@ -346,8 +368,13 @@ public class CubeTupleConverter implements ITupleConverter {
 
     public ILookupTable getAndAddLookupTable(CubeSegment cubeSegment, JoinDesc join) {
         ILookupTable lookupTable = context.getLookupTable(cubeSegment, join);
-        lookupTable.increaseUsage();
-        usedLookupTables.put(new Pair<>(cubeSegment, join), lookupTable);
+        if (!(lookupTable instanceof StubLookupTable)) {
+            lookupTable.increaseUsage();
+            usedLookupTables.put(new Pair<>(cubeSegment, join), lookupTable);
+            logger.info("Successfully add lookup table");
+        } else {
+            logger.info("Get stub lookup table and will refresh later");
+        }
         return lookupTable;
     }
 

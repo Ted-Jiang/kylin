@@ -113,7 +113,7 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
             return ITupleIterator.EMPTY_TUPLE_ITERATOR;
         return new SequentialCubeTupleIterator(scanners, request.getCuboid(), request.getDimensions(),
                 request.getDynGroups(), request.getGroups(), request.getMetrics(), returnTupleInfo,
-                request.getContext(), sqlDigest);
+                request.getContext(), sqlDigest, cubeInstance.getConfig());
     }
 
     public GTCubeStorageQueryRequest getStorageQueryRequest(StorageContext context, SQLDigest sqlDigest,

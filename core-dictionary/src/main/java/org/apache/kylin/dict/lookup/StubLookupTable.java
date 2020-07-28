@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *  
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,17 +16,37 @@
  * limitations under the License.
  */
 
-package org.apache.kylin.storage.gtrecord;
+package org.apache.kylin.dict.lookup;
 
-import java.io.Closeable;
-import java.util.List;
+import java.io.IOException;
+import java.util.Iterator;
 
-import org.apache.kylin.measure.MeasureType.IAdvMeasureFiller;
-import org.apache.kylin.metadata.tuple.Tuple;
+import org.apache.kylin.common.util.Array;
 
-public interface ITupleConverter extends Closeable {
+public class StubLookupTable implements ILookupTable {
 
-    public List<IAdvMeasureFiller> translateResult(Object[] gtValues, Tuple tuple);
+    @Override
+    public String[] getRow(Array<String> key) {
+        throw new UnsupportedOperationException();
+    }
 
-    public void reInit();
+    @Override
+    public Iterator<String[]> iterator() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void close() throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean isClosed() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void increaseUsage() {
+        throw new UnsupportedOperationException();
+    }
 }

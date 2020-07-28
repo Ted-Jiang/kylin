@@ -18,9 +18,10 @@
 
 package org.apache.kylin.storage;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.kylin.common.KylinConfig;
@@ -32,6 +33,7 @@ import org.apache.kylin.cube.CubeSegment;
 import org.apache.kylin.cube.cuboid.Cuboid;
 import org.apache.kylin.cube.gridtable.CuboidToGridTableMapping;
 import org.apache.kylin.dict.lookup.ILookupTable;
+import org.apache.kylin.dict.lookup.StubLookupTable;
 import org.apache.kylin.gridtable.StorageLimitLevel;
 import org.apache.kylin.metadata.model.JoinDesc;
 import org.apache.kylin.metadata.realization.IRealization;
@@ -70,7 +72,7 @@ public class StorageContext {
 
     private Range<Long> reusedPeriod;
 
-    private Map<Pair<String, List<String>>, ILookupTable> reuseLookupTableMap;
+    private ConcurrentMap<Pair<String, List<String>>, ILookupTable> reuseLookupTableMap;
 
     private long filterMask;
 
@@ -295,6 +297,10 @@ public class StorageContext {
                         mapKey.getSecond());
                 return result;
             }
+            result = reuseLookupTableMap.putIfAbsent(mapKey, new StubLookupTable());
+            if (result != null) {
+                return result;
+            }
         }
         result = cubeManager.getLookupTable(cubeSegment, join);
         logger.info("Generated ILookupTable with path {} and primary columns {}", mapKey.getFirst(),
@@ -321,12 +327,12 @@ public class StorageContext {
         }
     }
 
-    private boolean isReuseLookupTableEnabled() {
+    public boolean isReuseLookupTableEnabled() {
         return reuseLookupTableMap != null;
     }
 
     public void enableReuseLookupTable(boolean ifEnable) {
-        reuseLookupTableMap = ifEnable ? new HashMap<>() : null;
+        reuseLookupTableMap = ifEnable ? new ConcurrentHashMap<>() : null;
         logger.debug("Enable reuse lookup table for query: {} ", ifEnable);
     }
 }

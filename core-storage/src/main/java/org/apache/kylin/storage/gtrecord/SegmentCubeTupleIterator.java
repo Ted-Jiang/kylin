@@ -86,6 +86,10 @@ public class SegmentCubeTupleIterator implements ITupleIterator {
                 scanner.cubeSeg, cuboid, selectedDimensions, selectedMetrics, gtColIdx, tupleInfo, context);
     }
 
+    public void reInit() {
+        cubeTupleConverter.reInit();
+    }
+
     private Iterator<Object[]> getGTValuesIterator(
             final Iterator<GTRecord> records, final GTScanRequest scanRequest,
             final int[] gtDimsIdx, final int[] gtMetricsIdx) {

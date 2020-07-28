@@ -101,7 +101,8 @@ public class StreamStorageQuery extends CubeStorageQuery {
             historyResult = ITupleIterator.EMPTY_TUPLE_ITERATOR;
         } else {
             historyResult = new SequentialCubeTupleIterator(scanners, request.getCuboid(), request.getDimensions(),
-                    request.getDynGroups(), request.getGroups(), request.getMetrics(), returnTupleInfo, context, sqlDigest);
+                    request.getDynGroups(), request.getGroups(), request.getMetrics(), returnTupleInfo, context,
+                    sqlDigest, cubeInstance.getConfig());
         }
         Set<TblColRef> dimensionsD = request.getDimensions();
         if (dimensionsD.isEmpty()) {

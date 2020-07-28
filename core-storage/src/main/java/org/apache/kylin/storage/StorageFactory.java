@@ -18,26 +18,81 @@
 
 package org.apache.kylin.storage;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.threadlocal.InternalThreadLocal;
 import org.apache.kylin.common.util.ClassUtil;
 import org.apache.kylin.common.util.ImplementationSwitch;
 import org.apache.kylin.metadata.model.IStorageAware;
 import org.apache.kylin.metadata.realization.IRealization;
+import org.apache.kylin.shaded.com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  */
 public class StorageFactory {
+
+    private static final Logger logger = LoggerFactory.getLogger(StorageFactory.class);
 
     // Use thread-local because KylinConfig can be thread-local and implementation might be different among multiple threads.
     private static InternalThreadLocal<ImplementationSwitch<IStorage>> storages = new InternalThreadLocal<>();
 
     private static IStorage configuredUseLocalStorage;
 
+    private static ExecutorService loadingLookupTablePool = null;
+
     static {
+        Runtime.getRuntime().addShutdownHook(new Thread(StorageFactory::closeLoadingLookupTablePool));
+
         String localStorageImpl = KylinConfig.getInstanceFromEnv().getLocalStorageImpl();
-        if (localStorageImpl != null){
+        if (localStorageImpl != null) {
             configuredUseLocalStorage = (IStorage) ClassUtil.newInstance(localStorageImpl);
+        }
+    }
+
+    public static ExecutorService getLoadingLookupTablePool() {
+        if (loadingLookupTablePool != null) {
+            return loadingLookupTablePool;
+        }
+
+        synchronized (StorageFactory.class) {
+            if (loadingLookupTablePool != null) {
+                return loadingLookupTablePool;
+            }
+
+            KylinConfig config = KylinConfig.getInstanceFromEnv();
+
+            int maxThreads = config.getLoadingLookupTableMaxThreads();
+            int coreThreads = config.getLoadingLookupTableCoreThreads();
+            long keepAliveTime = config.getLoadingLookupTableThreadPoolAliveSeconds();
+            LinkedBlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<>(maxThreads * 100);
+            ThreadPoolExecutor tpe = new ThreadPoolExecutor(coreThreads, maxThreads, keepAliveTime, TimeUnit.SECONDS,
+                    workQueue, new ThreadFactoryBuilder().setNameFormat(("kylin-loading-lookup-%d")).build());
+            tpe.allowCoreThreadTimeOut(true);
+
+            logger.info("Creating coprocessor thread pool with max of {}, core of {}", maxThreads, coreThreads);
+
+            loadingLookupTablePool = tpe;
+            return loadingLookupTablePool;
+        }
+    }
+
+    private static void closeLoadingLookupTablePool() {
+        if (loadingLookupTablePool == null)
+            return;
+
+        loadingLookupTablePool.shutdown();
+        try {
+            if (!loadingLookupTablePool.awaitTermination(10, TimeUnit.SECONDS)) {
+                loadingLookupTablePool.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            loadingLookupTablePool.shutdownNow();
         }
     }
 

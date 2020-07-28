@@ -22,30 +22,53 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
-import org.apache.kylin.shaded.com.google.common.collect.Sets;
+import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.QueryContextFacade;
+import org.apache.kylin.common.SubThreadPoolExecutor;
 import org.apache.kylin.cube.cuboid.Cuboid;
 import org.apache.kylin.metadata.model.FunctionDesc;
 import org.apache.kylin.metadata.model.TblColRef;
+import org.apache.kylin.metadata.project.ProjectInstance;
+import org.apache.kylin.metadata.project.ProjectManager;
 import org.apache.kylin.metadata.realization.SQLDigest;
 import org.apache.kylin.metadata.tuple.ITuple;
 import org.apache.kylin.metadata.tuple.ITupleIterator;
 import org.apache.kylin.metadata.tuple.TupleInfo;
-import org.apache.kylin.storage.StorageContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.kylin.shaded.com.google.common.base.Preconditions;
+import org.apache.kylin.shaded.com.google.common.cache.CacheBuilder;
+import org.apache.kylin.shaded.com.google.common.cache.CacheLoader;
+import org.apache.kylin.shaded.com.google.common.cache.LoadingCache;
 import org.apache.kylin.shaded.com.google.common.collect.Iterators;
 import org.apache.kylin.shaded.com.google.common.collect.Lists;
+import org.apache.kylin.shaded.com.google.common.collect.Sets;
+import org.apache.kylin.storage.StorageContext;
+import org.apache.kylin.storage.StorageFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SequentialCubeTupleIterator implements ITupleIterator {
 
     private static final Logger logger = LoggerFactory.getLogger(SequentialCubeTupleIterator.class);
 
+    private static LoadingCache<String, ExecutorService> projectThreadPoolMap = CacheBuilder.newBuilder()
+            .build(new CacheLoader<String, ExecutorService>() {
+                @Override
+                public ExecutorService load(String projName) throws Exception {
+                    ExecutorService sharedPool = StorageFactory.getLoadingLookupTablePool();
+                    ProjectInstance projInst = ProjectManager.getInstance(KylinConfig.getInstanceFromEnv())
+                            .getProject(projName);
+                    return new SubThreadPoolExecutor(sharedPool, "PROJECT",
+                            projInst.getConfig().getLoadingLookupTableMaxThreadsPerProject());
+                }
+            });
+    
     protected List<CubeSegmentScanner> scanners;
     protected List<SegmentCubeTupleIterator> segmentCubeTupleIterators;
     protected Iterator<ITuple> tupleIterator;
@@ -56,17 +79,16 @@ public class SequentialCubeTupleIterator implements ITupleIterator {
 
     public SequentialCubeTupleIterator(List<CubeSegmentScanner> scanners, Cuboid cuboid,
             Set<TblColRef> selectedDimensions, List<TblColRef> rtGroups, Set<TblColRef> groups, //
-            Set<FunctionDesc> selectedMetrics, TupleInfo returnTupleInfo, StorageContext context, SQLDigest sqlDigest) {
+            Set<FunctionDesc> selectedMetrics, TupleInfo returnTupleInfo, StorageContext context, SQLDigest sqlDigest,
+            KylinConfig kylinConfig) {
         this.context = context;
         this.scanners = scanners;
 
         Set<TblColRef> selectedDims = Sets.newHashSet(selectedDimensions);
         selectedDims.addAll(rtGroups);
 
-        segmentCubeTupleIterators = Lists.newArrayList();
-        for (CubeSegmentScanner scanner : scanners) {
-            segmentCubeTupleIterators.add(new SegmentCubeTupleIterator(scanner, cuboid, selectedDims, selectedMetrics, returnTupleInfo, context));
-        }
+        segmentCubeTupleIterators = getSegmentCubeTupleIterators(scanners, cuboid, selectedDims, selectedMetrics,
+                returnTupleInfo, context, kylinConfig);
 
         if (context.mergeSortPartitionResults() && !sqlDigest.isRawQuery) {
             //query with limit
@@ -78,6 +100,64 @@ public class SequentialCubeTupleIterator implements ITupleIterator {
             logger.info("Using Iterators.concat to merge segment results");
             tupleIterator = Iterators.concat(segmentCubeTupleIterators.iterator());
         }
+    }
+
+    private List<SegmentCubeTupleIterator> getSegmentCubeTupleIterators(List<CubeSegmentScanner> scanners,
+            Cuboid cuboid, Set<TblColRef> selectedDims, Set<FunctionDesc> selectedMetrics, TupleInfo returnTupleInfo,
+            StorageContext context, KylinConfig kylinConfig) {
+        int maxThreadNum = kylinConfig.getLoadingLookupTableMaxThreadsPerQuery();
+        int segmentNumPerThread = kylinConfig.getLoadingLookupTableMinSegmentNumPerThread();
+        if (!context.isReuseLookupTableEnabled() || maxThreadNum <= 1 || scanners.size() <= segmentNumPerThread) {
+            return getSegmentCubeTupleIteratorsBySingleThread(scanners, cuboid, selectedDims, selectedMetrics,
+                    returnTupleInfo, context);
+        } else {
+            String projectName = scanners.get(0).cubeSeg.getProject().toUpperCase(Locale.ROOT);
+            ExecutorService projThreadPool;
+            try {
+                projThreadPool = projectThreadPoolMap.get(projectName);
+            } catch (ExecutionException e) {
+                logger.warn("Fail to get ExecutorService for project {}. Will use single thread", projectName);
+                return getSegmentCubeTupleIteratorsBySingleThread(scanners, cuboid, selectedDims, selectedMetrics,
+                        returnTupleInfo, context);
+            }
+
+            int threadNum = (scanners.size() - 1) / segmentNumPerThread + 1;
+            if (threadNum > maxThreadNum) {
+                threadNum = maxThreadNum;
+            }
+
+            ExecutorService connPool = new SubThreadPoolExecutor(projThreadPool, "QUERY", threadNum);
+            List<Future<SegmentCubeTupleIterator>> futureList = Lists.newArrayList();
+            for (CubeSegmentScanner scanner : scanners) {
+                futureList.add(connPool.submit(() -> new SegmentCubeTupleIterator(scanner, cuboid, selectedDims,
+                        selectedMetrics, returnTupleInfo, context)));
+            }
+            List<SegmentCubeTupleIterator> result = Lists.newArrayList();
+            for (int i = 0; i < futureList.size(); i++) {
+                try {
+                    result.add(futureList.get(i).get());
+                } catch (Exception e) {
+                    throw new RuntimeException(
+                            "Fail to create SegmentCubeTupleIterator for " + scanners.get(i).cubeSeg);
+                }
+            }
+            for (SegmentCubeTupleIterator segmentCubeTupleIterator : result) {
+                segmentCubeTupleIterator.reInit();
+            }
+            return result;
+        }
+    }
+
+    // Use single thread for creating SegmentCubeTupleIterator and enumerating lookup tables
+    private List<SegmentCubeTupleIterator> getSegmentCubeTupleIteratorsBySingleThread(List<CubeSegmentScanner> scanners,
+            Cuboid cuboid, Set<TblColRef> selectedDims, Set<FunctionDesc> selectedMetrics, TupleInfo returnTupleInfo,
+            StorageContext context) {
+        List<SegmentCubeTupleIterator> result = Lists.newArrayList();
+        for (CubeSegmentScanner scanner : scanners) {
+            result.add(new SegmentCubeTupleIterator(scanner, cuboid, selectedDims, selectedMetrics, returnTupleInfo,
+                    context));
+        }
+        return result;
     }
 
     public Comparator<ITuple> getTupleDimensionComparator(Cuboid cuboid, Set<TblColRef> groups, TupleInfo returnTupleInfo) {

@@ -1868,6 +1868,31 @@ public abstract class KylinConfigBase implements Serializable {
         return Boolean.parseBoolean(getOptional("kylin.query.enable-reuse-lookup-table", FALSE));
     }
 
+    public int getLoadingLookupTableMaxThreads() {
+        return Integer.parseInt(getOptional("kylin.query.lookup-table-loading-max-threads", "400"));
+    }
+
+    public int getLoadingLookupTableCoreThreads() {
+        return Integer.parseInt(getOptional("kylin.query.lookup-table-loading-core-threads", "400"));
+    }
+
+    public long getLoadingLookupTableThreadPoolAliveSeconds() {
+        return Long.parseLong(getOptional("kylin.query.lookup-table-loading-threads-alive-seconds", "60"));
+    }
+
+    public int getLoadingLookupTableMaxThreadsPerProject() {
+        return Integer.parseInt(getOptional("kylin.query.lookup-table-loading-max-threads-per-project", "150"));
+    }
+
+    public int getLoadingLookupTableMaxThreadsPerQuery() {
+        return Integer.parseInt(getOptional("kylin.query.lookup-table-loading-max-threads-per-query", "1"));
+    }
+
+    public int getLoadingLookupTableMinSegmentNumPerThread() {
+        int ret = Integer.parseInt(getOptional("kylin.query.lookup-table-loading-min-segment-num-per-thread", "1"));
+        return ret < 1 ? 1 : ret;
+    }
+
     //check KYLIN-1684, in most cases keep the default value
     public boolean isSkippingEmptySegments() {
         return Boolean.parseBoolean(getOptional("kylin.query.skip-empty-segments", TRUE));

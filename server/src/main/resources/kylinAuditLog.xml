@@ -97,7 +97,9 @@
                           expression="execution(* org.apache.kylin.rest.service.AccessService.clean(..)) and args(ae, deleteChildren)"/>
             <aop:before pointcut-ref="accessCleanBehavior" method="accessCleanAudit"/>
             <aop:pointcut id="accessBehavior"
-                          expression="within(org.apache.kylin.rest.service.AccessService) and @annotation(org.springframework.security.access.prepost.PreAuthorize)"/>
+                          expression="within(org.apache.kylin.rest.service.AccessService)
+                          and @annotation(org.springframework.security.access.prepost.PreAuthorize)
+                          and not execution(* org.apache.kylin.rest.service.AccessService.getAcl(..))"/>
             <aop:after-throwing pointcut-ref="accessBehavior" method="executeFailed" throwing="reason"/>
             <aop:after pointcut-ref="accessBehavior" method="finish"/>
 

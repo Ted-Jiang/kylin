@@ -63,10 +63,6 @@ public class TopNCounter<T> implements Iterable<Counter<T>>, java.io.Serializabl
         return capacity;
     }
 
-    public LinkedList<Counter<T>> getCounterList() {
-        return counterList;
-    }
-
     public void offer(T item) {
         offer(item, 1.0);
     }
@@ -197,6 +193,9 @@ public class TopNCounter<T> implements Iterable<Counter<T>>, java.io.Serializabl
                 counter = new Counter<T>(entry.getValue().getItem(), entry.getValue().count + m1);
                 this.counterMap.put(entry.getValue().getItem(), counter);
             }
+        }
+        if (!another.counterMap.isEmpty()) {
+            ordered = false;
         }
 
         if (counterMap.size() >= capacity * 2) {

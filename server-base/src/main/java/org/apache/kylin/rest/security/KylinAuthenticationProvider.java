@@ -131,7 +131,8 @@ public class KylinAuthenticationProvider implements AuthenticationProvider {
 
     // in case ldap users changing.
     private boolean needUpdateUser(ManagedUser user, String username) {
-        return KylinConfig.getInstanceFromEnv().getSecurityProfile().equals("ldap")
+        String securityProfile = KylinConfig.getInstanceFromEnv().getSecurityProfile();
+        return (securityProfile.equals("ldap") || securityProfile.equals("saml"))
                 && !userService.loadUserByUsername(username).equals(user);
     }
 

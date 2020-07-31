@@ -50,13 +50,23 @@ public class QueryRouter {
         String projectName = olapContext.olapSchema.getProjectName();
         SQLDigest sqlDigest = olapContext.getSQLDigest();
 
-        List<Candidate> candidates = Lists.newArrayListWithCapacity(realizations.size());
+        String forceHitCubeName = BackdoorToggles.getForceHitCube();
+        List<Candidate> candidates = Lists.newArrayList();
         for (IRealization real : realizations) {
-            if (real.isReady())
+            if (forceHitCubeName != null) {
+                if (!forceHitCubeName.equalsIgnoreCase(real.getName())) {
+                    continue;
+                }
+                if (!real.isReady()) {
+                    throw new RuntimeException(
+                            "Realization " + real.getName() + " is not ready and should not be force hit");
+                }
                 candidates.add(new Candidate(real, sqlDigest));
-            if (BackdoorToggles.getForceHitCube() != null && BackdoorToggles.getForceHitCube().equalsIgnoreCase(real.getName())) {
-                logger.info("Force choose {} as selected cube for specific purpose.", real.getName());
-                return real;
+                break;
+            } else {
+                if (real.isReady()) {
+                    candidates.add(new Candidate(real, sqlDigest));
+                }
             }
         }
 

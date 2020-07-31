@@ -253,7 +253,9 @@ public class CubeTupleConverter implements ITupleConverter {
 
     @Override
     public void close() throws IOException {
-        context.closeLookupTables(usedLookupTables);
+        for (Map.Entry<Pair<CubeSegment, JoinDesc>, ILookupTable> entry : usedLookupTables.entrySet()) {
+            context.closeLookupTable(entry.getKey().getFirst(), entry.getKey().getSecond(), entry.getValue());
+        }
     }
 
     @Override
@@ -369,7 +371,6 @@ public class CubeTupleConverter implements ITupleConverter {
     public ILookupTable getAndAddLookupTable(CubeSegment cubeSegment, JoinDesc join) {
         ILookupTable lookupTable = context.getLookupTable(cubeSegment, join);
         if (!(lookupTable instanceof StubLookupTable)) {
-            lookupTable.increaseUsage();
             usedLookupTables.put(new Pair<>(cubeSegment, join), lookupTable);
             logger.info("Successfully add lookup table");
         } else {

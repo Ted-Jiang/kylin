@@ -21,7 +21,12 @@ package org.apache.kylin.dict.lookup;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public abstract class ReusableLookupTable implements ILookupTable {
+
+    private static final Logger logger = LoggerFactory.getLogger(ReusableLookupTable.class);
 
     private AtomicInteger usageNumber = new AtomicInteger(0);
     private volatile boolean isClosed = false;
@@ -36,10 +41,14 @@ public abstract class ReusableLookupTable implements ILookupTable {
 
     @Override
     public void close() throws IOException {
+        logger.info("Try to close ReusableLookupTable");
         synchronized (this) {
             if (usageNumber.decrementAndGet() <= 0) {
                 closeInner();
                 isClosed = true;
+                logger.info("Closed ReusableLookupTable");
+            } else {
+                logger.info("Will not close ReusableLookupTable since it's used by others");
             }
         }
     }

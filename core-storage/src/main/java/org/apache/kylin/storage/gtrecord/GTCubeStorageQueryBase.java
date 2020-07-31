@@ -18,7 +18,6 @@
 
 package org.apache.kylin.storage.gtrecord;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -395,15 +394,14 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
             return compf;
 
         DeriveInfo hostInfo = cubeDesc.getHostInfo(derived);
-        ILookupTable lookup = cubeDesc.getHostInfo(derived).type == CubeDesc.DeriveType.PK_FK ? null
-                : getLookupStringTableForDerived(derived, hostInfo, context);
+        CubeSegment latestReadySegment = cubeInstance.getLatestReadySegment();
+        ILookupTable lookup = null;
+        if (cubeDesc.getHostInfo(derived).type != CubeDesc.DeriveType.PK_FK) {
+            lookup = context.getLookupTable(latestReadySegment, hostInfo.join);
+        }
         Pair<TupleFilter, Boolean> translated = DerivedFilterTranslator.translate(lookup, hostInfo, compf);
-        try {
-            if (lookup != null) {
-                lookup.close();
-            }
-        } catch (IOException e) {
-            logger.error("error when close lookup table.", e);
+        if (lookup != null) {
+            context.closeLookupTable(latestReadySegment, hostInfo.join, lookup);
         }
         TupleFilter translatedFilter = translated.getFirst();
         boolean loosened = translated.getSecond();
@@ -411,13 +409,6 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
             collectColumnsRecursively(translatedFilter, collector);
         }
         return translatedFilter;
-    }
-
-    @SuppressWarnings("unchecked")
-    protected ILookupTable getLookupStringTableForDerived(TblColRef derived, DeriveInfo hostInfo,
-            StorageContext context) {
-        CubeSegment seg = cubeInstance.getLatestReadySegment();
-        return context.getLookupTable(seg, hostInfo.join);
     }
 
     private void collectColumnsRecursively(TupleFilter filter, Set<TblColRef> collector) {

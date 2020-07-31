@@ -19,7 +19,6 @@
 package org.apache.kylin.storage;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -286,6 +285,8 @@ public class StorageContext {
         this.enableStreamAggregate = true;
     }
 
+    // Once the lookup table is gotten by this method,
+    // closeLookupTable() instead of ILookupTable.close() should be called to close the related ILookupTable
     public ILookupTable getLookupTable(CubeSegment cubeSegment, JoinDesc join) {
         Pair<String, List<String>> mapKey = cubeManager.getReusableLookupTableMapKey(cubeSegment, join);
 
@@ -308,22 +309,21 @@ public class StorageContext {
         if (isReuseLookupTableEnabled()) {
             reuseLookupTableMap.put(mapKey, result);
         }
+        if (!(result instanceof StubLookupTable)) {
+            result.increaseUsage();
+        }
         return result;
     }
 
-    public void closeLookupTables(Map<Pair<CubeSegment, JoinDesc>, ILookupTable> lookupTables) {
-        for (Map.Entry<Pair<CubeSegment, JoinDesc>, ILookupTable> entry : lookupTables.entrySet()) {
-            ILookupTable lookupTable = entry.getValue();
-            try {
-                lookupTable.close();
-                if (isReuseLookupTableEnabled() && lookupTable.isClosed()) {
-                    Pair<String, List<String>> mapKey = cubeManager
-                            .getReusableLookupTableMapKey(entry.getKey().getFirst(), entry.getKey().getSecond());
-                    reuseLookupTableMap.remove(mapKey);
-                }
-            } catch (Exception e) {
-                logger.error("error when close lookup table:" + lookupTable);
+    public void closeLookupTable(CubeSegment cubeSegment, JoinDesc join, ILookupTable lookupTable) {
+        try {
+            lookupTable.close();
+            if (isReuseLookupTableEnabled() && lookupTable.isClosed()) {
+                Pair<String, List<String>> mapKey = cubeManager.getReusableLookupTableMapKey(cubeSegment, join);
+                reuseLookupTableMap.remove(mapKey);
             }
+        } catch (Exception e) {
+            logger.error("error when close lookup table:" + lookupTable);
         }
     }
 

@@ -274,6 +274,9 @@ public class OLAPAggregateRel extends Aggregate implements OLAPRel {
 
     void buildGroups() {
         ColumnRowType inputColumnRowType = ((OLAPRel) getInput()).getColumnRowType();
+        if (getInput() instanceof OLAPUnionRel) {
+            inputColumnRowType = ((OLAPRel) getInput().getInput(0)).getColumnRowType();
+        }
         this.groups = Lists.newArrayList();
         for (int i = getGroupSet().nextSetBit(0); i >= 0; i = getGroupSet().nextSetBit(i + 1)) {
             TupleExpression tupleExpression = inputColumnRowType.getTupleExpressionByIndex(i);
@@ -357,7 +360,7 @@ public class OLAPAggregateRel extends Aggregate implements OLAPRel {
                 }
             }
             // Check dynamic aggregation
-            if (!afterAggregate && !rewriting) {
+            if (!(getInput() instanceof OLAPUnionRel) && !afterAggregate && !rewriting) {
                 if (this.context.isDynamicColumnEnabled() && argList.size() == 1) {
                     int iRowIdx = argList.get(0);
                     TupleExpression tupleExpr = inputColumnRowType.getTupleExpressionByIndex(iRowIdx);

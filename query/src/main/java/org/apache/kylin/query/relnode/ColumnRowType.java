@@ -18,7 +18,6 @@
 
 package org.apache.kylin.query.relnode;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.kylin.common.util.Pair;
@@ -91,17 +90,6 @@ public class ColumnRowType {
             result = new ColumnTupleExpression(getColumnByIndex(i));
         }
         return result;
-    }
-
-    public List<TupleExpression> getSourceColumns() {
-        if (sourceColumns == null) {
-            List<TupleExpression> sources = new ArrayList<>();
-            for (int i = 0; i < columns.size(); i++) {
-                sources.add(getTupleExpressionByIndex(i));
-            }
-            sourceColumns = sources;
-        }
-        return sourceColumns;
     }
 
     public List<TblColRef> getAllColumns() {

@@ -202,6 +202,9 @@ public class OLAPProjectRel extends Project implements OLAPRel {
                 if (this.context.isDynamicColumnEnabled() && tupleExpr.ifForDynamicColumn()) {
                     SqlTypeName fSqlType = columnField.getType().getSqlTypeName();
                     String dataType = OLAPTable.DATATYPE_MAPPING.get(fSqlType);
+                    if (tupleExpr instanceof ColumnTupleExpression) {
+                        column = TblColRef.newInnerColumn(fieldName, InnerDataTypeEnum.LITERAL, tupleExpr.getDigest());
+                    }
                     column.getColumnDesc().setDatatype(dataType);
                     this.context.dynamicFields.put(column, columnField.getType());
                 }

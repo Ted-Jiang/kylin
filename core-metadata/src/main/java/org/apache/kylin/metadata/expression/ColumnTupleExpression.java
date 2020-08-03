@@ -54,6 +54,11 @@ public class ColumnTupleExpression extends TupleExpression {
     }
 
     @Override
+    public boolean ifForDynamicColumn() {
+        return !dataType.equals(columnRef.getType());
+    }
+
+    @Override
     public void verify() {
     }
 

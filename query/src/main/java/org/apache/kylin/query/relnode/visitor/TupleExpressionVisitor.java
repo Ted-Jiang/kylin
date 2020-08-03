@@ -18,8 +18,11 @@
 
 package org.apache.kylin.query.relnode.visitor;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rex.RexCall;
 import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexLiteral;
@@ -52,17 +55,22 @@ public class TupleExpressionVisitor extends RexVisitorImpl<TupleExpression> {
     private final ColumnRowType inputRowType;
     private final boolean ifVerify;
 
+    private final Map<RexNode, DataType> dataTypeMap;
+
     public TupleExpressionVisitor(ColumnRowType inputRowType, boolean ifVerify) {
         super(true);
         this.inputRowType = inputRowType;
         this.ifVerify = ifVerify;
+        this.dataTypeMap = new HashMap<>();
     }
 
     @Override
     public TupleExpression visitCall(RexCall call) {
         SqlOperator op = call.getOperator();
         if (op instanceof SqlCastFunction) {
-            return call.getOperands().get(0).accept(this);
+            RexNode child = call.getOperands().get(0);
+            dataTypeMap.put(child, getDataType(call));
+            return child.accept(this);
         } else if (op instanceof SqlUserDefinedFunction) {
             if (op.getName().equals("QUARTER")) {
                 return visitFirstRexInputRef(call);
@@ -99,7 +107,7 @@ public class TupleExpressionVisitor extends RexVisitorImpl<TupleExpression> {
         assert call.operands.size() == 2;
         TupleExpression left = call.operands.get(0).accept(this);
         TupleExpression right = call.operands.get(1).accept(this);
-        DataType dataType = DataType.getType(OLAPTable.DATATYPE_MAPPING.get(call.type.getSqlTypeName()));
+        DataType dataType = getDataType(call);
         BinaryTupleExpression tuple = new BinaryTupleExpression(dataType, op, Lists.newArrayList(left, right));
         tuple.setDigest(call.toString());
         return tuple;
@@ -135,7 +143,7 @@ public class TupleExpressionVisitor extends RexVisitorImpl<TupleExpression> {
             }
         }
 
-        DataType dataType = DataType.getType(OLAPTable.DATATYPE_MAPPING.get(call.type.getSqlTypeName()));
+        DataType dataType = getDataType(call);
         CaseTupleExpression tuple = new CaseTupleExpression(dataType, whenList, elseExpr);
         tuple.setDigest(call.toString());
         return tuple;
@@ -147,7 +155,7 @@ public class TupleExpressionVisitor extends RexVisitorImpl<TupleExpression> {
             children.add(rexNode.accept(this));
         }
 
-        DataType dataType = DataType.getType(OLAPTable.DATATYPE_MAPPING.get(call.type.getSqlTypeName()));
+        DataType dataType = getDataType(call);
         RexCallTupleExpression tuple = new RexCallTupleExpression(dataType, children);
         tuple.setDigest(call.toString());
         return tuple;
@@ -164,13 +172,12 @@ public class TupleExpressionVisitor extends RexVisitorImpl<TupleExpression> {
         // check it for rewrite count
         if (index < inputRowType.size()) {
             TblColRef column = inputRowType.getColumnByIndex(index);
+            DataType dataType = getDataType(inputRef);
             TupleExpression tuple;
             if (column.getSubTupleExps() != null) {
-                DataType dataType = DataType
-                        .getType(OLAPTable.DATATYPE_MAPPING.get(inputRef.getType().getSqlTypeName()));
                 tuple = new RexCallTupleExpression(dataType, column.getSubTupleExps());
             } else {
-                tuple = new ColumnTupleExpression(column);
+                tuple = new ColumnTupleExpression(dataType, column);
             }
             tuple.setDigest(inputRef.toString());
             return tuple;
@@ -198,7 +205,7 @@ public class TupleExpressionVisitor extends RexVisitorImpl<TupleExpression> {
         TupleExpression tuple;
         Object value = literal.getValue();
 
-        DataType dataType = DataType.getType(OLAPTable.DATATYPE_MAPPING.get(literal.getType().getSqlTypeName()));
+        DataType dataType = getDataType(literal);
         if (value instanceof Number) {
             tuple = new ConstantTupleExpression(dataType, value);
         } else {
@@ -212,5 +219,17 @@ public class TupleExpressionVisitor extends RexVisitorImpl<TupleExpression> {
         }
         tuple.setDigest(literal.toString());
         return tuple;
+    }
+
+    private DataType getDataType(RexNode rexNode) {
+        DataType dataType = dataTypeMap.get(rexNode);
+        if (dataType == null) {
+            RelDataType sqlType = rexNode.getType();
+            dataType = DataType.getType(OLAPTable.DATATYPE_MAPPING.get(sqlType.getSqlTypeName()));
+            if (dataType != null && dataType.isDecimal()) {
+                dataType = new DataType("decimal", sqlType.getPrecision(), sqlType.getScale());
+            }
+        }
+        return dataType;
     }
 }

@@ -369,13 +369,20 @@ public class OLAPAggregateRel extends Aggregate implements OLAPRel {
                     }
                     if (aggCall.getAggregation() instanceof SqlSumAggFunction
                             || aggCall.getAggregation() instanceof SqlSumEmptyIsZeroAggFunction) {
-                        // sum (expression)
-                        if (!(tupleExpr instanceof ConstantTupleExpression || tupleExpr instanceof ColumnTupleExpression)) {
+                        if (tupleExpr instanceof ColumnTupleExpression) {
+                            // sum (cast column)
+                            SumExpressionDynamicFunctionDesc sumDynFunc = new SumExpressionDynamicFunctionDesc(
+                                    parameter, tupleExpr);
+                            this.aggregations.add(sumDynFunc);
+                            continue;
+                        } else if (!(tupleExpr instanceof ConstantTupleExpression
+                                || tupleExpr instanceof ColumnTupleExpression)) {
+                            // sum (expression)
                             ColumnTupleExpression cntExpr = ColumnTupleExpression.getCntColumnTupleExpression();
                             ExpressionCountDistributor cntDistributor = new ExpressionCountDistributor(cntExpr);
                             tupleExpr = tupleExpr.accept(cntDistributor);
-                            SumExpressionDynamicFunctionDesc sumDynFunc = new SumExpressionDynamicFunctionDesc(parameter,
-                                    tupleExpr);
+                            SumExpressionDynamicFunctionDesc sumDynFunc = new SumExpressionDynamicFunctionDesc(
+                                    parameter, tupleExpr);
                             this.aggregations.add(sumDynFunc);
                             continue;
                         }

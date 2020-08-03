@@ -177,7 +177,7 @@ public class MigrationService extends BasicService {
         List<String> cubeAdmins = Lists.newArrayList();
         if (acl != null) {
             for (AccessControlEntry ace : acl.getEntries()) {
-                if (ace.getPermission().getMask() == 16) {
+                if (ace.getPermission().getMask() == 16 && ace.getSid() instanceof PrincipalSid) {
                     PrincipalSid ps = (PrincipalSid) ace.getSid();
                     cubeAdmins.add(ps.getPrincipal() + mailSuffix);
                 }

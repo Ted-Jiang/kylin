@@ -226,8 +226,17 @@ public class TupleExpressionVisitor extends RexVisitorImpl<TupleExpression> {
         if (dataType == null) {
             RelDataType sqlType = rexNode.getType();
             dataType = DataType.getType(OLAPTable.DATATYPE_MAPPING.get(sqlType.getSqlTypeName()));
-            if (dataType != null && dataType.isDecimal()) {
-                dataType = new DataType("decimal", sqlType.getPrecision(), sqlType.getScale());
+            if (dataType != null) {
+                if (dataType.isDecimal() && (dataType.getPrecision() != sqlType.getPrecision()
+                        || dataType.getScale() != sqlType.getScale())) {
+                    dataType = new DataType("decimal", sqlType.getPrecision(), sqlType.getScale());
+                } else if (dataType.isStringFamily() && dataType.getPrecision() != sqlType.getPrecision()) {
+                    if (dataType.isChar()) {
+                        dataType = new DataType("char", sqlType.getPrecision(), -1);
+                    } else if (dataType.isVarChar()) {
+                        dataType = new DataType("varchar", sqlType.getPrecision(), -1);
+                    }
+                }
             }
         }
         return dataType;

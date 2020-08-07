@@ -335,6 +335,14 @@ public class DataType implements Serializable {
         return name.equals("boolean");
     }
 
+    public boolean isVarChar() {
+        return name.equals("varchar");
+    }
+
+    public boolean isChar() {
+        return name.equals("char");
+    }
+    
     public String getName() {
         return name;
     }

@@ -114,7 +114,7 @@ public class KylinAuthenticationProvider implements AuthenticationProvider {
                 if (!userService.userExists(username)) {
                     userService.createUser(user);
                 } else if (needUpdateUser(user, username)) {
-                    userService.updateUser(user);
+                    //userService.updateUser(user);
                 }
 
                 cacheManager.getCache(USER_CACHE).put(userKey, authed);

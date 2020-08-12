@@ -50,7 +50,6 @@ import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rel.rules.AggregateExpandDistinctAggregatesRule;
 import org.apache.calcite.rel.rules.AggregateJoinTransposeRule;
 import org.apache.calcite.rel.rules.AggregateProjectMergeRule;
-import org.apache.calcite.rel.rules.AggregateUnionTransposeRule;
 import org.apache.calcite.rel.rules.DateRangeRules;
 import org.apache.calcite.rel.rules.FilterJoinRule;
 import org.apache.calcite.rel.rules.FilterProjectTransposeRule;
@@ -76,7 +75,10 @@ import org.apache.kylin.metadata.model.DataModelDesc;
 import org.apache.kylin.metadata.model.TableRef;
 import org.apache.kylin.metadata.model.TblColRef;
 import org.apache.kylin.query.enumerator.DictionaryEnumerator;
+import org.apache.kylin.query.optrule.AggregateProjectAggregateReduceRule;
 import org.apache.kylin.query.optrule.AggregateProjectReduceRule;
+import org.apache.kylin.query.optrule.KylinFilterJoinRule;
+import org.apache.kylin.query.optrule.KylinFilterProjectTransposeRule;
 import org.apache.kylin.query.optrule.KylinSortProjectTransposeRule;
 import org.apache.kylin.query.optrule.OLAPAggregateRule;
 import org.apache.kylin.query.optrule.OLAPFilterRule;
@@ -168,6 +170,7 @@ public class OLAPTableScan extends TableScan implements OLAPRel, EnumerableRel {
         planner.addRule(OLAPValuesRule.INSTANCE);
 
         planner.addRule(AggregateProjectReduceRule.INSTANCE);
+        planner.addRule(AggregateProjectAggregateReduceRule.INSTANCE);
 
         // CalcitePrepareImpl.CONSTANT_REDUCTION_RULES
         if (kylinConfig.isReduceExpressionsRulesEnabled()) {
@@ -190,25 +193,29 @@ public class OLAPTableScan extends TableScan implements OLAPRel, EnumerableRel {
         // since join is the entry point, we can't push filter past join
         planner.removeRule(FilterJoinRule.FILTER_ON_JOIN);
         planner.removeRule(FilterJoinRule.JOIN);
+        planner.addRule(KylinFilterJoinRule.FILTER_ON_JOIN);
+        planner.addRule(KylinFilterJoinRule.JOIN);
 
         // since we don't have statistic of table, the optimization of join is too cost
         planner.removeRule(JoinCommuteRule.INSTANCE);
         planner.removeRule(JoinPushThroughJoinRule.LEFT);
         planner.removeRule(JoinPushThroughJoinRule.RIGHT);
 
-        // keep tree structure like filter -> aggregation -> project -> join/table scan, implementOLAP() rely on this tree pattern
+        // keep tree structure like aggregation -> project -> filter -> join/table scan, implementOLAP() rely on this tree pattern
         planner.removeRule(AggregateJoinTransposeRule.INSTANCE);
         planner.removeRule(AggregateProjectMergeRule.INSTANCE);
-        planner.removeRule(FilterProjectTransposeRule.INSTANCE);
         planner.removeRule(SortJoinTransposeRule.INSTANCE);
         planner.removeRule(JoinPushExpressionsRule.INSTANCE);
         planner.removeRule(SortUnionTransposeRule.INSTANCE);
         planner.removeRule(JoinUnionTransposeRule.LEFT_UNION);
         planner.removeRule(JoinUnionTransposeRule.RIGHT_UNION);
-        planner.removeRule(AggregateUnionTransposeRule.INSTANCE);
         planner.removeRule(DateRangeRules.FILTER_INSTANCE);
         planner.removeRule(SemiJoinRule.JOIN);
         planner.removeRule(SemiJoinRule.PROJECT);
+
+        planner.removeRule(FilterProjectTransposeRule.INSTANCE);
+        planner.addRule(KylinFilterProjectTransposeRule.INSTANCE);
+
         // distinct count will be split into a separated query that is joined with the left query
         planner.removeRule(AggregateExpandDistinctAggregatesRule.INSTANCE);
 

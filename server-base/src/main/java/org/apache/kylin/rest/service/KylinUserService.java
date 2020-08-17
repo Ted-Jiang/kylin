@@ -41,6 +41,7 @@ import org.apache.kylin.rest.util.AclEvaluate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -207,6 +208,11 @@ public class KylinUserService implements UserService {
             }
         }
         return adminUsers;
+    }
+
+    @Override
+    public ManagedUser copyForWrite(ManagedUser user) {
+        return getKylinUserManager().copyForWrite(user);
     }
 
     @Override

@@ -25,6 +25,7 @@ import static org.apache.kylin.cube.cuboid.CuboidModeEnum.RECOMMEND;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -741,6 +742,10 @@ public class CubeInstance extends RootPersistentEntity implements IRealization, 
         if (snapshots == null)
             snapshots = Maps.newHashMap();
         return snapshots;
+    }
+
+    public Collection<String> getSnapshotPaths() {
+        return getSnapshots().values();
     }
 
     public void resetSnapshots() {

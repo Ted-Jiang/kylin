@@ -44,6 +44,11 @@ public class RoaringBitmapCounterMapFactory implements BitmapCounterMapFactory, 
     }
 
     @Override
+    public BitmapCounterMap newBitmap(long counter) {
+        return new RoaringBitmapCounterMap(counter);
+    }
+
+    @Override
     public BitmapCounterMap newBitmapMap(ByteBuffer in) throws IOException {
         RoaringBitmapCounterMap counter = new RoaringBitmapCounterMap(keySerializer);
         counter.readFields(in);

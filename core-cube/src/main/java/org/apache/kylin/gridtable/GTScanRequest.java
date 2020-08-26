@@ -21,6 +21,7 @@ package org.apache.kylin.gridtable;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -95,12 +96,16 @@ public class GTScanRequest {
     // runtime computed fields
     private transient boolean doingStorageAggregation = false;
 
+    // if false, then we can apply measure trim at fragment data level
+    private boolean needServerSidePostAggregation = true;
+
     GTScanRequest(GTInfo info, List<GTScanRange> ranges, ImmutableBitSet dimensions, ImmutableBitSet aggrGroupBy, //
             ImmutableBitSet aggrMetrics, String[] aggrMetricsFuncs, ImmutableBitSet rtAggrMetrics, //
             ImmutableBitSet dynamicCols, Map<Integer, TupleExpression> tupleExpressionMap, //
             GTTwoLayerAggregateParam twoLayerAggParam, //
             TupleFilter filterPushDown, TupleFilter havingFilterPushDown, //
-            boolean allowStorageAggregation, double aggCacheMemThreshold, int storageScanRowNumThreshold, //
+            boolean allowStorageAggregation, boolean needServerSidePostAggregation, //
+            double aggCacheMemThreshold, int storageScanRowNumThreshold, //
             int storagePushDownLimit, StorageLimitLevel storageLimitLevel, String storageBehavior, long startTime,
             long timeout) {
         this.info = info;
@@ -128,6 +133,7 @@ public class GTScanRequest {
         this.startTime = startTime;
         this.timeout = timeout;
         this.allowStorageAggregation = allowStorageAggregation;
+        this.needServerSidePostAggregation = needServerSidePostAggregation;
         this.aggCacheMemThreshold = aggCacheMemThreshold;
         this.storageScanRowNumThreshold = storageScanRowNumThreshold;
         this.storagePushDownLimit = storagePushDownLimit;
@@ -246,11 +252,27 @@ public class GTScanRequest {
                 logger.info("pre aggregating results before returning");
                 this.doingStorageAggregation = true;
                 result = new GTAggregateScanner(result, this, spillEnabled);
+                if (!needServerSidePostAggregation) {
+                    final List<Integer> directReturnResultColumns = getDirectReturnResultColumns(result.getInfo());
+                    if (!directReturnResultColumns.isEmpty()) {
+                        result = new GTMeasureTrimScanner(result, directReturnResultColumns);
+                    }
+                }
             } else {
                 logger.info("has no aggregation, skip it");
             }
             return result;
         }
+    }
+
+    private List<Integer> getDirectReturnResultColumns(GTInfo info) {
+        List<Integer> columns = new ArrayList<>();
+        for (int i = 0; i < info.getColumnCount(); i++) {
+            if (info.getCodeSystem().getSerializer(i).supportDirectReturnResult()) {
+                columns.add(i);
+            }
+        }
+        return columns;
     }
 
     public BufferedMeasureCodec createMeasureCodec() {
@@ -474,6 +496,7 @@ public class GTScanRequest {
             ImmutableBitSet.serializer.serialize(value.rtAggrMetrics, out);
 
             GTTwoLayerAggregateParam.serializer.serialize(value.twoLayerAggParam, out);
+            BytesUtil.writeVInt(value.needServerSidePostAggregation ? 1 : 0, out);
         }
 
         @Override
@@ -531,13 +554,15 @@ public class GTScanRequest {
 
             GTTwoLayerAggregateParam aTwoLayerAggParam = GTTwoLayerAggregateParam.serializer.deserialize(in);
 
+            boolean sNeedSSPostAggr = (BytesUtil.readVInt(in) == 1);
+
             return new GTScanRequestBuilder().setInfo(sInfo).setRanges(sRanges).setDimensions(sColumns)
                     .setAggrGroupBy(sAggGroupBy).setAggrMetrics(sAggrMetrics).setAggrMetricsFuncs(sAggrMetricFuncs)//
                     .setRtAggrMetrics(aRuntimeAggrMetrics).setDynamicColumns(aDynCols)
                     .setExprsPushDown(sTupleExpressionMap).setTwoLayerAggregateParam(aTwoLayerAggParam)//
                     .setFilterPushDown(sGTFilter).setHavingFilterPushDown(sGTHavingFilter)
-                    .setAllowStorageAggregation(sAllowPreAggr).setAggCacheMemThreshold(sAggrCacheGB)//
-                    .setStorageScanRowNumThreshold(storageScanRowNumThreshold)
+                    .setAllowStorageAggregation(sAllowPreAggr).setNeedServerSidePostAggregation(sNeedSSPostAggr)//
+                    .setAggCacheMemThreshold(sAggrCacheGB).setStorageScanRowNumThreshold(storageScanRowNumThreshold)//
                     .setStoragePushDownLimit(storagePushDownLimit).setStorageLimitLevel(storageLimitLevel)
                     .setStartTime(startTime).setTimeout(timeout).setStorageBehavior(storageBehavior)
                     .createGTScanRequest();

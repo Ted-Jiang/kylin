@@ -21,12 +21,16 @@ package org.apache.kylin.measure.map.bitmap;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.kylin.common.util.BytesUtil;
 import org.apache.kylin.metadata.datatype.DataType;
 import org.apache.kylin.metadata.datatype.DataTypeSerializer;
 
 public class BitmapMapSerializer extends DataTypeSerializer<BitmapCounterMap> {
     private static final BitmapCounterMapFactory factory = RoaringBitmapCounterMapFactory.INSTANCE;
     private static final BitmapCounterMap DELEGATE = factory.newBitmapMap();
+
+    private static final int IS_RESULT_FLAG = -1;
+    private static final int RESULT_SIZE = 9;
 
     // called by reflection
     public BitmapMapSerializer(DataType type) {
@@ -47,8 +51,12 @@ public class BitmapMapSerializer extends DataTypeSerializer<BitmapCounterMap> {
     @Override
     public BitmapCounterMap deserialize(ByteBuffer in) {
         try {
-            return factory.newBitmapMap(in);
-
+            if (peekLength(in) == RESULT_SIZE) {
+                int flag = BytesUtil.readVInt(in);
+                return factory.newBitmap(in.getLong());
+            } else {
+                return factory.newBitmapMap(in);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -56,7 +64,14 @@ public class BitmapMapSerializer extends DataTypeSerializer<BitmapCounterMap> {
 
     @Override
     public int peekLength(ByteBuffer in) {
-        return DELEGATE.peekLength(in);
+        ByteBuffer buffer = in.slice();
+        //The result of getInt will not be -1 if it's not trimmed
+        int flag = BytesUtil.readVInt(buffer);
+        if (flag == IS_RESULT_FLAG) {
+            return RESULT_SIZE;
+        } else {
+            return DELEGATE.peekLength(in);
+        }
     }
 
     @Override
@@ -73,5 +88,24 @@ public class BitmapMapSerializer extends DataTypeSerializer<BitmapCounterMap> {
     public int getStorageBytesEstimate() {
         // It's difficult to decide the size before data was ingested, comparing with HLLCounter(16) as 64KB, here is assumption
         return 8 * 1024;
+    }
+
+    @Override
+    public boolean supportDirectReturnResult() {
+        return true;
+    }
+
+    @Override
+    public ByteBuffer getFinalResult(ByteBuffer in) {
+        ByteBuffer out = ByteBuffer.allocate(RESULT_SIZE);
+        try {
+            BitmapCounterMap counter = factory.newBitmapMap(in);
+            BytesUtil.writeVInt(IS_RESULT_FLAG, out);
+            out.putLong(counter.getCount());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        out.flip();
+        return out;
     }
 }

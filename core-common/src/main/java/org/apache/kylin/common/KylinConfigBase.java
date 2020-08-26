@@ -2212,6 +2212,10 @@ public abstract class KylinConfigBase implements Serializable {
     public int getFlatFilterMaxChildrenSize() {
         return Integer.parseInt(this.getOptional("kylin.query.flat-filter-max-children", "500000"));
     }
+    
+    public boolean isPostAggregationLevelOptimizeEnabled() {
+        return Boolean.parseBoolean(this.getOptional("kylin.query.post-aggregation-level-optimize-enabled", FALSE));
+    }
 
     // ============================================================================
     // SERVER

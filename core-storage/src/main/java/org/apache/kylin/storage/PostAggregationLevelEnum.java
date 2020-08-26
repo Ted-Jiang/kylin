@@ -16,20 +16,8 @@
  * limitations under the License.
  */
 
-package org.apache.kylin.measure.map.bitmap;
+package org.apache.kylin.storage;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-import org.apache.kylin.measure.map.MapKeySerializer;
-
-public interface BitmapCounterMapFactory {
-
-    public MapKeySerializer getMapKeySerializer();
-
-    public BitmapCounterMap newBitmapMap();
-
-    public BitmapCounterMap newBitmap(long counter);
-
-    public BitmapCounterMap newBitmapMap(ByteBuffer in) throws IOException;
+public enum PostAggregationLevelEnum {
+    Exact, Fragment, Segment_Standalone, Segment, Cube
 }

@@ -28,6 +28,10 @@ public class RoaringBitmapCounterMap<T> extends BitmapCounterMap<T> {
         super(keySerializer);
     }
 
+    public RoaringBitmapCounterMap(long counter) {
+        super(counter);
+    }
+    
     protected BitmapCounter newBitmapCounter() {
         return RoaringBitmapCounterFactory.INSTANCE.newBitmap();
     }

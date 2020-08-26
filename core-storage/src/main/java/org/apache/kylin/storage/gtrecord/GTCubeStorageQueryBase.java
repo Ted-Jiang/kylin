@@ -64,6 +64,7 @@ import org.apache.kylin.shaded.com.google.common.collect.Lists;
 import org.apache.kylin.shaded.com.google.common.collect.Maps;
 import org.apache.kylin.shaded.com.google.common.collect.Sets;
 import org.apache.kylin.storage.IStorageQuery;
+import org.apache.kylin.storage.PostAggregationLevelEnum;
 import org.apache.kylin.storage.StorageContext;
 import org.apache.kylin.storage.translate.DerivedFilterTranslator;
 import org.slf4j.Logger;
@@ -127,6 +128,7 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
 
         Collection<TblColRef> groups = sqlDigest.groupbyColumns;
         TupleFilter filter = sqlDigest.filter;
+        boolean isFilterEvaluable = filter != null ? filter.isEvaluable() : true;
 
         // build dimension & metrics
         Set<TblColRef> dimensions = new LinkedHashSet<>();
@@ -172,9 +174,18 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
         context.setNeedStorageAggregation(isNeedStorageAggregation(cuboid, groupsD, singleValuesD));
 
         // exactAggregation mean: needn't aggregation at storage and query engine both.
-        boolean exactAggregation = isExactAggregation(context, cuboid, groups, otherDimsD, singleValuesD,
-                derivedPostAggregation, sqlDigest.aggregations, sqlDigest.aggrSqlCalls, sqlDigest.groupByExpression);
-        context.setExactAggregation(exactAggregation);
+        PostAggregationLevelEnum postAggregationLevel = getPostAggregationLevel(context, cuboid, groups, otherDimsD,
+                singleValuesD, derivedPostAggregation, sqlDigest.aggregations, sqlDigest.aggrSqlCalls,
+                sqlDigest.groupByExpression, isFilterEvaluable);
+        if (!cubeDesc.getConfig().isPostAggregationLevelOptimizeEnabled()) {
+            if (postAggregationLevel != PostAggregationLevelEnum.Cube
+                    && postAggregationLevel != PostAggregationLevelEnum.Segment) {
+                postAggregationLevel = PostAggregationLevelEnum.Segment;
+                logger.info("PostAggregationLevel is set to be {} due to not enabling optimization",
+                        postAggregationLevel);
+            }
+        }
+        context.setPostAggregationLevel(postAggregationLevel);
 
         // replace derived columns in filter with host columns; columns on loosened condition must be added to group by
         Set<TblColRef> loosenedColumnD = Sets.newHashSet();
@@ -565,66 +576,91 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
         return havingFilter;
     }
 
-    private boolean isExactAggregation(StorageContext context, Cuboid cuboid, Collection<TblColRef> groups,
-            Set<TblColRef> othersD, Set<TblColRef> singleValuesD, Set<TblColRef> derivedPostAggregation,
-            Collection<FunctionDesc> functionDescs, List<SQLDigest.SQLCall> aggrSQLCalls, boolean groupByExpression) {
-        if (context.isNeedStorageAggregation()) {
-            logger.info("exactAggregation is false because need storage aggregation");
-            return false;
-        }
+    private PostAggregationLevelEnum getPostAggregationLevel(StorageContext context, Cuboid cuboid,
+            Collection<TblColRef> groups, Set<TblColRef> otherDimsD, Set<TblColRef> singleValuesD,
+            Set<TblColRef> derivedPostAggregation, Collection<FunctionDesc> functionDescs,
+            List<SQLDigest.SQLCall> aggrSQLCalls, boolean groupByExpression, boolean isFilterEvaluable) {
 
-        if (cuboid.requirePostAggregation()) {
-            logger.info("exactAggregation is false because cuboid {}=>{}", cuboid.getInputID(), cuboid.getId());
-            return false;
-        }
+        PostAggregationLevelEnum result = PostAggregationLevelEnum.Cube;
 
-        // derived aggregation is bad, unless expanded columns are already in group by
-        if (!groups.containsAll(derivedPostAggregation)) {
-            logger.info("exactAggregation is false because derived column require post aggregation: {}",
-                    derivedPostAggregation);
-            return false;
-        }
-
-        // other columns (from filter) is bad, unless they are ensured to have single value
-        if (!singleValuesD.containsAll(othersD)) {
-            logger.info("exactAggregation is false because some column not on group by: {} (single value column: {})",
-                    othersD, singleValuesD);
-            return false;
+        // for group by expression like: group by seller_id/100. seller_id_1(200) get 2, seller_id_2(201) also get 2, so can't aggregate exactly
+        if (groupByExpression) {
+            logger.info("PostAggregationLevel is {} because group by expression", result);
+            return result;
         }
 
         //for DimensionAsMetric like max(cal_dt), the dimension column maybe not in real group by
         for (FunctionDesc functionDesc : functionDescs) {
             if (functionDesc.isDimensionAsMetric()) {
-                logger.info("exactAggregation is false because has DimensionAsMetric");
-                return false;
-            }
-        }
-        for (SQLDigest.SQLCall aggrSQLCall : aggrSQLCalls) {
-            if (aggrSQLCall.function.equals(BitmapMeasureType.FUNC_INTERSECT_COUNT_DISTINCT)
-            || aggrSQLCall.function.equals(BitmapMeasureType.FUNC_INTERSECT_VALUE)) {
-                logger.info("exactAggregation is false because has INTERSECT_COUNT OR INTERSECT_VALUE");
-                return false;
+                logger.info("PostAggregationLevel is {} because has DimensionAsMetric", result);
+                return result;
             }
         }
 
-        // for partitioned cube, the partition column must belong to group by or has single value
-        PartitionDesc partDesc = cuboid.getCubeDesc().getModel().getPartitionDesc();
+        PartitionDesc partDesc = cubeDesc.getModel().getPartitionDesc();
         if (partDesc.isPartitioned()) {
             TblColRef col = partDesc.getPartitionDateColumnRef();
+            // for partitioned cube, the partition column must belong to group by or has single value
             if (!groups.contains(col) && !singleValuesD.contains(col)) {
-                logger.info("exactAggregation is false because cube is partitioned and {} is not on group by", col);
-                return false;
+                logger.info("PostAggregationLevel is {} because cube is partitioned and {} is not on group by", result,
+                        col);
+                return result;
             }
         }
 
-        // for group by expression like: group by seller_id/100. seller_id_1(200) get 2, seller_id_2(201) also get 2, so can't aggregate exactly
-        if (groupByExpression) {
-            logger.info("exactAggregation is false because group by expression");
-            return false;
+        result = PostAggregationLevelEnum.Segment;
+
+        if (!isFilterEvaluable) {
+            logger.info("PostAggregationLevel is {} because filter is not evaluable", result);
+            return result;
         }
 
-        logger.info("exactAggregation is true, cuboid id is {}", cuboid.getId());
-        return true;
-    }
+        for (SQLDigest.SQLCall aggrSQLCall : aggrSQLCalls) {
+            if (aggrSQLCall.function.equals(BitmapMeasureType.FUNC_INTERSECT_COUNT_DISTINCT)
+                    || aggrSQLCall.function.equals(BitmapMeasureType.FUNC_INTERSECT_VALUE)) {
+                logger.info("PostAggregationLevel is {} because has INTERSECT_COUNT OR INTERSECT_VALUE", result);
+                return result;
+            }
+        }
+        
+        // derived aggregation is bad, unless expanded columns are already in group by
+        if (!groups.containsAll(derivedPostAggregation)) {
+            logger.info("PostAggregationLevel is {} because derived column require post aggregation: {}", result,
+                    derivedPostAggregation);
+            return result;
+        }
 
+        // other columns (from filter) is bad, unless they are ensured to have single value
+        if (!singleValuesD.containsAll(otherDimsD)) {
+            logger.info("PostAggregationLevel is {} because some column not on group by: {} (single value column: {})",
+                    result, otherDimsD, singleValuesD);
+            return result;
+        }
+
+        result = PostAggregationLevelEnum.Segment_Standalone;
+
+        Set<TblColRef> shardByCols = cubeDesc.getShardByColumns();
+        if (!shardByCols.isEmpty()) {
+            TblColRef shardByCol = shardByCols.iterator().next();
+            if (groups.contains(shardByCol) || singleValuesD.contains(shardByCol)) {
+                result = PostAggregationLevelEnum.Fragment;
+            }
+        }
+
+        if (context.isNeedStorageAggregation()) {
+            logger.info("PostAggregationLevel is {} because need storage aggregation", result);
+            return result;
+        }
+
+        if (cuboid.requirePostAggregation()) {
+            logger.info("PostAggregationLevel is {} because cuboid {}=>{}", result, cuboid.getInputID(),
+                    cuboid.getId());
+            return result;
+        }
+
+        result = PostAggregationLevelEnum.Exact;
+        logger.info("PostAggregationLevel is {}, cuboid id is {}", result, cuboid.getId());
+
+        return result;
+    }
 }

@@ -58,7 +58,7 @@ public class StorageContext {
     private boolean hasSort = false;
     private boolean acceptPartialResult = false;
 
-    private boolean exactAggregation = false;
+    private PostAggregationLevelEnum postAggregationLevel = PostAggregationLevelEnum.Cube;
     private boolean needStorageAggregation = false;
     private boolean enableCoprocessor = false;
     private boolean enableStreamAggregate = false;
@@ -245,12 +245,16 @@ public class StorageContext {
         this.needStorageAggregation = needStorageAggregation;
     }
 
-    public void setExactAggregation(boolean isExactAggregation) {
-        this.exactAggregation = isExactAggregation;
+    public void setPostAggregationLevel(PostAggregationLevelEnum postAggregationLevel) {
+        this.postAggregationLevel = postAggregationLevel;
+    }
+
+    public PostAggregationLevelEnum getPostAggregationLevel() {
+        return this.postAggregationLevel;
     }
 
     public boolean isExactAggregation() {
-        return this.exactAggregation;
+        return this.postAggregationLevel == PostAggregationLevelEnum.Exact;
     }
 
     public void enableCoprocessor() {

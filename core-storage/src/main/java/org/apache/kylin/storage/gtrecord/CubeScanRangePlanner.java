@@ -210,6 +210,21 @@ public class CubeScanRangePlanner extends ScanRangePlannerBase {
         GTScanRequest scanRequest;
         List<GTScanRange> scanRanges = this.planScanRanges();
         if (scanRanges != null && !scanRanges.isEmpty()) {
+            boolean needServerSidePostAggregation;
+            switch (context.getPostAggregationLevel()) {
+            case Segment_Standalone:
+                needServerSidePostAggregation = cubeSegment.getCuboidShardNum(cuboid.getId()) != 1;
+                break;
+            case Fragment:
+            case Exact:
+                needServerSidePostAggregation = false;
+                break;
+            default:
+                needServerSidePostAggregation = true;
+            }
+            if (!needServerSidePostAggregation) {
+                logger.info("Don't need server side post aggregation for segment {}", cubeSegment);
+            }
             scanRequest = new GTScanRequestBuilder().setInfo(gtInfo).setRanges(scanRanges).setDimensions(gtDimensions)
                     .setAggrGroupBy(gtAggrGroups).setAggrMetrics(gtAggrMetrics).setAggrMetricsFuncs(gtAggrFuncs)
                     .setFilterPushDown(gtFilter)//
@@ -219,7 +234,8 @@ public class CubeScanRangePlanner extends ScanRangePlannerBase {
                     .setAllowStorageAggregation(context.isNeedStorageAggregation())
                     .setAggCacheMemThreshold(cubeSegment.getConfig().getQueryCoprocessorMemGB())//
                     .setStoragePushDownLimit(context.getFinalPushDownLimit())
-                    .setStorageLimitLevel(context.getStorageLimitLevel()).setHavingFilterPushDown(havingFilter)
+                    .setStorageLimitLevel(context.getStorageLimitLevel()).setHavingFilterPushDown(havingFilter)//
+                    .setNeedServerSidePostAggregation(needServerSidePostAggregation)//
                     .createGTScanRequest();
         } else {
             scanRequest = null;
@@ -233,6 +249,7 @@ public class CubeScanRangePlanner extends ScanRangePlannerBase {
      */
     public List<GTScanRange> planScanRanges() {
         TupleFilter flatFilter = flattenToOrAndFilter(gtFilter);
+        logger.debug("Flat filter {}", flatFilter);
 
         List<Collection<ColumnRange>> orAndDimRanges = translateToOrAndDimRanges(flatFilter);
 

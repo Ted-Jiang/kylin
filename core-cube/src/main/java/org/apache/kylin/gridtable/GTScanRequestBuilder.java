@@ -50,6 +50,7 @@ public class GTScanRequestBuilder {
     private long startTime = -1;
     private long timeout = -1;
     private String storageBehavior = null;
+    private boolean needServerSidePostAggregation = true;
 
     public GTScanRequestBuilder setInfo(GTInfo info) {
         this.info = info;
@@ -151,6 +152,11 @@ public class GTScanRequestBuilder {
         return this;
     }
 
+    public GTScanRequestBuilder setNeedServerSidePostAggregation(boolean needServerSidePostAggregation) {
+        this.needServerSidePostAggregation = needServerSidePostAggregation;
+        return this;
+    }
+
     public GTScanRequest createGTScanRequest() {
         if (aggrGroupBy == null) {
             aggrGroupBy = new ImmutableBitSet(new BitSet());
@@ -191,8 +197,8 @@ public class GTScanRequestBuilder {
 
         return new GTScanRequest(info, ranges, dimensions, aggrGroupBy, aggrMetrics, aggrMetricsFuncs, //
                 rtAggrMetrics, dynamicColumns, exprsPushDown, twoLayerAggParam, //
-                filterPushDown, havingFilterPushDown, allowStorageAggregation, aggCacheMemThreshold,
-                storageScanRowNumThreshold, storagePushDownLimit, storageLimitLevel, storageBehavior, startTime,
-                timeout);
+                filterPushDown, havingFilterPushDown, allowStorageAggregation, needServerSidePostAggregation,
+                aggCacheMemThreshold, storageScanRowNumThreshold, storagePushDownLimit, storageLimitLevel,
+                storageBehavior, startTime, timeout);
     }
 }

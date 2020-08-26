@@ -31,12 +31,17 @@ import com.google.common.collect.Maps;
 
 public abstract class BitmapCounterMap<T> implements Serializable {
 
-    private final MapKeySerializer<T> keySerializer;
+    private MapKeySerializer<T> keySerializer;
     private Map<T, BitmapCounter> counterMap;
+    private Long counter;
 
     BitmapCounterMap(MapKeySerializer<T> keySerializer) {
         this.keySerializer = keySerializer;
         this.counterMap = Maps.newHashMap();
+    }
+
+    BitmapCounterMap(long counter) {
+        this.counter = counter;
     }
 
     private BitmapCounter getMutableBitmap(T key) {
@@ -63,6 +68,9 @@ public abstract class BitmapCounterMap<T> implements Serializable {
     }
 
     public long getCount() {
+        if (counter != null) {
+            return counter;
+        }
         long result = 0L;
         for (BitmapCounter bitmapCounter : counterMap.values()) {
             result += bitmapCounter.getCount();

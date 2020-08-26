@@ -97,7 +97,7 @@ public class GTScanRequest {
     private transient boolean doingStorageAggregation = false;
 
     // if false, then we can apply measure trim at fragment data level
-    private boolean needServerSidePostAggregation = true;
+    private boolean needServerSidePostAggregation;
 
     GTScanRequest(GTInfo info, List<GTScanRange> ranges, ImmutableBitSet dimensions, ImmutableBitSet aggrGroupBy, //
             ImmutableBitSet aggrMetrics, String[] aggrMetricsFuncs, ImmutableBitSet rtAggrMetrics, //
@@ -140,6 +140,15 @@ public class GTScanRequest {
         this.storageLimitLevel = storageLimitLevel;
 
         validate(info);
+    }
+
+    // Just for avoid redeploy coprocessor
+    public void setNeedServerSidePostAggregation(boolean needServerSidePostAggregation) {
+        this.needServerSidePostAggregation = needServerSidePostAggregation;
+    }
+
+    public boolean isNeedServerSidePostAggregation() {
+        return needServerSidePostAggregation;
     }
 
     private void validate(GTInfo info) {
@@ -496,7 +505,6 @@ public class GTScanRequest {
             ImmutableBitSet.serializer.serialize(value.rtAggrMetrics, out);
 
             GTTwoLayerAggregateParam.serializer.serialize(value.twoLayerAggParam, out);
-            BytesUtil.writeVInt(value.needServerSidePostAggregation ? 1 : 0, out);
         }
 
         @Override
@@ -554,14 +562,12 @@ public class GTScanRequest {
 
             GTTwoLayerAggregateParam aTwoLayerAggParam = GTTwoLayerAggregateParam.serializer.deserialize(in);
 
-            boolean sNeedSSPostAggr = (BytesUtil.readVInt(in) == 1);
-
             return new GTScanRequestBuilder().setInfo(sInfo).setRanges(sRanges).setDimensions(sColumns)
                     .setAggrGroupBy(sAggGroupBy).setAggrMetrics(sAggrMetrics).setAggrMetricsFuncs(sAggrMetricFuncs)//
                     .setRtAggrMetrics(aRuntimeAggrMetrics).setDynamicColumns(aDynCols)
                     .setExprsPushDown(sTupleExpressionMap).setTwoLayerAggregateParam(aTwoLayerAggParam)//
                     .setFilterPushDown(sGTFilter).setHavingFilterPushDown(sGTHavingFilter)
-                    .setAllowStorageAggregation(sAllowPreAggr).setNeedServerSidePostAggregation(sNeedSSPostAggr)//
+                    .setAllowStorageAggregation(sAllowPreAggr)//
                     .setAggCacheMemThreshold(sAggrCacheGB).setStorageScanRowNumThreshold(storageScanRowNumThreshold)//
                     .setStoragePushDownLimit(storagePushDownLimit).setStorageLimitLevel(storageLimitLevel)
                     .setStartTime(startTime).setTimeout(timeout).setStorageBehavior(storageBehavior)

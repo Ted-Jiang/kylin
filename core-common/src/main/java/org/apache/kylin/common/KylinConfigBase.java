@@ -2217,6 +2217,11 @@ public abstract class KylinConfigBase implements Serializable {
         return Boolean.parseBoolean(this.getOptional("kylin.query.post-aggregation-level-optimize-enabled", FALSE));
     }
 
+    // This property will be set at runtime
+    public boolean needServerSidePostAggregation() {
+        return Boolean.parseBoolean(this.getOptional("kylin.query.need-server-side-post-aggregation", TRUE));
+    }
+
     // ============================================================================
     // SERVER
     // ============================================================================

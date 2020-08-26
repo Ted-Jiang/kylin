@@ -24,6 +24,7 @@ import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Locale;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
@@ -221,8 +222,17 @@ public class CubeHBaseEndpointRPC extends CubeHBaseRPC {
         logger.debug("Submitting rpc to {} shards starting from shard {}, scan range count {}", shardNum,
                 cuboidBaseShard, rawScans.size());
 
-        final KylinConfig kylinConfig = cubeSeg.getConfig();
-        final boolean compressionResult = kylinConfig.getCompressionResult();
+        KylinConfig kylinConfig = cubeSeg.getConfig();
+        boolean compressionResult = kylinConfig.getCompressionResult();
+
+        { // Extract kylin properties which will be used by HBase
+            Properties kylinProperties = new Properties();
+            kylinProperties.setProperty("kylin.storage.hbase.endpoint-compress-result",
+                    String.valueOf(compressionResult));
+            kylinProperties.setProperty("kylin.query.need-server-side-post-aggregation",
+                    String.valueOf(scanRequest.isNeedServerSidePostAggregation()));
+            kylinConfig = KylinConfig.createKylinConfig(kylinProperties);
+        }
 
         final boolean querySegmentCacheEnabled = isSegmentLevelCacheEnabled();
         final SegmentQueryResult.Builder segmentQueryResultBuilder = new SegmentQueryResult.Builder(shardNum,

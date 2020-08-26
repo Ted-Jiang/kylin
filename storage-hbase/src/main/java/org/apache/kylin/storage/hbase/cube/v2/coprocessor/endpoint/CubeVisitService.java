@@ -264,6 +264,7 @@ public class CubeVisitService extends CubeVisitProtos.CubeVisitService implement
 
             final GTScanRequest scanReq = GTScanRequest.serializer
                     .deserialize(ByteBuffer.wrap(HBaseZeroCopyByteString.zeroCopyGetBytes(request.getGtScanRequest())));
+            scanReq.setNeedServerSidePostAggregation(kylinConfig.needServerSidePostAggregation());
             final long deadline = scanReq.getStartTime() + scanReq.getTimeout();
             checkDeadline(deadline);
 

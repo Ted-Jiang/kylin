@@ -33,15 +33,27 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kylin.common.util.DBUtils;
 import org.apache.kylin.common.util.SourceConfigurationUtil;
-
 import org.apache.kylin.shaded.com.google.common.base.Preconditions;
 import org.apache.kylin.shaded.com.google.common.collect.Lists;
+import org.apache.kylin.shaded.com.google.common.collect.Sets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BeelineHiveClient implements IHiveClient {
+
+    private static final Logger logger = LoggerFactory.getLogger(BeelineHiveClient.class);
+
+    private static final Set<String> OWNER_KEYS = Sets.newHashSet("Owner:", "Owner");
+    private static final Set<String> LAST_ACCESS_KEYS = Sets.newHashSet("LastAccessTime:", "Last Access");
+    private static final Set<String> LOCATION_KEYS = Sets.newHashSet("Location:", "Location");
+    private static final Set<String> TABLE_TYPE_KEYS = Sets.newHashSet("Table Type:", "Type");
+    private static final Set<String> INPUT_FORMAT_KEYS = Sets.newHashSet("InputFormat:", "InputFormat");
+    private static final Set<String> OUTPUT_FORMAT_KEYS = Sets.newHashSet("OutputFormat:", "OutputFormat");
 
     private static final String HIVE_AUTH_USER = "user";
     private static final String HIVE_AUTH_PASSWD = "password";
@@ -208,12 +220,12 @@ public class BeelineHiveClient implements IHiveClient {
     }
 
     private void parseResultEntry(ResultSet resultSet, HiveTableMetaBuilder builder) throws SQLException {
-        List<HiveTableMeta.HiveTableColumnMeta> partitionColumns = Lists.newArrayList();
         if ("# Partition Information".equals(resultSet.getString(1).trim())) {
             resultSet.next();
             Preconditions.checkArgument("# col_name".equals(resultSet.getString(1).trim()));
             resultSet.next();
             Preconditions.checkArgument("".equals(resultSet.getString(1).trim()));
+            List<HiveTableMeta.HiveTableColumnMeta> partitionColumns = Lists.newArrayList();
             while (resultSet.next()) {
                 if ("".equals(resultSet.getString(1).trim())) {
                     break;
@@ -222,56 +234,49 @@ public class BeelineHiveClient implements IHiveClient {
                         resultSet.getString(2).trim(), resultSet.getString(3).trim()));
             }
             builder.setPartitionColumns(partitionColumns);
+            return;
         }
 
-        if ("Owner:".equals(resultSet.getString(1).trim())) {
-            builder.setOwner(resultSet.getString(2).trim());
+        if ("Table Parameters:".equals(resultSet.getString(1).trim())) {
+            while (resultSet.next()) {
+                if ("".equals(resultSet.getString(1).trim())) {
+                    break;
+                }
+                if ("storage_handler".equals(resultSet.getString(2).trim())) {
+                    builder.setIsNative(false);//default is true
+                } else if ("totalSize".equals(resultSet.getString(2).trim())) {
+                    builder.setFileSize(Long.parseLong(resultSet.getString(3).trim()));//default is false
+                } else if ("numFiles".equals(resultSet.getString(2).trim())) {
+                    builder.setFileNum(Long.parseLong(resultSet.getString(3).trim()));
+                } else if ("numRows".equals(resultSet.getString(2).trim())) {
+                    builder.setRowNum(Long.parseLong(resultSet.getString(3).trim()));
+                } else if ("skip.header.line.count".equals(resultSet.getString(2).trim())) {
+                    builder.setSkipHeaderLineCount(resultSet.getString(3).trim());
+                }
+            }
+            return;
         }
-        if ("LastAccessTime:".equals(resultSet.getString(1).trim())) {
+
+        String key = resultSet.getString(1).trim();
+        String value = resultSet.getString(2).trim();
+
+        if (OWNER_KEYS.contains(key)) {
+            builder.setOwner(value);
+        } else if (LAST_ACCESS_KEYS.contains(key)) {
             try {
-                int i = Integer.parseInt(resultSet.getString(2).trim());
+                int i = Integer.parseInt(value);
                 builder.setLastAccessTime(i);
             } catch (NumberFormatException e) {
                 builder.setLastAccessTime(0);
             }
-        }
-        if ("Location:".equals(resultSet.getString(1).trim())) {
-            builder.setSdLocation(resultSet.getString(2).trim());
-        }
-        if ("Table Type:".equals(resultSet.getString(1).trim())) {
-            builder.setTableType(resultSet.getString(2).trim());
-        }
-        if ("Table Parameters:".equals(resultSet.getString(1).trim())) {
-            extractTableParam(resultSet, builder);
-        }
-        if ("InputFormat:".equals(resultSet.getString(1).trim())) {
-            builder.setSdInputFormat(resultSet.getString(2).trim());
-        }
-        if ("OutputFormat:".equals(resultSet.getString(1).trim())) {
-            builder.setSdOutputFormat(resultSet.getString(2).trim());
-        }
-    }
-
-    private void extractTableParam(ResultSet resultSet, HiveTableMetaBuilder builder) throws SQLException {
-        while (resultSet.next()) {
-            if (resultSet.getString(2) == null) {
-                break;
-            }
-            if ("storage_handler".equals(resultSet.getString(2).trim())) {
-                builder.setIsNative(false);//default is true
-            }
-            if ("totalSize".equals(resultSet.getString(2).trim())) {
-                builder.setFileSize(Long.parseLong(resultSet.getString(3).trim()));//default is false
-            }
-            if ("numFiles".equals(resultSet.getString(2).trim())) {
-                builder.setFileNum(Long.parseLong(resultSet.getString(3).trim()));
-            }
-            if ("numRows".equals(resultSet.getString(2).trim())) {
-                builder.setRowNum(Long.parseLong(resultSet.getString(3).trim()));
-            }
-            if ("skip.header.line.count".equals(resultSet.getString(2).trim())) {
-                builder.setSkipHeaderLineCount(resultSet.getString(3).trim());
-            }
+        } else if (LOCATION_KEYS.contains(key)) {
+            builder.setSdLocation(value);
+        } else if (TABLE_TYPE_KEYS.contains(key)) {
+            builder.setTableType(value);
+        } else if (INPUT_FORMAT_KEYS.contains(key)) {
+            builder.setSdInputFormat(value);
+        } else if (OUTPUT_FORMAT_KEYS.contains(key)) {
+            builder.setSdOutputFormat(value);
         }
     }
 

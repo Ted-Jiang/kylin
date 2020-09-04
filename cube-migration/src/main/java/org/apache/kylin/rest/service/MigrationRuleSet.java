@@ -300,6 +300,9 @@ public class MigrationRuleSet {
         public void apply(MigrationRuleSet.Context ctx) throws RuleValidationException {
             logger.info("QueryLatencyRule started.");
             CubeInstance cube = ctx.getCubeInstance();
+            if (!cube.getConfig().isMigrationApplyQueryLatencyRule()) {
+                return;
+            }
 
             int latency = KylinConfig.getInstanceFromEnv().getMigrationRuleQueryLatency();
             int iteration = KylinConfig.getInstanceFromEnv().getMigrationRuleQueryEvaluationIteration();

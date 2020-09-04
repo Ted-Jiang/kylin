@@ -233,6 +233,11 @@ public class HiveMetadataExplorer implements ISourceMetadataExplorer, ISampleDat
         }
     }
 
+    @Override
+    public boolean isNeedMaterialized(TableDesc table) {
+        return table.isView();
+    }
+
     private ColumnDesc[] extractColumnFromMeta(HiveTableMeta hiveTableMeta) {
         int columnNumber = hiveTableMeta.allColumns.size();
         List<ColumnDesc> columns = new ArrayList<ColumnDesc>(columnNumber);

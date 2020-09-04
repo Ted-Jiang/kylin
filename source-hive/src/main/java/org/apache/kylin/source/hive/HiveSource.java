@@ -60,7 +60,7 @@ public class HiveSource implements ISource {
     public IReadableTable createReadableTable(TableDesc tableDesc, String uuid) {
         // hive view must have been materialized already
         // ref HiveMRInput.createLookupHiveViewMaterializationStep()
-        if (tableDesc.isView()) {
+        if (tableDesc.isNeedMaterialized()) {
             KylinConfig config = KylinConfig.getInstanceFromEnv();
             String tableName = tableDesc.getMaterializedName(uuid);
 

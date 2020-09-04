@@ -198,4 +198,9 @@ public class JdbcExplorer implements ISourceMetadataExplorer, ISampleDataDeploye
     public void validateSQL(String query) throws Exception {
         dataSource.testSql(dataSource.convertSql(query));
     }
+
+    @Override
+    public boolean isNeedMaterialized(TableDesc table) {
+        return table.isView();
+    }
 }

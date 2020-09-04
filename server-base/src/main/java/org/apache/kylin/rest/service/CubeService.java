@@ -596,7 +596,7 @@ public class CubeService extends BasicService implements InitializingBean {
         aclEvaluate.checkProjectOperationPermission(cube);
         Message msg = MsgPicker.getMsg();
         TableDesc tableDesc = getTableManager().getTableDesc(lookupTable, cube.getProject());
-        if (tableDesc.isView()) {
+        if (tableDesc.isNeedMaterialized()) {
             throw new BadRequestException(
                     String.format(Locale.ROOT, msg.getREBUILD_SNAPSHOT_OF_VIEW(), tableDesc.getName()));
         }

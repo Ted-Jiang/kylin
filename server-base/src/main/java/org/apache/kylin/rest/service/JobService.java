@@ -485,7 +485,7 @@ public class JobService extends BasicService implements InitializingBean {
             String submitter) throws IOException {
         Message msg = MsgPicker.getMsg();
         TableDesc tableDesc = getTableManager().getTableDesc(lookupTable, cube.getProject());
-        if (tableDesc.isView()) {
+        if (tableDesc.isNeedMaterialized()) {
             throw new BadRequestException(
                     String.format(Locale.ROOT, msg.getREBUILD_SNAPSHOT_OF_VIEW(), tableDesc.getName()));
         }

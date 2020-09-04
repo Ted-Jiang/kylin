@@ -249,6 +249,11 @@ public class KafkaSource implements ISource {
             public void validateSQL(String query) throws Exception {
                 throw new UnsupportedOperationException();
             }
+
+            @Override
+            public boolean isNeedMaterialized(TableDesc table) {
+                return table.isView();
+            }
         };
     }
 

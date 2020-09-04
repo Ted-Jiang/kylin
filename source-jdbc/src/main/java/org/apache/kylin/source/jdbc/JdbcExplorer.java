@@ -312,4 +312,9 @@ public class JdbcExplorer implements ISourceMetadataExplorer, ISampleDataDeploye
 
         return columns.toArray(new ColumnDesc[columns.size()]);
     }
+
+    @Override
+    public boolean isNeedMaterialized(TableDesc table) {
+        return table.isView();
+    }
 }

@@ -16,11 +16,13 @@
  * limitations under the License.
 */
 
-package org.apache.kylin.dict.lookup;
+package org.apache.kylin.tool;
 
 import java.io.IOException;
 
 import org.apache.kylin.common.KylinConfig;
+import org.apache.kylin.dict.lookup.SnapshotManager;
+import org.apache.kylin.dict.lookup.SnapshotTable;
 import org.apache.kylin.metadata.TableMetadataManager;
 import org.apache.kylin.metadata.model.TableDesc;
 import org.apache.kylin.source.SourceManager;
@@ -42,7 +44,7 @@ public class SnapshotCLI {
         if (tableDesc == null)
             throw new IllegalArgumentException("Not table found by " + table);
 
-        if (tableDesc.isView())
+        if (tableDesc.isNeedMaterialized())
             throw new IllegalArgumentException("Build snapshot of hive view \'" + table + "\' not supported.");
 
         SnapshotTable snapshot = snapshotMgr.rebuildSnapshot(SourceManager.createReadableTable(tableDesc, null), tableDesc, overwriteUUID);

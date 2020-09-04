@@ -38,4 +38,6 @@ public interface ISourceMetadataExplorer {
     ColumnDesc[] evalQueryMetadata(String query);
 
     void validateSQL(String query) throws Exception;
+
+    boolean isNeedMaterialized(TableDesc table);
 }

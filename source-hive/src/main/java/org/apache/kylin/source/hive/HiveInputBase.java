@@ -395,8 +395,8 @@ public class HiveInputBase {
     // ===== static methods ======
 
     protected static String getTableNameForHCat(TableDesc table, String uuid) {
-        String tableName = (table.isView()) ? table.getMaterializedName(uuid) : table.getName();
-        String database = (table.isView()) ? KylinConfig.getInstanceFromEnv().getHiveDatabaseForIntermediateTable()
+        String tableName = (table.isNeedMaterialized()) ? table.getMaterializedName(uuid) : table.getName();
+        String database = (table.isNeedMaterialized()) ? KylinConfig.getInstanceFromEnv().getHiveDatabaseForIntermediateTable()
                 : table.getDatabase();
         return String.format(Locale.ROOT, "%s.%s", database, tableName).toUpperCase(Locale.ROOT);
     }
@@ -518,7 +518,7 @@ public class HiveInputBase {
         String prj = flatDesc.getDataModel().getProject();
         for (JoinTableDesc lookupDesc : flatDesc.getDataModel().getJoinTables()) {
             TableDesc tableDesc = metadataManager.getTableDesc(lookupDesc.getTable(), prj);
-            if (lookupDesc.getKind() == DataModelDesc.TableKind.LOOKUP && tableDesc.isView()) {
+            if (lookupDesc.getKind() == DataModelDesc.TableKind.LOOKUP && tableDesc.isNeedMaterialized()) {
                 lookupViewsTables.add(tableDesc);
             }
         }
@@ -532,7 +532,7 @@ public class HiveInputBase {
         hiveCmdBuilder.addStatement(hiveInitStatements);
         for (TableDesc lookUpTableDesc : lookupViewsTables) {
             String identity = FlatTableSqlQuoteUtils.quoteTableIdentity(lookUpTableDesc.getDatabase(), lookUpTableDesc.getName(), null);
-            if (lookUpTableDesc.isView()) {
+            if (lookUpTableDesc.isNeedMaterialized()) {
                 String intermediate = lookUpTableDesc.getMaterializedName(uuid);
                 String materializeViewHql = materializeViewHql(intermediate, identity, jobWorkingDir);
                 hiveCmdBuilder.addStatement(materializeViewHql);

@@ -18,6 +18,7 @@
 
 package org.apache.kylin.source.hive;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,10 +27,13 @@ import java.util.Locale;
 import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.kylin.common.KylinConfig;
+import org.apache.kylin.common.util.HadoopUtil;
 import org.apache.kylin.common.util.HiveCmdBuilder;
 import org.apache.kylin.common.util.Pair;
 import org.apache.kylin.common.util.RandomUtil;
+import org.apache.kylin.common.util.StringUtil;
 import org.apache.kylin.metadata.TableMetadataManager;
 import org.apache.kylin.metadata.datatype.DataType;
 import org.apache.kylin.metadata.model.ColumnDesc;
@@ -235,7 +239,35 @@ public class HiveMetadataExplorer implements ISourceMetadataExplorer, ISampleDat
 
     @Override
     public boolean isNeedMaterialized(TableDesc table) {
-        return table.isView();
+        return table.isView() || !isInWorkingCluster(table);
+    }
+
+    private boolean isInWorkingCluster(TableDesc table) {
+        HiveTableMeta hiveTableMeta;
+        try {
+            hiveTableMeta = hiveClient.getHiveTableMeta(table.getDatabase(), table.getName());
+        } catch (Exception e) {
+            throw new RuntimeException("cannot get HiveTableMeta", e);
+        }
+
+        if (StringUtil.isEmpty(hiveTableMeta.sdLocation)) {
+            logger.warn("The location for table {} is empty", table.getIdentity());
+            return false;
+        }
+
+        String tableUriScheme = HadoopUtil.makeURI(hiveTableMeta.sdLocation).getScheme();
+        if (StringUtil.isEmpty(tableUriScheme)) {
+            logger.info("The scheme for table {} is empty", table.getIdentity());
+            return true;
+        }
+
+        try {
+            FileSystem fs = HadoopUtil.getWorkingFileSystem();
+            logger.debug("Working scheme is {}, table scheme is {}", fs.getScheme(), tableUriScheme);
+            return tableUriScheme.equalsIgnoreCase(fs.getScheme());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private ColumnDesc[] extractColumnFromMeta(HiveTableMeta hiveTableMeta) {

@@ -239,7 +239,12 @@ public class HiveMetadataExplorer implements ISourceMetadataExplorer, ISampleDat
 
     @Override
     public boolean isNeedMaterialized(TableDesc table) {
-        return table.isView() || !isInWorkingCluster(table);
+        return table.isView() || (KylinConfig.getInstanceFromEnv().isNeedMaterializeTableWithAdditional()
+                && needMaterializeTableWithAdditional(table));
+    }
+
+    private boolean needMaterializeTableWithAdditional(TableDesc table) {
+        return !isInWorkingCluster(table);
     }
 
     private boolean isInWorkingCluster(TableDesc table) {

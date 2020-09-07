@@ -1240,6 +1240,10 @@ public abstract class KylinConfigBase implements Serializable {
         return getOptional("kylin.source.hive.metadata-type", "hcatalog");
     }
 
+    public boolean isNeedMaterializeTableWithAdditional() {
+        return Boolean.parseBoolean(getOptional("kylin.source.hive.need-materialize-table-with-additional", FALSE));
+    }
+
     // ============================================================================
     // SOURCE.KAFKA
     // ============================================================================

@@ -21,7 +21,10 @@ package org.apache.kylin.storage;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
+import org.apache.kylin.common.util.LocalFileMetadataTestCase;
 import org.apache.kylin.gridtable.StorageLimitLevel;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -29,8 +32,17 @@ import org.junit.Test;
  *
  * @see StorageContext
  */
-public class StorageContextTest {
+public class StorageContextTest extends LocalFileMetadataTestCase {
 
+    @Before
+    public void setUp() throws Exception {
+        this.createTestMetadata();
+    }
+
+    @After
+    public void after() throws Exception {
+        this.cleanupTestMetadata();
+    }
 
     @Test
     public void testSetLimit() {
@@ -48,7 +60,6 @@ public class StorageContextTest {
         assertEquals(Integer.MAX_VALUE, storageContext.getFinalPushDownLimit());
     }
 
-
     @Test
     public void testApplyLimitPushDownUsingStorageLimitLevelNO_LIMIT() {
         StorageContext storageContext = new StorageContext();
@@ -59,6 +70,5 @@ public class StorageContextTest {
         assertFalse(storageContext.isLimitPushDownEnabled());
         assertEquals(Integer.MAX_VALUE, storageContext.getFinalPushDownLimit());
     }
-
 
 }

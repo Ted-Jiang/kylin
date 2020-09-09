@@ -37,6 +37,7 @@ import org.apache.kylin.common.lock.DistributedLock;
 import org.apache.kylin.common.persistence.RootPersistentEntity;
 import org.apache.kylin.common.util.HadoopUtil;
 import org.apache.kylin.common.util.Pair;
+import org.apache.kylin.common.util.ServerMode;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
 import org.apache.kylin.cube.CubeSegment;
@@ -73,7 +74,6 @@ import org.apache.kylin.metadata.project.ProjectManager;
 import org.apache.kylin.metadata.project.RealizationEntry;
 import org.apache.kylin.metadata.realization.RealizationStatusEnum;
 import org.apache.kylin.metadata.realization.RealizationType;
-import org.apache.kylin.rest.constant.Constant;
 import org.apache.kylin.rest.exception.BadRequestException;
 import org.apache.kylin.rest.exception.ForbiddenException;
 import org.apache.kylin.rest.exception.InternalErrorException;
@@ -729,9 +729,7 @@ public class CubeService extends BasicService implements InitializingBean {
 
     public void updateOnNewSegmentReady(String cubeName) {
         final KylinConfig kylinConfig = KylinConfig.getInstanceFromEnv();
-        String serverMode = kylinConfig.getServerMode();
-        if (Constant.SERVER_MODE_JOB.equals(serverMode.toLowerCase(Locale.ROOT))
-                || Constant.SERVER_MODE_ALL.equals(serverMode.toLowerCase(Locale.ROOT))) {
+        if (ServerMode.SERVER_MODE.canServeJobBuild()) {
             CubeInstance cube = getCubeManager().getCube(cubeName);
             if (cube != null) {
                 CubeSegment seg = cube.getLatestBuiltSegment();

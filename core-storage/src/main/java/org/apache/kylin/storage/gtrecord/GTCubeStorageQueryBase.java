@@ -630,13 +630,6 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
             return result;
         }
 
-        // other columns (from filter) is bad, unless they are ensured to have single value
-        if (!singleValuesD.containsAll(otherDimsD)) {
-            logger.info("PostAggregationLevel is {} because some column not on group by: {} (single value column: {})",
-                    result, otherDimsD, singleValuesD);
-            return result;
-        }
-
         result = PostAggregationLevelEnum.Segment_Standalone;
 
         Set<TblColRef> shardByCols = cubeDesc.getShardByColumns();
@@ -645,6 +638,13 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
             if (groups.contains(shardByCol) || singleValuesD.contains(shardByCol)) {
                 result = PostAggregationLevelEnum.Fragment;
             }
+        }
+
+        // other columns (from filter) is bad, unless they are ensured to have single value
+        if (!singleValuesD.containsAll(otherDimsD)) {
+            logger.info("PostAggregationLevel is {} because some column not on group by: {} (single value column: {})",
+                    result, otherDimsD, singleValuesD);
+            return result;
         }
 
         if (context.isNeedStorageAggregation()) {

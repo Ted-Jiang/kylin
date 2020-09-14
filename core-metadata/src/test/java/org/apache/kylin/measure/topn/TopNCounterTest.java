@@ -34,16 +34,19 @@ import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.RandomStringUtils;
-import org.apache.commons.math3.distribution.ZipfDistribution;
 import org.apache.kylin.common.util.Pair;
+import org.apache.kylin.shaded.com.google.common.collect.Lists;
+import org.apache.kylin.shaded.com.google.common.collect.Maps;
+import org.apache.kylin.util.FastZipfGenerator;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import org.apache.kylin.shaded.com.google.common.collect.Lists;
-import org.apache.kylin.shaded.com.google.common.collect.Maps;
-
 @Ignore("For collecting accuracy statistics, not for functional test")
 public class TopNCounterTest {
+
+    protected static final int BATCH_SIZE = 10000;
 
     protected static int TOP_K;
 
@@ -55,45 +58,65 @@ public class TopNCounterTest {
 
     protected static int PARALLEL = 10;
 
-    protected static boolean verbose = true;
+    protected static boolean verbose = false;
+
+    protected String dataFilePath;
+
+    protected TopNCounterTest.HashMapConsumer accurateCounter;
 
     public TopNCounterTest() {
         TOP_K = 100;
         KEY_SPACE = 100 * TOP_K;
-        TOTAL_RECORDS = 1000000; // 1 million
+        TOTAL_RECORDS = 1000 * BATCH_SIZE; // 10 million
         SPACE_SAVING_ROOM = 100;
     }
 
-    protected String prepareTestDate() throws IOException {
+    @Before
+    public void setup() throws IOException {
+        dataFilePath = prepareTestDate();
+
+        accurateCounter = new TopNCounterTest.HashMapConsumer();
+        feedDataToConsumer(dataFilePath, accurateCounter, 0, TOTAL_RECORDS);
+    }
+
+    @After
+    public void cleanup() throws IOException {
+        FileUtils.forceDelete(new File(dataFilePath));
+    }
+
+    private void outputMsg(String msg) {
+        if (verbose)
+            System.out.println(msg);
+    }
+
+    private String prepareTestDate() throws IOException {
         String[] allKeys = new String[KEY_SPACE];
 
         for (int i = 0; i < KEY_SPACE; i++) {
-            allKeys[i] = RandomStringUtils.randomAlphabetic(10);
+            allKeys[i] = RandomStringUtils.randomAlphabetic(20);
         }
 
-        outputMsg("Start to create test random data...");
+        System.out.println("Start to create test random data...");
         long startTime = System.currentTimeMillis();
-        ZipfDistribution zipf = new ZipfDistribution(KEY_SPACE, 0.5);
-        int keyIndex;
+        FastZipfGenerator zipf = new FastZipfGenerator(KEY_SPACE, 0.5);
 
         File tempFile = File.createTempFile("ZipfDistribution", ".txt");
 
         if (tempFile.exists())
             FileUtils.forceDelete(tempFile);
-        Writer fw = new OutputStreamWriter(new FileOutputStream(tempFile), StandardCharsets.UTF_8);
-        try {
-            for (int i = 0; i < TOTAL_RECORDS; i++) {
-                keyIndex = zipf.sample() - 1;
-                fw.write(allKeys[keyIndex]);
-                fw.write('\n');
+        try (Writer fw = new OutputStreamWriter(new FileOutputStream(tempFile), StandardCharsets.UTF_8)) {
+            for (int i = 0; i < TOTAL_RECORDS / BATCH_SIZE; i++) {
+                StringBuilder sb = new StringBuilder();
+                for (int j = 0; j < BATCH_SIZE; j++) {
+                    int keyIndex = zipf.next() - 1;
+                    sb.append(allKeys[keyIndex]).append('\n');
+                }
+                fw.write(sb.toString());
             }
-        } finally {
-            if (fw != null)
-                fw.close();
         }
 
-        outputMsg("Create test data takes : " + (System.currentTimeMillis() - startTime) / 1000 + " seconds.");
-        outputMsg("Test data in : " + tempFile.getAbsolutePath());
+        System.out.println("Create test data takes : " + (System.currentTimeMillis() - startTime) + " milliseconds.");
+        System.out.println("Test data in : " + tempFile.getAbsolutePath());
 
         return tempFile.getAbsolutePath();
     }
@@ -101,27 +124,39 @@ public class TopNCounterTest {
     @Ignore
     @Test
     public void testSingleSpaceSaving() throws IOException {
-        String dataFile = prepareTestDate();
         TopNCounterTest.SpaceSavingConsumer spaceSavingCounter = new TopNCounterTest.SpaceSavingConsumer(
                 TOP_K * SPACE_SAVING_ROOM);
-        TopNCounterTest.HashMapConsumer accurateCounter = new TopNCounterTest.HashMapConsumer();
-
-        for (TopNCounterTest.TestDataConsumer consumer : new TopNCounterTest.TestDataConsumer[] { spaceSavingCounter,
-                accurateCounter }) {
-            feedDataToConsumer(dataFile, consumer, 0, TOTAL_RECORDS);
-        }
-
-        FileUtils.forceDelete(new File(dataFile));
+        feedDataToConsumer(dataFilePath, spaceSavingCounter, 0, TOTAL_RECORDS);
 
         compareResult(spaceSavingCounter, accurateCounter);
+    }
+
+    @Test
+    public void testParallelSpaceSaving() throws IOException, ClassNotFoundException {
+        TopNCounterTest.SpaceSavingConsumer[] parallelCounters = new TopNCounterTest.SpaceSavingConsumer[PARALLEL];
+
+        for (int i = 0; i < PARALLEL; i++) {
+            parallelCounters[i] = new TopNCounterTest.SpaceSavingConsumer(TOP_K * SPACE_SAVING_ROOM);
+        }
+
+        int slice = TOTAL_RECORDS / PARALLEL;
+        int startPosition = 0;
+        for (int i = 0; i < PARALLEL; i++) {
+            feedDataToConsumer(dataFilePath, parallelCounters[i], startPosition, startPosition + slice);
+            startPosition += slice;
+        }
+
+        TopNCounterTest.SpaceSavingConsumer[] mergedCounters = singleMerge(parallelCounters);
+
+        compareResult(mergedCounters[0], accurateCounter);
     }
 
     private void compareResult(TopNCounterTest.TestDataConsumer firstConsumer,
             TopNCounterTest.TestDataConsumer secondConsumer) {
         List<Pair<String, Double>> topResult1 = firstConsumer.getTopN(TOP_K);
-        outputMsg("Get topN, Space saving takes " + firstConsumer.getSpentTime() / 1000 + " seconds");
+        System.out.println("Get topN, Space saving takes " + firstConsumer.getSpentTime() + " milliseconds");
         List<Pair<String, Double>> realSequence = secondConsumer.getTopN(TOP_K);
-        outputMsg("Get topN, Merge sort takes " + secondConsumer.getSpentTime() / 1000 + " seconds");
+        System.out.println("Get topN, Merge sort takes " + secondConsumer.getSpentTime() + " milliseconds");
 
         int error = 0;
         for (int i = 0; i < topResult1.size(); i++) {
@@ -143,38 +178,7 @@ public class TopNCounterTest {
     }
 
     private boolean isClose(double value1, double value2) {
-
-        if (Math.abs(value1 - value2) < 5.0)
-            return true;
-
-        return false;
-    }
-
-    @Test
-    public void testParallelSpaceSaving() throws IOException, ClassNotFoundException {
-        String dataFile = prepareTestDate();
-
-        TopNCounterTest.SpaceSavingConsumer[] parallelCounters = new TopNCounterTest.SpaceSavingConsumer[PARALLEL];
-
-        for (int i = 0; i < PARALLEL; i++) {
-            parallelCounters[i] = new TopNCounterTest.SpaceSavingConsumer(TOP_K * SPACE_SAVING_ROOM);
-        }
-
-        int slice = TOTAL_RECORDS / PARALLEL;
-        int startPosition = 0;
-        for (int i = 0; i < PARALLEL; i++) {
-            feedDataToConsumer(dataFile, parallelCounters[i], startPosition, startPosition + slice);
-            startPosition += slice;
-        }
-
-        TopNCounterTest.SpaceSavingConsumer[] mergedCounters = singleMerge(parallelCounters);
-
-        TopNCounterTest.HashMapConsumer accurateCounter = new TopNCounterTest.HashMapConsumer();
-        feedDataToConsumer(dataFile, accurateCounter, 0, TOTAL_RECORDS);
-
-        compareResult(mergedCounters[0], accurateCounter);
-        FileUtils.forceDelete(new File(dataFile));
-
+        return Math.abs(value1 - value2) < 5.0;
     }
 
     private TopNCounterTest.SpaceSavingConsumer[] singleMerge(TopNCounterTest.SpaceSavingConsumer[] consumers)
@@ -186,10 +190,10 @@ public class TopNCounterTest {
         TopNCounterTest.SpaceSavingConsumer merged = new TopNCounterTest.SpaceSavingConsumer(TOP_K * SPACE_SAVING_ROOM);
 
         for (int i = 0, n = consumers.length; i < n; i++) {
-            merged.vs.merge(consumers[i].vs);
+            merged.merge(consumers[i]);
         }
 
-        merged.vs.retain(TOP_K * SPACE_SAVING_ROOM); // remove extra elements;
+        merged.retain(TOP_K * SPACE_SAVING_ROOM); // remove extra elements;
         return new TopNCounterTest.SpaceSavingConsumer[] { merged };
 
     }
@@ -202,7 +206,7 @@ public class TopNCounterTest {
 
         for (int i = 0, n = consumers.length; i < n; i = i + 2) {
             if (i + 1 < n) {
-                consumers[i].vs.merge(consumers[i + 1].vs);
+                consumers[i].merge(consumers[i + 1]);
             }
 
             list.add(consumers[i]);
@@ -214,27 +218,24 @@ public class TopNCounterTest {
     private void feedDataToConsumer(String dataFile, TopNCounterTest.TestDataConsumer consumer, int startLine,
             int endLine) throws IOException {
         long startTime = System.currentTimeMillis();
-        BufferedReader bufferedReader = new BufferedReader(
-                new InputStreamReader(new FileInputStream(dataFile), StandardCharsets.UTF_8));
 
-        int lineNum = 0;
-        String line = bufferedReader.readLine();
-        while (line != null) {
-            if (lineNum >= startLine && lineNum < endLine) {
-                consumer.addElement(line, 1.0);
+        try (BufferedReader bufferedReader = new BufferedReader(
+                new InputStreamReader(new FileInputStream(dataFile), StandardCharsets.UTF_8))) {
+            int lineNum = 0;
+            String line = bufferedReader.readLine();
+            while (line != null) {
+                if (lineNum >= startLine && lineNum < endLine) {
+                    consumer.addElement(line, 1.0);
+                }
+                line = bufferedReader.readLine();
+                lineNum++;
             }
-            line = bufferedReader.readLine();
-            lineNum++;
+
+            consumer.finishFeed();
         }
 
-        bufferedReader.close();
-        outputMsg("feed data to " + consumer.getClass().getCanonicalName() + " take time (seconds): "
-                + (System.currentTimeMillis() - startTime) / 1000);
-    }
-
-    private void outputMsg(String msg) {
-        if (verbose)
-            System.out.println(msg);
+        System.out.println("feed data to " + consumer.getClass().getCanonicalName() + " take time (milliseconds): "
+                + (System.currentTimeMillis() - startTime));
     }
 
     private static interface TestDataConsumer {
@@ -243,15 +244,18 @@ public class TopNCounterTest {
         public List<Pair<String, Double>> getTopN(int k);
 
         public long getSpentTime();
+
+        public void finishFeed();
     }
 
     private class SpaceSavingConsumer implements TopNCounterTest.TestDataConsumer {
         private long timeSpent = 0;
+        private final int capacity;
         protected TopNCounter<String> vs;
 
         public SpaceSavingConsumer(int space) {
-            vs = new TopNCounter<String>(space);
-
+            this.capacity = space;
+            this.vs = new TopNCounter<>(space);
         }
 
         public void addElement(String key, double value) {
@@ -259,6 +263,22 @@ public class TopNCounterTest {
             long startTime = System.currentTimeMillis();
             vs.offer(key, value);
             timeSpent += (System.currentTimeMillis() - startTime);
+        }
+
+        public void merge(SpaceSavingConsumer another) {
+            long startTime = System.currentTimeMillis();
+            vs.merge(another.vs);
+            timeSpent += (System.currentTimeMillis() - startTime);
+        }
+
+        public void retain(int capacity) {
+            long startTime = System.currentTimeMillis();
+            vs.retain(capacity);
+            timeSpent += (System.currentTimeMillis() - startTime);
+        }
+
+        public void finishFeed() {
+            retain(capacity);
         }
 
         @Override
@@ -320,6 +340,10 @@ public class TopNCounterTest {
         @Override
         public long getSpentTime() {
             return timeSpent;
+        }
+
+        @Override
+        public void finishFeed() {
         }
     }
 

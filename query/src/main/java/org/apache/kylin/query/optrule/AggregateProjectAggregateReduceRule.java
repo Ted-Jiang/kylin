@@ -19,6 +19,7 @@
 package org.apache.kylin.query.optrule;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,7 @@ import org.apache.calcite.rel.core.AggregateCall;
 import org.apache.calcite.rel.core.RelFactories;
 import org.apache.calcite.rel.logical.LogicalAggregate;
 import org.apache.calcite.rel.logical.LogicalProject;
+import org.apache.calcite.rel.type.RelDataTypeField;
 import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.sql.SqlAggFunction;
@@ -41,6 +43,7 @@ import org.apache.calcite.sql.fun.SqlSumAggFunction;
 import org.apache.calcite.tools.RelBuilder;
 import org.apache.calcite.tools.RelBuilderFactory;
 import org.apache.calcite.util.ImmutableBitSet;
+import org.apache.calcite.util.Pair;
 
 import com.google.common.collect.ImmutableList;
 
@@ -112,7 +115,9 @@ public class AggregateProjectAggregateReduceRule extends RelOptRule {
 
         // 2. check aggregate on project on aggregate
         // 2.1 check group by
-        ImmutableBitSet.Builder groupSetInnerBuilder = ImmutableBitSet.builder();
+        List<Pair<RexNode, String>> newProjects = new ArrayList<>();
+        Map<Integer, Integer> newProjectIdxMapping = new HashMap<>();
+        ImmutableBitSet.Builder newGroupSetBuilder = ImmutableBitSet.builder();
         for (int groupIdx : aggOuter.getGroupSet()) {
             RexNode exp = project.getProjects().get(groupIdx);
             if (!(exp instanceof RexInputRef)) {
@@ -124,13 +129,24 @@ public class AggregateProjectAggregateReduceRule extends RelOptRule {
             if (groupIdxInner >= aggInner.getGroupCount()) {
                 return;
             }
-            int newGroupIdx = aggInner.getGroupSet().nth(groupIdxInner);
-            groupSetInnerBuilder.set(newGroupIdx);
+            int inputIdx = aggInner.getGroupSet().nth(groupIdxInner);
+            Integer newInputIdx = newProjectIdxMapping.get(inputIdx);
+            if (newInputIdx == null) {
+                RelDataTypeField inputField = aggInner.getInput().getRowType().getFieldList().get(inputIdx);
+                RexInputRef newInputRef = new RexInputRef(inputField.getIndex(), inputField.getType());
+                newProjects.add(new Pair<>(newInputRef, newInputRef.getName()));
+
+                newInputIdx = newProjects.size() - 1;
+                newProjectIdxMapping.put(inputIdx, newInputIdx);
+            }
+            newGroupSetBuilder.set(newInputIdx);
         }
         // 2.2 check aggregation
-        ImmutableList.Builder<AggregateCall> aggCallListBuilder = ImmutableList.builder();
+        ImmutableList.Builder<AggregateCall> newAggCallListBuilder = ImmutableList.builder();
         for (AggregateCall aggCallOuter : aggOuter.getAggCallList()) {
-            SqlKind sqlKindOuter = aggCallOuter.getAggregation().getKind();
+            if (aggCallOuter.filterArg >= 0) {
+                return;
+            }
             if (aggCallOuter.getArgList().size() > 1) {
                 return;
             }
@@ -146,24 +162,42 @@ public class AggregateProjectAggregateReduceRule extends RelOptRule {
                 return;
             }
             AggregateCall aggCallInner = aggInner.getAggCallList().get(aggInnerIdx);
+            if (aggCallInner.filterArg >= 0) {
+                return;
+            }
+            SqlKind sqlKindOuter = aggCallOuter.getAggregation().getKind();
             SqlKind sqlKindInner = aggCallInner.getAggregation().getKind();
             if (!sqlKindOuter.equals(sqlKindInner)) {
                 return;
             }
+
+            int inputIdx = aggCallInner.getArgList().get(0);
+            Integer newInputIdx = newProjectIdxMapping.get(inputIdx);
+            if (newInputIdx == null) {
+                RelDataTypeField inputField = aggInner.getInput().getRowType().getFieldList().get(inputIdx);
+                RexInputRef newInputRef = new RexInputRef(inputField.getIndex(), inputField.getType());
+                newProjects.add(new Pair<>(newInputRef, newInputRef.getName()));
+
+                newInputIdx = newProjects.size() - 1;
+                newProjectIdxMapping.put(inputIdx, newInputIdx);
+            }
+
+            List<Integer> newArgList = new ArrayList<>();
+            newArgList.add(newInputIdx);
             AggregateCall newAggCall = AggregateCall.create(aggCallOuter.getAggregation(), aggCallOuter.isDistinct(),
-                    aggCallOuter.isApproximate(), aggCallInner.getArgList(), aggCallInner.filterArg,
-                    aggCallOuter.getType(), aggCallOuter.name);
-            aggCallListBuilder.add(newAggCall);
+                    aggCallOuter.isApproximate(), newArgList, -1, aggCallOuter.getType(), aggCallOuter.name);
+            newAggCallListBuilder.add(newAggCall);
         }
 
-        // All check pass, do reduce: (aggregate -> project -> aggregate) => (aggregate)
+        // All check pass, do reduce: (aggregate -> project -> aggregate) => (aggregate -> project)
         // create new group set
-        final ImmutableBitSet newGroupSet = groupSetInnerBuilder.build();
+        final ImmutableBitSet newGroupSet = newGroupSetBuilder.build();
         // mapping input ref in aggr calls and generate new aggr calls
-        final ImmutableList<AggregateCall> newAggCalls = aggCallListBuilder.build();
+        final ImmutableList<AggregateCall> newAggCalls = newAggCallListBuilder.build();
 
         RelBuilder relBuilder = call.builder();
         relBuilder.push(aggInner.getInput());
+        relBuilder.project(Pair.left(newProjects), Pair.right(newProjects));
         relBuilder.aggregate(relBuilder.groupKey(newGroupSet, null), newAggCalls);
         RelNode rel = relBuilder.build();
 

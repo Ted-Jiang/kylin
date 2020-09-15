@@ -104,7 +104,7 @@ public class MigrationController extends BasicController {
         CubeInstance cube = getCubeInstance(cubeName);
         try {
             MigrationRuleSet.Context ctx = new MigrationRuleSet.Context(queryService, cube,
-                    getTargetHost(request.getTargetHost()), request.getProjectName());
+                    getTargetHost(request.getTargetHost()), request.getProjectName(), request.getMigrateWithData());
             migrationService.requestMigration(cube, ctx);
         } catch (Exception e) {
             logger.error("Request migration failed.", e);
@@ -128,7 +128,7 @@ public class MigrationController extends BasicController {
         CubeInstance cube = getCubeInstance(cubeName);
         try {
             MigrationRuleSet.Context ctx = new MigrationRuleSet.Context(queryService, cube,
-                    getTargetHost(request.getTargetHost()), request.getProjectName());
+                    getTargetHost(request.getTargetHost()), request.getProjectName(), request.getMigrateWithData());
             migrationService.approve(cube, ctx);
         } catch (Exception e) {
             throw new BadRequestException(e.getMessage());

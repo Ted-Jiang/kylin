@@ -22,6 +22,7 @@ public class MigrationRequest {
     private String targetHost;
     private String projectName;
     private String reason; // reject reason
+    private String migrateWithData;
 
     public String getTargetHost() {
         return targetHost;
@@ -45,5 +46,13 @@ public class MigrationRequest {
 
     public void setReason(String reason) {
         this.reason = reason;
+    }
+
+    public String getMigrateWithData() {
+        return migrateWithData;
+    }
+
+    public void setMigrateWithData(String migrateWithData) {
+        this.migrateWithData = migrateWithData;
     }
 }

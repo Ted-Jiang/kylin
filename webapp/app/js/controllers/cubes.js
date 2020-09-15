@@ -1204,7 +1204,8 @@ var cubeMigrateCtrl = function ($scope, $modalInstance, CubeService, cube, Proje
     }
 
     $scope.MigrationRequest = {
-      projectName:$scope.migrate.targetProject
+      projectName:$scope.migrate.targetProject,
+      migrateWithData:$scope.migrate.migrateWithData
     }
 
     SweetAlert.swal({
@@ -1241,7 +1242,8 @@ var cubeMigrateCtrl = function ($scope, $modalInstance, CubeService, cube, Proje
 
   $scope.migrateApprove = function(){
     $scope.MigrationRequest = {
-      projectName:$scope.migrate.targetProject
+      projectName:$scope.migrate.targetProject,
+      migrateWithData:$scope.migrate.migrateWithData
     }
     loadingRequest.show();
     CubeService.approve({cubeId: cube.name}, $scope.MigrationRequest, function (result) {

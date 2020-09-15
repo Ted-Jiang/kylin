@@ -163,6 +163,29 @@ border-left:0px;">
                             ${cubename}</h4>
                         </td>
                     </tr>
+                    <tr>
+                        <th width="30%" style="border: 1px solid #ddd;
+                    padding: 8px;">
+                            <h4 style="
+                                        margin-top: 0;
+                                        margin-bottom: 0;
+                                        line-height: 1.5;
+                                        text-align: left;
+                                        font-size: 14px;
+                                        font-style: normal;">Migrate With Data</h4>
+                        </th>
+                        <td style="border: 1px solid #ddd;
+                padding: 8px;">
+                            <h4 style="margin-top: 0;
+                        margin-bottom: 0;
+                        line-height: 1.5;
+                        text-align: left;
+                        font-size: 14px;
+                        font-style: normal;
+                        font-weight: 300;">
+                            ${migrateWithData}</h4>
+                        </td>
+                    </tr>
                 </table>
             </td>
         </tr>

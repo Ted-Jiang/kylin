@@ -427,14 +427,21 @@ public class MigrationRuleSet {
         private final ResourceStore targetResourceStore;
         private final String tgtProjectName; // the target project name
         private final ProjectInstance srcProject; // the source project
+        private final String migrateWithData;
 
         public Context(QueryService queryService, CubeInstance cubeInstance, String targetHost, String tgtProjectName) {
+            this(queryService, cubeInstance, targetHost, tgtProjectName, "false");
+        }
+
+        public Context(QueryService queryService, CubeInstance cubeInstance, String targetHost, String tgtProjectName,
+                       String migrateWithData) {
             this.queryService = queryService;
             this.cubeInstance = cubeInstance;
             this.targetAddress = targetHost;
             KylinConfig targetConfig = KylinConfig.createInstanceFromUri(targetHost);
             this.targetResourceStore = ResourceStore.getStore(targetConfig);
             this.tgtProjectName = tgtProjectName;
+            this.migrateWithData = migrateWithData;
 
             List<ProjectInstance> projList = ProjectManager.getInstance(KylinConfig.getInstanceFromEnv())
                     .findProjects(cubeInstance.getType(), cubeInstance.getName());
@@ -471,6 +478,10 @@ public class MigrationRuleSet {
 
         public ProjectInstance getSrcProject() {
             return srcProject;
+        }
+
+        public String getMigrateWithData() {
+            return migrateWithData;
         }
     }
 }

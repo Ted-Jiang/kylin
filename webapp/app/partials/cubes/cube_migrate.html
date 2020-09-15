@@ -24,10 +24,15 @@
     <div class="row">
       <div class="col-md-8 col-md-offset-2">
         <div class="form-group">
-          <b>Target Project Name:</b>
-          <br/>
-          <p style="color:red;font-size:12px;">You can change the below project name if it's different on Kylin Prod.</p>
+          <b>Target Project Name:  </b>
           <input type="text" class="form-control" ng-readonly="migrate.lockProjectName" ng-model="migrate.targetProject" />
+          <p style="color:red;font-size:12px;">You can change the below project name if it's different on Kylin Prod.</p>
+          <br/>
+          <div>
+            <b>Migrate With Data:   </b>
+            <input type="checkbox" ng-model="migrate.migrateWithData" value="true" defaultValue = "false"/>
+            <p style="color:red;font-size:12px;">You can choose whether to migrate with data .</p>
+          </div>
         </div>
       </div>
     </div>
@@ -65,9 +70,16 @@
     <div class="row">
       <div class="col-md-8 col-md-offset-2">
         <div class="form-group">
+          <div>
           <b>Target Project Name:</b>
-          <br/>
           <input type="text" class="form-control" ng-model="migrate.targetProject" value={{migrate.targetProject}}/>
+          </div>
+          <br/>
+          <div>
+            <p style="color:red;font-size:12px;">You can choose whether to migrate with data .</p>
+            <b>Migrate With Data:   </b>
+            <input type="checkbox" ng-model="migrate.migrateWithData" value="true" defaultValue = "false"/>
+          </div>
         </div>
       </div>
     </div>

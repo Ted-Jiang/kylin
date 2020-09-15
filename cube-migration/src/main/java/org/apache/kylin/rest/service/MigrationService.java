@@ -75,6 +75,8 @@ public class MigrationService extends BasicService {
         root.put("cubename", ctx.getCubeInstance().getName());
         root.put("status", "NEED APPROVE");
         root.put("envname", envName);
+        root.put("migrateWithData", ctx.getMigrateWithData());
+
         sendMigrationMail(MailNotificationUtil.MIGRATION_REQUEST, getEmailRecipients(cube), root);
     }
 
@@ -104,27 +106,34 @@ public class MigrationService extends BasicService {
         String cubeName = cube.getName();
         String projectName = ctx.getTgtProjectName();
         try {
-            sendApprovedMailQuietly(cubeName, projectName);
+            sendApprovedMailQuietly(cubeName, projectName, ctx.getMigrateWithData());
 
-            // do cube migration
-            new CubeMigrationCLI().moveCube(localHost, ctx.getTargetAddress(), cubeName, projectName, "true", "false",
-                    "true", "true", "false");
+            if (!ctx.getMigrateWithData().isEmpty() && "true".equalsIgnoreCase(ctx.getMigrateWithData())) {
+                // do cube migration with data
+                new CubeMigrationCLI().moveCube(localHost, ctx.getTargetAddress(), cubeName, projectName, "true",
+                        "true", "true", "true", "true");
+            } else {
+                // do cube migration withOut data
+                new CubeMigrationCLI().moveCube(localHost, ctx.getTargetAddress(), cubeName, projectName, "true",
+                        "false", "true", "true", "false");
+            }
 
-            sendCompletedMailQuietly(cubeName, projectName);
+            sendCompletedMailQuietly(cubeName, projectName, ctx.getMigrateWithData());
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
-            sendMigrationFailedMailQuietly(cubeName, projectName, e.getMessage());
+            sendMigrationFailedMailQuietly(cubeName, projectName, e.getMessage(), ctx.getMigrateWithData());
             throw e;
         }
     }
 
-    private boolean sendApprovedMailQuietly(String cubeName, String projectName) {
+    private boolean sendApprovedMailQuietly(String cubeName, String projectName, String migrateWithData) {
         try {
             Map<String, String> root = Maps.newHashMap();
             root.put("projectname", projectName);
             root.put("cubename", cubeName);
             root.put("status", "APPROVED");
             root.put("envname", envName);
+            root.put("migrateWithData", migrateWithData);
 
             sendMigrationMail(MailNotificationUtil.MIGRATION_APPROVED, getEmailRecipients(cubeName), root);
         } catch (Exception e) {
@@ -134,13 +143,14 @@ public class MigrationService extends BasicService {
         return true;
     }
 
-    private boolean sendCompletedMailQuietly(String cubeName, String projectName) {
+    private boolean sendCompletedMailQuietly(String cubeName, String projectName, String migrateWithData) {
         try {
             Map<String, String> root = Maps.newHashMap();
             root.put("projectname", projectName);
             root.put("cubename", cubeName);
             root.put("status", "COMPLETED");
             root.put("envname", envName);
+            root.put("migrateWithData", migrateWithData);
 
             sendMigrationMail(MailNotificationUtil.MIGRATION_COMPLETED, getEmailRecipients(cubeName), root);
         } catch (Exception e) {
@@ -150,7 +160,8 @@ public class MigrationService extends BasicService {
         return true;
     }
 
-    private boolean sendMigrationFailedMailQuietly(String cubeName, String projectName, String reason) {
+    private boolean sendMigrationFailedMailQuietly(String cubeName, String projectName, String reason,
+            String migrateWithData) {
         try {
             Map<String, String> root = Maps.newHashMap();
             root.put("projectname", projectName);
@@ -158,6 +169,7 @@ public class MigrationService extends BasicService {
             root.put("status", "FAILED");
             root.put("failedReason", reason);
             root.put("envname", envName);
+            root.put("migrateWithData", migrateWithData);
 
             sendMigrationMail(MailNotificationUtil.MIGRATION_FAILED, getEmailRecipients(cubeName), root);
         } catch (Exception e) {

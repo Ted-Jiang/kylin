@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.JsonUtil;
+import org.apache.kylin.common.util.StringUtil;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.metadata.model.ColumnDesc;
 import org.apache.kylin.metadata.model.DataModelDesc;
@@ -104,7 +105,8 @@ public class MigrationController extends BasicController {
         CubeInstance cube = getCubeInstance(cubeName);
         try {
             MigrationRuleSet.Context ctx = new MigrationRuleSet.Context(queryService, cube,
-                    getTargetHost(request.getTargetHost()), request.getProjectName(), request.getMigrateWithData());
+                    getTargetHost(request.getTargetHost()), request.getProjectName(),
+                    StringUtil.isEmpty(request.getMigrateWithData()) ? "false" : request.getMigrateWithData());
             migrationService.requestMigration(cube, ctx);
         } catch (Exception e) {
             logger.error("Request migration failed.", e);
@@ -128,7 +130,8 @@ public class MigrationController extends BasicController {
         CubeInstance cube = getCubeInstance(cubeName);
         try {
             MigrationRuleSet.Context ctx = new MigrationRuleSet.Context(queryService, cube,
-                    getTargetHost(request.getTargetHost()), request.getProjectName(), request.getMigrateWithData());
+                    getTargetHost(request.getTargetHost()), request.getProjectName(),
+                    StringUtil.isEmpty(request.getMigrateWithData()) ? "false" : request.getMigrateWithData());
             migrationService.approve(cube, ctx);
         } catch (Exception e) {
             throw new BadRequestException(e.getMessage());

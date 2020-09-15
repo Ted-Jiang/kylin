@@ -108,7 +108,7 @@ public class MigrationService extends BasicService {
         try {
             sendApprovedMailQuietly(cubeName, projectName, ctx.getMigrateWithData());
 
-            if (!ctx.getMigrateWithData().isEmpty() && "true".equalsIgnoreCase(ctx.getMigrateWithData())) {
+            if ("true".equalsIgnoreCase(ctx.getMigrateWithData())) {
                 // do cube migration with data
                 new CubeMigrationCLI().moveCube(localHost, ctx.getTargetAddress(), cubeName, projectName, "true",
                         "true", "true", "true", "true");

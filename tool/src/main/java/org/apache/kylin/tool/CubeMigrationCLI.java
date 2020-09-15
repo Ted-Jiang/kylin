@@ -49,9 +49,11 @@ import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
 import org.apache.kylin.cube.CubeSegment;
 import org.apache.kylin.cube.model.CubeDesc;
+import org.apache.kylin.cube.model.DictionaryDesc;
 import org.apache.kylin.cube.model.SnapshotTableDesc;
 import org.apache.kylin.dict.DictionaryInfo;
 import org.apache.kylin.dict.DictionaryManager;
+import org.apache.kylin.dict.GlobalDictionaryBuilder;
 import org.apache.kylin.dict.lookup.ExtTableSnapshotInfo;
 import org.apache.kylin.dict.lookup.ExtTableSnapshotInfoManager;
 import org.apache.kylin.dict.lookup.SnapshotManager;
@@ -173,6 +175,7 @@ public class CubeMigrationCLI extends AbstractApplication {
 
         if (migrateSegment) {
             checkCubeState(cube);
+            checkGlobalDict(cube.getDescriptor());
         }
 
         checkAndGetHbaseUrl();
@@ -218,6 +221,17 @@ public class CubeMigrationCLI extends AbstractApplication {
         for (CubeSegment segment : cube.getSegments()) {
             if (segment.getStatus() != SegmentStatusEnum.READY) {
                 throw new IllegalStateException("At least one segment is not in READY state");
+            }
+        }
+    }
+
+    private void checkGlobalDict(CubeDesc cubeDesc) {
+        if (cubeDesc.getDictionaries() != null && !cubeDesc.getDictionaries().isEmpty()) {
+            for (DictionaryDesc dictDesc : cubeDesc.getDictionaries()) {
+                if (GlobalDictionaryBuilder.class.getName().equalsIgnoreCase(dictDesc.getBuilderClass())) {
+                    throw new RuntimeException("it's not supported to migrate global dictionaries " + dictDesc
+                            + " for cube " + cubeDesc.getName());
+                }
             }
         }
     }

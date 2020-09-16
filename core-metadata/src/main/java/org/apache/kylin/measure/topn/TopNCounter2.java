@@ -39,6 +39,9 @@ public class TopNCounter2<T> extends TopNCounter<T> {
 
     @Override
     public void sortUnsorted(int newCapacity) {
+        if (ordered()) {
+            return;
+        }
         // ----- nln(k)+2k < nln(n) => 2k < n
         if (newCapacity * 2 < size()) {
             sortByPriorityQueue(newCapacity);

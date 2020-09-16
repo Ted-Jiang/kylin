@@ -366,13 +366,13 @@ public class TopNCounterTest {
 
     private static class SpaceSavingConsumer extends TopNCounterTest.TestDataConsumer {
 
-        protected TopNCounterSummaryBase<String> vs;
+        protected TopNCounterSummary<String> vs;
 
         public SpaceSavingConsumer(TopNCounterEnum type, int capacity) {
-            this((TopNCounterSummaryBase<String>) createTopNCounter(type, capacity));
+            this((TopNCounterSummary<String>) createTopNCounter(type, capacity));
         }
 
-        public SpaceSavingConsumer(TopNCounterSummaryBase<String> vs) {
+        public SpaceSavingConsumer(TopNCounterSummary<String> vs) {
             super(vs);
             this.vs = vs;
         }

@@ -19,17 +19,14 @@
 package org.apache.kylin.measure.topn;
 
 import org.apache.kylin.shaded.com.google.common.base.Preconditions;
-import org.apache.kylin.shaded.com.google.common.collect.Lists;
 import org.apache.kylin.shaded.com.google.common.collect.Maps;
-
-import java.util.Collections;
 
 /**
  * Reduce the chance to call retain method
  *
  * @param <T> type of data in the stream to be summarized
  */
-public class TopNCounter<T> extends TopNCounterSummaryBase<T> {
+public class TopNCounter<T> extends TopNCounterDescending<T> {
 
     public static final int EXTRA_SPACE_RATE = 50;
     private Counter<T> minCounter = null;
@@ -58,8 +55,8 @@ public class TopNCounter<T> extends TopNCounterSummaryBase<T> {
         }
 
         // Find the minimum value
-        double m1 = getMinimum();
-        double m2 = another.getMinimum();
+        double m1 = getEstimationOfRemoved();
+        double m2 = another.getEstimationOfRemoved();
 
         Counter<T> mCounter = null;
         if (minCounter != null && !another.counterMap.containsKey(minCounter.item)) {
@@ -75,15 +72,6 @@ public class TopNCounter<T> extends TopNCounterSummaryBase<T> {
         minCounter = mCounter != null ? counterMap.get(mCounter.item) : null;
 
         return ret;
-    }
-
-    @Override
-    protected void sortUnsorted(int newCapacity) {
-        if (ordered()) {
-            return;
-        }
-        counterSortedList = Lists.newLinkedList(counterMap.values());
-        Collections.sort(counterSortedList, this.descending ? DESC_COMPARATOR : ASC_COMPARATOR);
     }
 
     @Override

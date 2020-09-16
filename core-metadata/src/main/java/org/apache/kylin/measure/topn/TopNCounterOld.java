@@ -18,17 +18,14 @@
 
 package org.apache.kylin.measure.topn;
 
-import org.apache.kylin.shaded.com.google.common.collect.Lists;
 import org.apache.kylin.shaded.com.google.common.collect.Maps;
-
-import java.util.Collections;
 
 /**
  * Use sort for element pruning
  *
  * @param <T> type of data in the stream to be summarized
  */
-public class TopNCounterOld<T> extends TopNCounterSummaryBase<T> {
+public class TopNCounterOld<T> extends TopNCounterDescending<T> {
 
     /**
      * @param capacity maximum size (larger capacities improve accuracy)
@@ -37,16 +34,6 @@ public class TopNCounterOld<T> extends TopNCounterSummaryBase<T> {
         super(capacity);
     }
 
-    @Override
-    protected void sortUnsorted(int newCapacity) {
-        if (ordered()) {
-            return;
-        }
-        counterSortedList = Lists.newLinkedList(counterMap.values());
-        Collections.sort(counterSortedList, this.descending ? DESC_COMPARATOR : ASC_COMPARATOR);
-    }
-
-    @Override
     protected void retainUnsorted(int newCapacity) {
         sortAndRetain(newCapacity);
     }

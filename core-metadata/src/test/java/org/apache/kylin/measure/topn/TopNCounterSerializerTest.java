@@ -53,7 +53,6 @@ public class TopNCounterSerializerTest extends LocalFileMetadataTestCase {
         for (Integer i : stream) {
             vs.offer(new ByteArray(Bytes.toBytes(i)));
         }
-        vs.sortAndRetain();
         ByteBuffer out = ByteBuffer.allocate(1024);
         serializer.serialize(vs, out);
 

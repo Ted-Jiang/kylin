@@ -71,6 +71,7 @@ import org.apache.kylin.job.execution.ExecutableState;
 import org.apache.kylin.job.execution.Output;
 import org.apache.kylin.job.lock.zookeeper.ZookeeperJobLock;
 import org.apache.kylin.job.util.MailNotificationUtil;
+import org.apache.kylin.metadata.cachesync.Broadcaster;
 import org.apache.kylin.metadata.model.SegmentRange;
 import org.apache.kylin.metadata.model.SegmentRange.TSRange;
 import org.apache.kylin.metadata.model.SegmentStatusEnum;
@@ -149,7 +150,11 @@ public class JobService extends BasicService implements InitializingBean {
                 .scheduler(kylinConfig.getSchedulerType());
 
         if (kylinConfig.getServerSelfDiscoveryEnabled()) {
-            KylinServerDiscovery.getInstance();
+            KylinServerDiscovery serverDiscovery = KylinServerDiscovery.getInstance();
+            serverDiscovery.start(() -> {
+                Broadcaster broadcaster = Broadcaster.getInstance(getConfig());
+                broadcaster.notifyListener("all", Broadcaster.Event.UPDATE, "all");
+            });
         }
         logger.info("Cluster servers: {}", Lists.newArrayList(kylinConfig.getRestServers()));
         

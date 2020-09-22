@@ -18,15 +18,12 @@
 
 package org.apache.kylin.common.zookeeper;
 
-import java.io.ByteArrayOutputStream;
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.io.IOUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.state.ConnectionState;
@@ -42,12 +39,14 @@ import org.apache.kylin.common.util.ZKUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class KylinServerDiscovery implements Closeable {
 
@@ -61,14 +60,23 @@ public class KylinServerDiscovery implements Closeable {
         private static final KylinServerDiscovery INSTANCE = new KylinServerDiscovery();
     }
 
+    public interface ReconnectListener {
+        void onReconnect() throws IOException;
+    }
+
     public static KylinServerDiscovery getInstance() {
         return SingletonHolder.INSTANCE;
     }
 
     private final KylinConfig kylinConfig;
-    private final CuratorFramework curator;
-    private final ServiceDiscovery<LinkedHashMap> serviceDiscovery;
-    private final ServiceCache<LinkedHashMap> serviceCache;
+
+    private final String host;
+    private final Integer port;
+    private final String hostAndPort;
+    private final String serverMode;
+
+    private ServiceDiscovery<LinkedHashMap> serviceDiscovery;
+    private ServiceCache<LinkedHashMap> serviceCache;
 
     private KylinServerDiscovery() {
         this(KylinConfig.getInstanceFromEnv());
@@ -77,7 +85,29 @@ public class KylinServerDiscovery implements Closeable {
     @VisibleForTesting
     protected KylinServerDiscovery(KylinConfig kylinConfig) {
         this.kylinConfig = kylinConfig;
-        this.curator = ZKUtil.getZookeeperClient(kylinConfig);
+
+        String hostAddr = kylinConfig.getServerRestAddress();
+        String[] hostAddrInfo = hostAddr.split(":");
+        if (hostAddrInfo.length < 2) {
+            logger.error("kylin.server.host-address {} is not qualified ", hostAddr);
+            throw new RuntimeException("kylin.server.host-address " + hostAddr + " is not qualified");
+        }
+        this.host = hostAddrInfo[0];
+        this.port = Integer.parseInt(hostAddrInfo[1]);
+        this.hostAndPort = host + ":" + port;
+        this.serverMode = kylinConfig.getServerMode();
+    }
+
+    public void start() {
+        start(() -> {
+        });
+    }
+
+    public void start(ReconnectListener reconnectListener) {
+        // Close existing
+        close();
+
+        CuratorFramework curator = ZKUtil.getZookeeperClient(kylinConfig);
         try {
             final JsonInstanceSerializer<LinkedHashMap> serializer = new JsonInstanceSerializer<>(LinkedHashMap.class);
             serviceDiscovery = ServiceDiscoveryBuilder.builder(LinkedHashMap.class).client(curator)
@@ -98,6 +128,9 @@ public class KylinServerDiscovery implements Closeable {
                 @Override
                 public void cacheChanged() {
                     logger.info("Service discovery get cacheChanged notification");
+                    String currentServers = System.getProperty("kylin.server.cluster-servers");
+                    boolean reconnect = isFinishInit.get() && !currentServers.contains(hostAndPort);
+
                     final List<ServiceInstance<LinkedHashMap>> instances = serviceCache.getInstances();
                     Map<String, String> instanceNodes = Maps.newHashMapWithExpectedSize(instances.size());
                     for (ServiceInstance<LinkedHashMap> entry : instances) {
@@ -115,6 +148,15 @@ public class KylinServerDiscovery implements Closeable {
                     logger.info("kylin.server.cluster-servers-with-mode update to " + restServersInClusterWithMode);
                     System.setProperty("kylin.server.cluster-servers-with-mode", restServersInClusterWithMode);
                     isFinishInit.set(true);
+
+                    if (reconnect) {
+                        logger.info("Invoke onReconnect");
+                        try {
+                            reconnectListener.onReconnect();
+                        } catch (IOException e) {
+                            logger.warn("Fail to do onReconnect due to ", e);
+                        }
+                    }
                 }
             });
             serviceCache.start();
@@ -138,16 +180,6 @@ public class KylinServerDiscovery implements Closeable {
     }
 
     private void registerSelf() throws Exception {
-        String hostAddr = kylinConfig.getServerRestAddress();
-        String[] hostAddrInfo = hostAddr.split(":");
-        if (hostAddrInfo.length < 2) {
-            logger.error("kylin.server.host-address {} is not qualified ", hostAddr);
-            throw new RuntimeException("kylin.server.host-address " + hostAddr + " is not qualified");
-        }
-        String host = hostAddrInfo[0];
-        int port = Integer.parseInt(hostAddrInfo[1]);
-
-        String serverMode = kylinConfig.getServerMode();
         registerServer(host, port, serverMode);
     }
 
@@ -155,7 +187,7 @@ public class KylinServerDiscovery implements Closeable {
         final LinkedHashMap<String, String> instanceDetail = new LinkedHashMap<>();
         instanceDetail.put(SERVICE_PAYLOAD_DESCRIPTION, mode);
 
-        ServiceInstance<LinkedHashMap> thisInstance = ServiceInstance.<LinkedHashMap> builder().name(SERVICE_NAME)
+        ServiceInstance<LinkedHashMap> thisInstance = ServiceInstance.<LinkedHashMap>builder().name(SERVICE_NAME)
                 .payload(instanceDetail).port(port).address(host).build();
 
         for (ServiceInstance<LinkedHashMap> instance : serviceCache.getInstances()) {
@@ -169,7 +201,7 @@ public class KylinServerDiscovery implements Closeable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         IOUtils.closeQuietly(serviceCache);
         IOUtils.closeQuietly(serviceDiscovery);
     }

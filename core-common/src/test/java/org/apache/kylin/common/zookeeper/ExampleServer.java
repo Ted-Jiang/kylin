@@ -24,6 +24,7 @@ import java.io.IOException;
 import org.apache.kylin.common.KylinConfig;
 
 /**
+ *
  */
 public class ExampleServer implements Closeable {
 
@@ -38,6 +39,7 @@ public class ExampleServer implements Closeable {
         kylinConfig1.setProperty("kylin.server.host-address", address);
 
         discovery = new KylinServerDiscovery(kylinConfig1);
+        discovery.start();
     }
 
     public String getAddress() {

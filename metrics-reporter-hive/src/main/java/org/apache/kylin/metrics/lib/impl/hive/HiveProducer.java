@@ -58,6 +58,7 @@ public class HiveProducer {
 
     private static final Logger logger = LoggerFactory.getLogger(HiveProducer.class);
     private static final int CACHE_MAX_SIZE = 10;
+    private static final int MAX_FILE_NUM = 100000;
     private final HiveConf hiveConf;
     private FileSystem fs;
     private final LoadingCache<Pair<String, String>, Pair<String, List<FieldSchema>>> tableFieldSchemaCache;
@@ -128,7 +129,7 @@ public class HiveProducer {
         }
         contentFilePrefix = hostName + "-" + System.currentTimeMillis() + "-part-";
         String fsUri = fs.getUri().toString();
-        supportAppend = fsUri.startsWith("hdfs") ; // Only HDFS is appendable
+        supportAppend = fsUri.startsWith("hdfs") || fsUri.startsWith("viewfs"); // Only HDFS is appendable
         logger.info("For {}, supportAppend was set to {}", fsUri, supportAppend);
 
         closeFileEveryAppend = !supportAppend
@@ -241,7 +242,7 @@ public class HiveProducer {
                 nCheck++;
                 partitionContentPath = new Path(partitionPath, contentFilePrefix + String.format(Locale.ROOT, "%05d", id));
                 logger.debug("{} exists, skip it.", partitionContentPath);
-                if (nCheck > 100000) {
+                if (nCheck > MAX_FILE_NUM) {
                     logger.warn("Exceed max check times.");
                     break;
                 }
@@ -268,7 +269,9 @@ public class HiveProducer {
             }
             prePartitionPath = partitionPath.toString();
             curPartitionContentPath = partitionContentPath;
-            id = (id + 1) % (supportAppend ? 10 : 100000);
+            if (!supportAppend) {
+                id = (id + 1) % MAX_FILE_NUM;
+            }
         }
 
         // Step 4: append record to DFS

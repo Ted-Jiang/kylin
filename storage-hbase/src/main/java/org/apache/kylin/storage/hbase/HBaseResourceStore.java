@@ -493,7 +493,7 @@ public class HBaseResourceStore extends PushdownResourceStore {
 
     @Override
     protected FileSystem pushdownFS() {
-        return HadoopUtil.getFileSystem(new Path("/"), HBaseConnection.getCurrentHBaseConfiguration());
+        return HadoopUtil.getFileSystem(new Path("/"), getCurrentHBaseConfiguration());
     }
 
     // visible for test

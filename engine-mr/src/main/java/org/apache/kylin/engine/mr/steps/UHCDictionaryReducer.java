@@ -72,7 +72,7 @@ public class UHCDictionaryReducer extends KylinReducer<SelfDefineSortableKey, Nu
         col = uhcColumns.get(taskId);
         logger.info("column name: " + col.getIdentity());
 
-        if (cube.getDescriptor().getShardByColumns().contains(col)) {
+        if (cubeDesc.getShardByColumns().contains(col) || cubeDesc.getAdditionalUHCColumns().contains(col)) {
             //for ShardByColumns
             builder = DictionaryGenerator.newDictionaryBuilder(col.getType());
             builder.init(null, 0, null);

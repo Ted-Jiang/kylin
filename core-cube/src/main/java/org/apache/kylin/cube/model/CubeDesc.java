@@ -1644,11 +1644,17 @@ public class CubeDesc extends RootPersistentEntity implements IEngineAware {
         return config.isShrunkenDictFromGlobalEnabled() && !getAllGlobalDictColumnsNeedBuilt().isEmpty();
     }
 
+    public List<TblColRef> getAdditionalUHCColumns() {
+        Set<String> additionalUHCCols = new HashSet<>(Arrays.asList(config.getAdditionalUHCColumns()));
+        return additionalUHCCols.stream().map(col -> model.findColumn(col)).filter(Objects::nonNull).collect(Collectors.toList());
+    }
+
     // UHC (ultra high cardinality column): contain the ShardByColumns and the GlobalDictionaryColumns
     public List<TblColRef> getAllUHCColumns() {
         List<TblColRef> uhcColumns = new ArrayList<>();
         uhcColumns.addAll(getAllGlobalDictColumnsNeedBuilt());
         uhcColumns.addAll(getShardByColumns());
+        uhcColumns.addAll(getAdditionalUHCColumns());
         return uhcColumns;
     }
 

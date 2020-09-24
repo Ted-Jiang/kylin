@@ -601,6 +601,14 @@ public abstract class KylinConfigBase implements Serializable {
         return Integer.parseInt(getOptional("kylin.dictionary.slice.eviction.threshold", "5"));
     }
 
+    public String[] getAdditionalUHCColumns() {
+        String columnStr = getOptional("kylin.dictionary.additional-uhc-columns", "");
+        if (!StringUtils.isEmpty(columnStr)) {
+            return columnStr.split(",");
+        }
+        return new String[0];
+    }
+
 
     // ============================================================================
     // Hive Global dictionary by mr/hive

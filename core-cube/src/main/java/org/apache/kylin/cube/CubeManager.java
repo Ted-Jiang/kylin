@@ -317,6 +317,15 @@ public class CubeManager implements IRealizationProvider {
         }
     }
 
+    public CubeInstance updateCubeCuboidBytes(CubeInstance cube, Map<Long, Long> cuboidsWithStats) throws IOException {
+        try (AutoLock lock = cubeMapLock.lockForWrite()) {
+            cube = cube.latestCopyForWrite(); // get a latest copy
+            CubeUpdate update = new CubeUpdate(cube);
+            update.setCuboids(cuboidsWithStats);
+            return updateCube(update);
+        }
+    }
+
     private void updateCubeScore(CubeInstance cube, double score, String scoreHint) throws IOException {
         if (cube.getScore() == score) {
             if (cube.getScoreHint() == null) {

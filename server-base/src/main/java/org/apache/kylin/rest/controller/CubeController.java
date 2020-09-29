@@ -1102,6 +1102,15 @@ public class CubeController extends BasicController {
                 currentCuboidSet);
     }
 
+    @RequestMapping(value = "/{cubeName}/cuboids/update", method = RequestMethod.PUT)
+    @ResponseBody
+    public CubeInstance updateCuboidBytes(@PathVariable String cubeName) throws IOException {
+        checkCubeExists(cubeName);
+        CubeInstance cube = cubeService.getCubeManager().getCube(cubeName);
+
+        return cubeService.updateCuboidBytes(cube);
+    }
+
     @RequestMapping(value = "/{cubeName}/cuboids/recommend", method = RequestMethod.GET)
     @ResponseBody
     public CuboidRecommendResponse getRecommendCuboids(@PathVariable String cubeName) throws IOException {

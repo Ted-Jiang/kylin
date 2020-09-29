@@ -14,25 +14,26 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package org.apache.kylin.engine.mr.common;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
 
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
 import org.apache.kylin.cube.CubeSegment;
-import org.apache.kylin.cube.CubeUpdate;
+import org.apache.kylin.cube.cuboid.CuboidScheduler;
 import org.apache.kylin.engine.mr.CubingJob;
 import org.apache.kylin.metadata.model.MeasureDesc;
 import org.apache.kylin.metadata.model.SegmentStatusEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 public class StatisticsDecisionUtil {
     protected static final Logger logger = LoggerFactory.getLogger(StatisticsDecisionUtil.class);
@@ -44,7 +45,7 @@ public class StatisticsDecisionUtil {
     }
 
     public static void decideCubingAlgorithm(CubingJob cubingJob, CubeSegment seg, double mapperOverlapRatio,
-            int mapperNumber) throws IOException {
+                                             int mapperNumber) throws IOException {
         KylinConfig kylinConf = seg.getConfig();
         String algPref = kylinConf.getCubeAlgorithm();
         CubingJob.AlgorithmEnum alg;
@@ -100,15 +101,22 @@ public class StatisticsDecisionUtil {
             return;
         }
 
-        Map<Long, Long> recommendCuboidsWithStats = CuboidRecommenderUtil.getRecommendCuboidList(segment);
-        if (recommendCuboidsWithStats == null || recommendCuboidsWithStats.isEmpty()) {
+        Map<Long, Long> cuboidsWithStats = CuboidRecommenderUtil.getRecommendCuboidList(segment);
+        if (cuboidsWithStats == null || cuboidsWithStats.isEmpty()) {
+            CuboidScheduler cuboidScheduler = segment.getCuboidScheduler();
+            Set<Long> cuboidSet = cuboidScheduler.getAllCuboidIds();
+            cuboidsWithStats = CuboidStatsReaderUtil.readCuboidStatsFromSegment(cuboidSet, segment);
+            if (cuboidsWithStats != null && cuboidsWithStats.size() != cuboidSet.size()) {
+                logger.warn("Fail to get all stats for the current cuboid set");
+                cuboidsWithStats = null;
+            }
+        }
+        if (cuboidsWithStats == null || cuboidsWithStats.isEmpty()) {
             return;
         }
 
         CubeInstance cube = segment.getCubeInstance();
-        CubeUpdate update = new CubeUpdate(cube.latestCopyForWrite());
-        update.setCuboids(recommendCuboidsWithStats);
-        CubeManager.getInstance(cube.getConfig()).updateCube(update);
+        CubeManager.getInstance(cube.getConfig()).updateCubeCuboidBytes(cube, cuboidsWithStats);
     }
 
     public static boolean isAbleToOptimizeCubingPlan(CubeSegment segment) {

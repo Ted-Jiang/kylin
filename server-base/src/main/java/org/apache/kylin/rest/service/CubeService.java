@@ -52,6 +52,7 @@ import org.apache.kylin.engine.mr.CubingJob;
 import org.apache.kylin.engine.mr.JobBuilderSupport;
 import org.apache.kylin.engine.mr.common.CubeJobLockUtil;
 import org.apache.kylin.engine.mr.common.CuboidRecommenderUtil;
+import org.apache.kylin.engine.mr.common.CuboidStatsReaderUtil;
 import org.apache.kylin.job.JobInstance;
 import org.apache.kylin.job.constant.JobStatusEnum;
 import org.apache.kylin.job.constant.JobTimeFilterEnum;
@@ -211,6 +212,32 @@ public class CubeService extends BasicService implements InitializingBean {
 
         CubeUpdate update = new CubeUpdate(cube.latestCopyForWrite()).setOwner(owner).setCost(cost);
         return getCubeManager().updateCube(update);
+    }
+
+    public CubeInstance updateCuboidBytes(CubeInstance cube) throws IOException {
+        aclEvaluate.checkProjectWritePermission(cube);
+        checkAllowUpdateCuboidBytes(cube);
+
+        // The cuboid tree displayed should be consistent with the current one
+        CuboidScheduler cuboidScheduler = cube.getCuboidScheduler();
+        Set<Long> currentCuboidSet = cuboidScheduler.getAllCuboidIds();
+        Map<Long, Long> cuboidStatsMap = CuboidStatsReaderUtil.readCuboidStatsFromCube(currentCuboidSet, cube);
+
+        if (cuboidStatsMap == null || cuboidStatsMap.size() != currentCuboidSet.size() || !cuboidStatsMap.keySet().containsAll(currentCuboidSet)) {
+            logger.warn("Fail to get all stats for the current cuboid set");
+            throw new BadRequestException("Fail to get all stats for the current cuboid set");
+        }
+
+        return getCubeManager().updateCubeCuboidBytes(cube, cuboidStatsMap);
+    }
+
+    private void checkAllowUpdateCuboidBytes(CubeInstance cube) {
+        Segments<CubeSegment> cubeSegments = cube.getSegments();
+        for (CubeSegment segment : cubeSegments) {
+            if (segment.getStatus() != SegmentStatusEnum.READY) {
+                throw new BadRequestException("Cube is still under data construction and don't allow to update cuboid bytes");
+            }
+        }
     }
     
     public CubeInstance createCubeAndDesc(ProjectInstance project, CubeDesc desc) throws IOException {

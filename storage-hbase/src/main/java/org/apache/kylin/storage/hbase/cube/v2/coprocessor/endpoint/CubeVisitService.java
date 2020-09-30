@@ -446,8 +446,7 @@ public class CubeVisitService extends CubeVisitProtos.CubeVisitService implement
 
         } catch (DoNotRetryIOException e) {
             ResponseConverter.setControllerException(controller, e);
-
-        } catch (IOException ioe) {
+        } catch (IOException | RuntimeException ioe) {
             logger.error(ioe.toString(), ioe);
             IOException wrapped = new IOException("Error in coprocessor " + debugGitTag, ioe);
             ResponseConverter.setControllerException(controller, wrapped);

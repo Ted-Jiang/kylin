@@ -37,12 +37,16 @@ public interface ITopNCounter<T> extends Iterable<Counter<T>>, java.io.Serializa
 
     /**
      * Get the counter values in ascending order which will be used for better serialization
+     *
      * @return
      */
     double[] getCounters();
 
+    int size();
+
     /**
      * For TopNAggregator to avoid concurrency issues
+     *
      * @return
      */
     ITopNCounter<T> copy();

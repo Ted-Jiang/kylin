@@ -16,11 +16,14 @@
  * limitations under the License.
  */
 
-package org.apache.kylin.measure.topn;
+package org.apache.kylin.measure.topn.extend;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.RandomStringUtils;
 import org.apache.kylin.common.util.Pair;
+import org.apache.kylin.measure.topn.Counter;
+import org.apache.kylin.measure.topn.ITopNCounter;
+import org.apache.kylin.measure.topn.TopNCounterSummary;
+import org.apache.kylin.measure.topn.TopNPreciseCounter;
 import org.apache.kylin.shaded.com.google.common.collect.Lists;
 import org.apache.kylin.util.FastZipfGenerator;
 import org.junit.After;
@@ -38,9 +41,10 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Random;
 
-@Ignore("For collecting accuracy statistics, not for functional test")
-public class TopNCounterTest {
+public class ExTopNCounterTest {
+    private static final int nElems = 1;
 
     protected static int BATCH_SIZE;
 
@@ -58,9 +62,10 @@ public class TopNCounterTest {
 
     protected static double precision = 5;
 
+
     protected String dataFilePath;
 
-    public TopNCounterTest() {
+    public ExTopNCounterTest() {
         TOP_K = 100;
         KEY_SPACE = 100 * TOP_K;
         TOTAL_RECORDS = 100 * KEY_SPACE;
@@ -85,10 +90,11 @@ public class TopNCounterTest {
     private String prepareTestDate() throws IOException {
         BATCH_SIZE = TOTAL_RECORDS / PARALLEL;
 
-        String[] allKeys = new String[KEY_SPACE];
+        Integer[] allKeys = new Integer[KEY_SPACE];
 
+        Random rand = new Random();
         for (int i = 0; i < KEY_SPACE; i++) {
-            allKeys[i] = RandomStringUtils.randomAlphabetic(10);
+            allKeys[i] = rand.nextInt();
         }
 
         System.out.println("Start to create test random data...");
@@ -120,96 +126,22 @@ public class TopNCounterTest {
 
     @Ignore
     @Test
-    public void testSingleSpaceSaving() throws IOException {
-        int capacity = TOP_K * SPACE_SAVING_ROOM;
-
-        TopNCounterTest.TestDataConsumer accurateCounter = feedDataToConsumer(dataFilePath, TopNCounterEnum.Accurate,
-                capacity);
-        List<Pair<String, Double>> retAccurate = accurateCounter.getTopN(TOP_K);
-
-        TopNCounterTest.TestDataConsumer spaceSavingCounter = feedDataToConsumer(dataFilePath, TopNCounterEnum.Current,
-                capacity);
-        List<Pair<String, Double>> retCurrent = spaceSavingCounter.getTopN(TOP_K);
-
-        compareResult(retCurrent, retAccurate);
-    }
-
-    @Ignore
-    @Test
-    public void testCompareSingleSpaceSaving() throws IOException, ClassNotFoundException {
-        int capacity = TOP_K * SPACE_SAVING_ROOM;
-
-        System.out.println("===============Result for testCompareSingleSpaceSaving===============");
-        TopNCounterTest.TestDataConsumer accurateCounter = feedDataToConsumer(dataFilePath, TopNCounterEnum.Accurate,
-                capacity);
-        List<Pair<String, Double>> retAccurate = accurateCounter.getTopN(TOP_K);
-        System.out.println("Get topN,       Merge sort takes [data feeding] & [querying topK]: "
-                + accurateCounter.getFeedSpentTime() + " & " + accurateCounter.getQuerySpentTime() + "ms");
-
-        TopNCounterTest.TestDataConsumer spaceSavingCounterOld = feedDataToConsumer(dataFilePath, TopNCounterEnum.Old,
-                capacity);
-        List<Pair<String, Double>> retOld = spaceSavingCounterOld.getTopN(TOP_K);
-        compareResult(retOld, retAccurate);
-        System.out.println("Get topN,   TopNCounterOld takes [data feeding] & [querying topK]: "
-                + spaceSavingCounterOld.getFeedSpentTime() + " & " + spaceSavingCounterOld.getQuerySpentTime() + "ms");
-
-        TopNCounterTest.TestDataConsumer spaceSavingCounterOld2 = feedDataToConsumer(dataFilePath, TopNCounterEnum.Old2,
-                capacity);
-        List<Pair<String, Double>> retOld2 = spaceSavingCounterOld2.getTopN(TOP_K);
-        compareResult(retOld2, retAccurate);
-        System.out.println("Get topN,     TopNCounter2 takes [data feeding] & [querying topK]: "
-                + spaceSavingCounterOld2.getFeedSpentTime() + " & " + spaceSavingCounterOld2.getQuerySpentTime()
-                + "ms");
-
-        TopNCounterTest.TestDataConsumer spaceSavingCounter = feedDataToConsumer(dataFilePath, TopNCounterEnum.Current,
-                capacity);
-        List<Pair<String, Double>> retCurrent = spaceSavingCounter.getTopN(TOP_K);
-        compareResult(retCurrent, retAccurate);
-        System.out.println("Get topN,      TopNCounter takes [data feeding] & [querying topK]: "
-                + spaceSavingCounter.getFeedSpentTime() + " & " + spaceSavingCounter.getQuerySpentTime() + "ms");
-    }
-
-    @Test
-    public void testParallelSpaceSaving() throws IOException, ClassNotFoundException {
-        TopNCounterTest.TestDataConsumer[] mergedCountersAccurate = getMergedCounters(TopNCounterEnum.Accurate);
-        List<Pair<String, Double>> retAccurate = mergedCountersAccurate[0].getTopN(TOP_K);
-
-        TopNCounterTest.TestDataConsumer[] mergedCounters = getMergedCounters(TopNCounterEnum.Current);
-        List<Pair<String, Double>> retCurrent = mergedCounters[0].getTopN(TOP_K);
-
-        compareResult(retCurrent, retAccurate);
-    }
-
-    @Ignore
-    @Test
     public void testCompareParallelSpaceSaving() throws IOException, ClassNotFoundException {
         System.out.println("===============Result for testCompareParallelSpaceSaving===============");
-        TopNCounterTest.TestDataConsumer[] mergedCountersAccurate = getMergedCounters(TopNCounterEnum.Accurate);
-        List<Pair<String, Double>> retAccurate = mergedCountersAccurate[0].getTopN(TOP_K);
+        TestDataConsumer[] mergedCountersAccurate = getMergedCounters(TopNCounterEnum.Accurate);
+        List<Pair<ExItem<Integer>, Double>> retAccurate = mergedCountersAccurate[0].getTopN(TOP_K);
         System.out.println("Get topN,       Merge sort takes [data feeding] & [querying topK]: "
                 + mergedCountersAccurate[0].getFeedSpentTime() + " & " + mergedCountersAccurate[0].getQuerySpentTime()
                 + "ms");
 
-        TopNCounterTest.TestDataConsumer[] mergedCountersOld = getMergedCounters(TopNCounterEnum.Old);
-        List<Pair<String, Double>> retOld = mergedCountersOld[0].getTopN(TOP_K);
-        compareResult(retOld, retAccurate);
-        System.out.println("Get topN,   TopNCounterOld takes [data feeding] & [querying topK]: "
-                + mergedCountersOld[0].getFeedSpentTime() + " & " + mergedCountersOld[0].getQuerySpentTime() + "ms");
-
-        TopNCounterTest.TestDataConsumer[] mergedCountersOld2 = getMergedCounters(TopNCounterEnum.Old2);
-        List<Pair<String, Double>> retOld2 = mergedCountersOld2[0].getTopN(TOP_K);
-        compareResult(retOld2, retAccurate);
-        System.out.println("Get topN,     TopNCounter2 takes [data feeding] & [querying topK]: "
-                + mergedCountersOld2[0].getFeedSpentTime() + " & " + mergedCountersOld2[0].getQuerySpentTime() + "ms");
-
-        TopNCounterTest.TestDataConsumer[] mergedCounters = getMergedCounters(TopNCounterEnum.Current);
-        List<Pair<String, Double>> retCurrent = mergedCounters[0].getTopN(TOP_K);
+        TestDataConsumer[] mergedCounters = getMergedCounters(TopNCounterEnum.Current);
+        List<Pair<ExItem<Integer>, Double>> retCurrent = mergedCounters[0].getTopN(TOP_K);
         compareResult(retCurrent, retAccurate);
         System.out.println("Get topN,      TopNCounter takes [data feeding] & [querying topK]: "
                 + mergedCounters[0].getFeedSpentTime() + " & " + mergedCounters[0].getQuerySpentTime() + "ms");
     }
 
-    private void compareResult(List<Pair<String, Double>> topResult1, List<Pair<String, Double>> realSequence) {
+    private void compareResult(List<Pair<ExItem<Integer>, Double>> topResult1, List<Pair<ExItem<Integer>, Double>> realSequence) {
         int error = 0;
         for (int i = 0; i < topResult1.size(); i++) {
             outputMsg("Compare " + i);
@@ -234,59 +166,42 @@ public class TopNCounterTest {
         return Math.abs(value1 - value2) <= precision;
     }
 
-    private TopNCounterTest.TestDataConsumer[] getMergedCounters(TopNCounterEnum type)
+    private TestDataConsumer[] getMergedCounters(TopNCounterEnum type)
             throws IOException, ClassNotFoundException {
         int capacity = TOP_K * SPACE_SAVING_ROOM;
 
-        TopNCounterTest.TestDataConsumer[] parallelCounters = feedDataToConsumer(dataFilePath, type, capacity,
+        TestDataConsumer[] parallelCounters = feedDataToConsumer(dataFilePath, type, capacity,
                 PARALLEL);
 
-        TopNCounterTest.TestDataConsumer[] mergedCounters = singleMerge(parallelCounters, type);
+        TestDataConsumer[] mergedCounters = singleMerge(parallelCounters, type);
         return mergedCounters;
     }
 
-    private TopNCounterTest.TestDataConsumer[] singleMerge(TopNCounterTest.TestDataConsumer[] consumers,
-                                                           TopNCounterEnum type) throws IOException, ClassNotFoundException {
+    private TestDataConsumer[] singleMerge(TestDataConsumer[] consumers,
+                                           TopNCounterEnum type) throws IOException, ClassNotFoundException {
         if (consumers.length == 1)
             return consumers;
 
-        TopNCounterTest.TestDataConsumer merged = createTestDataConsumer(type, TOP_K * SPACE_SAVING_ROOM);
+        TestDataConsumer merged = createTestDataConsumer(type, TOP_K * SPACE_SAVING_ROOM);
 
         for (int i = 0, n = consumers.length; i < n; i++) {
             merged.merge(consumers[i]);
         }
 
         merged.retain(TOP_K * SPACE_SAVING_ROOM); // remove extra elements;
-        return new TopNCounterTest.TestDataConsumer[]{merged};
+        return new TestDataConsumer[]{merged};
 
     }
 
-    private TopNCounterTest.TestDataConsumer[] binaryMerge(TopNCounterTest.TestDataConsumer[] consumers)
-            throws IOException, ClassNotFoundException {
-        List<TopNCounterTest.TestDataConsumer> list = Lists.newArrayList();
-        if (consumers.length == 1)
-            return consumers;
-
-        for (int i = 0, n = consumers.length; i < n; i = i + 2) {
-            if (i + 1 < n) {
-                consumers[i].merge(consumers[i + 1]);
-            }
-
-            list.add(consumers[i]);
-        }
-
-        return binaryMerge(list.toArray(new TopNCounterTest.TestDataConsumer[list.size()]));
-    }
-
-    private TopNCounterTest.TestDataConsumer feedDataToConsumer(String dataFile, TopNCounterEnum type, int capacity)
+    private TestDataConsumer feedDataToConsumer(String dataFile, TopNCounterEnum type, int capacity)
             throws IOException {
-        TopNCounterTest.TestDataConsumer[] ret = feedDataToConsumer(dataFile, type, capacity, 1);
+        TestDataConsumer[] ret = feedDataToConsumer(dataFile, type, capacity, 1);
         return ret[0];
     }
 
-    private TopNCounterTest.TestDataConsumer[] feedDataToConsumer(String dataFile, TopNCounterEnum type, int capacity,
-                                                                  int n) throws IOException {
-        TopNCounterTest.TestDataConsumer[] ret = new TopNCounterTest.TestDataConsumer[n];
+    private TestDataConsumer[] feedDataToConsumer(String dataFile, TopNCounterEnum type, int capacity,
+                                                  int n) throws IOException {
+        TestDataConsumer[] ret = new TestDataConsumer[n];
 
         for (int i = 0; i < n; i++) {
             ret[i] = createTestDataConsumer(type, capacity);
@@ -303,7 +218,7 @@ public class TopNCounterTest {
                     break;
                 }
                 for (String element : line.split(",")) {
-                    ret[i].addElement(element, 1.0);
+                    ret[i].addElement(Integer.parseInt(element), -1.0);
                 }
                 ret[i].finishFeed();
 
@@ -316,11 +231,11 @@ public class TopNCounterTest {
     }
 
     private static abstract class TestDataConsumer {
-        private ITopNCounter<String> vs;
+        private ITopNCounter<ExItem<Integer>> vs;
         protected long timeSpentFeed = 0L;
         protected long timeSpentQuery = 0L;
 
-        public TestDataConsumer(ITopNCounter<String> vs) {
+        public TestDataConsumer(ITopNCounter<ExItem<Integer>> vs) {
             this.vs = vs;
         }
 
@@ -328,10 +243,11 @@ public class TopNCounterTest {
 
         public abstract void finishFeed();
 
-        public void addElement(String key, double value) {
+        public void addElement(Integer key, double value) {
             //outputMsg("Adding " + key + ":" + incrementCount);
             long startTime = System.currentTimeMillis();
-            vs.offer(key, value);
+            Integer[] elems = {key};
+            vs.offer(new ExItem.ExIntegerItem(elems), value);
             timeSpentFeed += (System.currentTimeMillis() - startTime);
         }
 
@@ -344,12 +260,12 @@ public class TopNCounterTest {
             timeSpentFeed += another.timeSpentFeed;
         }
 
-        public List<Pair<String, Double>> getTopN(int k) {
+        public List<Pair<ExItem<Integer>, Double>> getTopN(int k) {
             long startTime = System.currentTimeMillis();
-            List<Counter<String>> tops = vs.topK(k);
-            List<Pair<String, Double>> allRecords = Lists.newArrayList();
+            List<Counter<ExItem<Integer>>> tops = vs.topK(k);
+            List<Pair<ExItem<Integer>, Double>> allRecords = Lists.newArrayList();
 
-            for (Counter<String> counter : tops)
+            for (Counter<ExItem<Integer>> counter : tops)
                 allRecords.add(Pair.newPair(counter.getItem(), counter.getCount()));
             timeSpentQuery += (System.currentTimeMillis() - startTime);
             return allRecords;
@@ -364,15 +280,15 @@ public class TopNCounterTest {
         }
     }
 
-    private static class SpaceSavingConsumer extends TopNCounterTest.TestDataConsumer {
+    private static class SpaceSavingConsumer extends TestDataConsumer {
 
-        protected TopNCounterSummary<String> vs;
+        protected TopNCounterSummary<ExItem<Integer>> vs;
 
         public SpaceSavingConsumer(TopNCounterEnum type, int capacity) {
-            this((TopNCounterSummary<String>) createTopNCounter(type, capacity));
+            this((TopNCounterSummary<ExItem<Integer>>) createTopNCounter(type, capacity));
         }
 
-        public SpaceSavingConsumer(TopNCounterSummary<String> vs) {
+        public SpaceSavingConsumer(TopNCounterSummary<ExItem<Integer>> vs) {
             super(vs);
             this.vs = vs;
         }
@@ -392,15 +308,15 @@ public class TopNCounterTest {
         }
     }
 
-    private static class HashMapConsumer extends TopNCounterTest.TestDataConsumer {
+    private static class HashMapConsumer extends TestDataConsumer {
 
-        protected TopNPreciseCounter<String> vs;
+        protected TopNPreciseCounter<ExItem<Integer>> vs;
 
         public HashMapConsumer() {
-            this((TopNPreciseCounter<String>) createTopNCounter(TopNCounterEnum.Accurate, Integer.MAX_VALUE));
+            this((TopNPreciseCounter<ExItem<Integer>>) createTopNCounter(TopNCounterEnum.Accurate, Integer.MAX_VALUE));
         }
 
-        public HashMapConsumer(TopNPreciseCounter<String> vs) {
+        public HashMapConsumer(TopNPreciseCounter<ExItem<Integer>> vs) {
             super(vs);
             this.vs = vs;
         }
@@ -421,32 +337,26 @@ public class TopNCounterTest {
     }
 
     private enum TopNCounterEnum {
-        Current, Old2, Old, Accurate
+        Current, Accurate
     }
 
     private TestDataConsumer createTestDataConsumer(TopNCounterEnum type, int capacity) {
         switch (type) {
             case Accurate:
                 return new HashMapConsumer();
-            case Old:
-            case Old2:
             case Current:
             default:
                 return new SpaceSavingConsumer(type, capacity);
         }
     }
 
-    private static ITopNCounter<String> createTopNCounter(TopNCounterEnum type, int capacity) {
+    private static ITopNCounter<ExItem<Integer>> createTopNCounter(TopNCounterEnum type, int capacity) {
         switch (type) {
             case Accurate:
-                return new TopNPreciseCounter<>();
-            case Old:
-                return new TopNCounterOld<>(capacity);
-            case Old2:
-                return new TopNCounter2<>(capacity);
+                return new TopNPreciseCounter<>(false);
             case Current:
             default:
-                return new TopNCounter<>(capacity);
+                return new ExTopNCounter<>(capacity, false, nElems);
         }
     }
 }

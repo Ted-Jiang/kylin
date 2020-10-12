@@ -19,15 +19,10 @@
 package org.apache.kylin.measure.topn;
 
 import org.apache.kylin.shaded.com.google.common.base.Preconditions;
-import org.apache.kylin.shaded.com.google.common.collect.Lists;
-import org.apache.kylin.shaded.com.google.common.collect.Maps;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Modified from the StreamSummary.java in https://github.com/addthis/stream-lib
@@ -41,11 +36,9 @@ import java.util.Map;
  */
 public abstract class TopNCounterSummary<T> implements ITopNCounter<T> {
 
-    protected int capacity;
-    protected Map<T, Counter<T>> counterMap;
-    protected LinkedList<Counter<T>> counterSortedList; //a linked list, first the is the toppest element
+    public static final int EXTRA_SPACE_RATE = 50;
 
-    protected boolean descending;
+    protected CounterMap<T> counterMap;
 
     public TopNCounterSummary(int capacity) {
         this(capacity, true);
@@ -55,10 +48,7 @@ public abstract class TopNCounterSummary<T> implements ITopNCounter<T> {
      * @param capacity maximum size (larger capacities improve accuracy)
      */
     public TopNCounterSummary(int capacity, boolean descending) {
-        this.capacity = capacity;
-        this.descending = descending;
-        this.counterMap = Maps.newHashMap();
-        this.counterSortedList = Lists.newLinkedList();
+        this.counterMap = new CounterMap<>(capacity, descending);
     }
 
     /**
@@ -69,12 +59,12 @@ public abstract class TopNCounterSummary<T> implements ITopNCounter<T> {
     /**
      * It's for the merge process to estimate the count of removed elements
      */
-    protected abstract double getEstimationOfRemoved();
+    protected abstract double getCounterSummaryBoundary();
 
     /**
-     * Merge another with e1 for this estimation of removed and e2 for another estimation of removed
+     * Check whether the item occurred in this counter summary
      */
-    protected abstract ITopNCounter<T> merge(TopNCounterSummary<T> another, double e1, double e2);
+    protected abstract boolean occur(T item);
 
     /**
      * Retain the capacity to the given number; The extra counters will be cut off
@@ -82,16 +72,11 @@ public abstract class TopNCounterSummary<T> implements ITopNCounter<T> {
      * @param newCapacity
      */
     public void retain(int newCapacity) {
-        assert newCapacity > 0;
-
-        this.capacity = newCapacity;
-        if (size() > newCapacity) {
-            sortAndRetain(newCapacity);
-        }
+        counterMap.retain(newCapacity);
     }
 
     public void sortAndRetain() {
-        sortAndRetain(capacity);
+        counterMap.sortAndRetain();
     }
 
     /**
@@ -99,18 +84,11 @@ public abstract class TopNCounterSummary<T> implements ITopNCounter<T> {
      */
     protected void sortAndRetain(int newCapacity) {
         sortUnsorted(newCapacity);
-        retainSorted(newCapacity);
+        counterMap.retainSorted(newCapacity);
     }
 
-    /**
-     * Sort all elements and fill counterSortedList
-     */
     protected void sortUnsorted(int newCapacity) {
-        if (ordered()) {
-            return;
-        }
-        counterSortedList = Lists.newLinkedList(counterMap.values());
-        Collections.sort(counterSortedList, this.descending ? DESC_COMPARATOR : ASC_COMPARATOR);
+        counterMap.sort();
     }
 
     /**
@@ -122,8 +100,7 @@ public abstract class TopNCounterSummary<T> implements ITopNCounter<T> {
      */
     public void offerToHead(T item, double count) {
         Counter<T> c = new Counter<>(item, count);
-        counterMap.put(c.item, c);
-        counterSortedList.addFirst(c);
+        counterMap.offerToHead(c);
     }
 
     @Override
@@ -142,12 +119,12 @@ public abstract class TopNCounterSummary<T> implements ITopNCounter<T> {
         Counter<T> counterNode = counterMap.get(item);
         if (counterNode == null) {
             counterNode = new Counter<T>(item, incrementCount);
-            counterMap.put(item, counterNode);
+            counterMap.offer(counterNode);
         } else {
             counterNode.setCount(counterNode.getCount() + incrementCount);
         }
-        if (size() >= capacity * 2) {
-            retain(capacity);
+        if (counterMap.size() >= counterMap.getCapacity() * 2) {
+            counterMap.retain(counterMap.getCapacity());
         }
     }
 
@@ -163,26 +140,74 @@ public abstract class TopNCounterSummary<T> implements ITopNCounter<T> {
                 "The class for another is " + another0.getClass() + " which should be " + this.getClass());
 
         TopNCounterSummary<T> another = (TopNCounterSummary<T>) another0;
-        if (another.size() == 0) {
+        if (another.counterMap.isEmpty()) {
             return this;
         }
 
         // Find the estimation value for removed elements
-        double e1 = getEstimationOfRemoved();
-        double e2 = another.getEstimationOfRemoved();
+        double e1 = getCounterSummaryBoundary();
+        double e2 = another.getCounterSummaryBoundary();
         return merge(another, e1, e2);
+    }
+
+    /**
+     * @param b1 when this is not full, it will be 0 and will not affect elements in another TopNCounterSummary
+     * @param b2 when another is not full, it will be 0 and will not affect elements in this TopNCounterSummary
+     */
+    protected ITopNCounter<T> merge(TopNCounterSummary<T> another, double b1, double b2) {
+        counterMap.toUnordered();
+
+        if (another.counterMap.isFull()) {
+            for (Counter<T> entry : counterMap.values()) {
+                if (another.occur(entry.item)) {
+                    entry.count += b2;
+                }
+            }
+        }
+
+        for (Counter<T> anotherEntry : another.counterMap.values()) {
+            Counter<T> entry;
+            if (occur(anotherEntry.item)) {
+                entry = this.counterMap.get(anotherEntry.item);
+                if (entry != null) {
+                    entry.count += anotherEntry.count - b2;
+                } else {
+                    entry = new Counter<>(anotherEntry.item, anotherEntry.count + b1);
+                    this.counterMap.put(anotherEntry.item, entry);
+                }
+            } else {
+                entry = new Counter<>(anotherEntry.item, anotherEntry.count);
+                this.counterMap.put(anotherEntry.item, entry);
+            }
+        }
+
+        retainUnsorted(counterMap.getCapacity());
+        return this;
     }
 
     @Override
     public List<Counter<T>> topK(int k) {
         List<Counter<T>> topK = new ArrayList<>(k);
-        Iterator<Counter<T>> iterator = getIterator(false);
+        Iterator<Counter<T>> iterator = counterMap.descendingIterator();
         while (iterator.hasNext() && topK.size() < k) {
             Counter<T> b = iterator.next();
             topK.add(b);
         }
 
         return topK;
+    }
+
+    public int getCapacity() {
+        return counterMap.getCapacity();
+    }
+
+    public boolean isDescending() {
+        return counterMap.isDescending();
+    }
+
+    @Override
+    public int size() {
+        return counterMap.size();
     }
 
     /**
@@ -192,77 +217,16 @@ public abstract class TopNCounterSummary<T> implements ITopNCounter<T> {
      */
     @Override
     public double[] getCounters() {
-        double[] counters = new double[size()];
-        int index = 0;
-
-        Iterator<Counter<T>> iterator = iterator();
-        while (iterator.hasNext()) {
-            Counter<T> b = iterator.next();
-            counters[index] = b.count;
-            index++;
-        }
-
-        assert index == size();
-        return counters;
+        return counterMap.getCounters();
     }
 
-    public int getCapacity() {
-        return capacity;
-    }
-
-    /**
-     * @return number of items stored
-     */
-    public int size() {
-        return counterMap.size();
-    }
-
-    /**
-     * Result may be not sorted
-     *
-     * @return
-     */
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append('[');
-        Iterator<Counter<T>> iterator = counterMap.values().iterator();
-        while (iterator.hasNext()) {
-            Counter<T> b = iterator.next();
-            sb.append(b.item);
-            sb.append(':');
-            sb.append(b.count);
-        }
-        sb.append(']');
-        return sb.toString();
+        return counterMap.toString();
     }
 
     @Override
     public Iterator<Counter<T>> iterator() {
-        return getIterator(true);
-    }
-
-    private Iterator<Counter<T>> getIterator(boolean reverseOrder) {
-        sortAndRetain();
-        if (reverseOrder) {
-            return this.counterSortedList.descendingIterator();
-        } else {
-            return this.counterSortedList.iterator();
-        }
-    }
-
-    private void retainSorted(int newCapacity) {
-        this.capacity = newCapacity;
-        if (this.size() > newCapacity) {
-            Counter<T> toRemoved;
-            for (int i = 0, n = this.size() - newCapacity; i < n; i++) {
-                toRemoved = counterSortedList.pollLast();
-                this.counterMap.remove(toRemoved.item);
-            }
-        }
-    }
-
-    protected boolean ordered() {
-        return size() == 0 || !counterSortedList.isEmpty();
+        return counterMap.iterator();
     }
 }

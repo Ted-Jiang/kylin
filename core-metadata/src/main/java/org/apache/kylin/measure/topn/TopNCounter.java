@@ -19,7 +19,6 @@
 package org.apache.kylin.measure.topn;
 
 import org.apache.kylin.shaded.com.google.common.base.Preconditions;
-import org.apache.kylin.shaded.com.google.common.collect.Maps;
 
 /**
  * Reduce the chance to call retain method
@@ -28,7 +27,6 @@ import org.apache.kylin.shaded.com.google.common.collect.Maps;
  */
 public class TopNCounter<T> extends TopNCounterDescending<T> {
 
-    public static final int EXTRA_SPACE_RATE = 50;
     private Counter<T> minCounter = null;
 
     /**
@@ -50,13 +48,13 @@ public class TopNCounter<T> extends TopNCounterDescending<T> {
                 "The class for another is " + another0.getClass() + " which should be " + this.getClass());
 
         TopNCounter<T> another = (TopNCounter<T>) another0;
-        if (another.size() == 0) {
+        if (another.counterMap.isEmpty()) {
             return this;
         }
 
         // Find the minimum value
-        double m1 = getEstimationOfRemoved();
-        double m2 = another.getEstimationOfRemoved();
+        double m1 = getCounterSummaryBoundary();
+        double m2 = another.getCounterSummaryBoundary();
 
         Counter<T> mCounter = null;
         if (minCounter != null && !another.counterMap.containsKey(minCounter.item)) {
@@ -76,17 +74,17 @@ public class TopNCounter<T> extends TopNCounterDescending<T> {
 
     @Override
     protected void retainUnsorted(int newCapacity) {
-        if (size() > newCapacity * 2) {
+        if (counterMap.size() > newCapacity * 2) {
             sortAndRetain();
         }
     }
 
     @Override
     protected double getMinimum() {
-        if (!counterSortedList.isEmpty()) {
-            minCounter = counterSortedList.getLast();
+        if (counterMap.ordered()) {
+            minCounter = counterMap.getLast();
         }
-        if (this.size() < this.capacity) {
+        if (!counterMap.isFull()) {
             return 0.0;
         }
         if (minCounter != null) {
@@ -97,13 +95,13 @@ public class TopNCounter<T> extends TopNCounterDescending<T> {
                 minCounter = entry;
             }
         }
-        return minCounter.count;
+        return minCounter != null ? minCounter.count : 0.0;
     }
 
     @Override
     public TopNCounter<T> copy() {
-        TopNCounter result = new TopNCounter(capacity);
-        result.counterMap = Maps.newHashMap(counterMap);
+        TopNCounter result = new TopNCounter(getCapacity());
+        result.counterMap = counterMap.copy();
         return result;
     }
 }

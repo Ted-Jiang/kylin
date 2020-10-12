@@ -34,6 +34,7 @@ import org.apache.kylin.measure.percentile.PercentileMeasureType;
 import org.apache.kylin.measure.raw.RawMeasureType;
 import org.apache.kylin.measure.stddev.StdDevSumMeasureType;
 import org.apache.kylin.measure.topn.TopNMeasureType;
+import org.apache.kylin.measure.topn.extend.ExTopNMeasureType;
 import org.apache.kylin.metadata.datatype.DataType;
 import org.apache.kylin.metadata.datatype.DataTypeSerializer;
 import org.apache.kylin.metadata.model.FunctionDesc;
@@ -111,6 +112,7 @@ abstract public class MeasureTypeFactory<T> {
         factoryInsts.add(new HLLCMeasureType.Factory());
         factoryInsts.add(new BitmapMeasureType.Factory());
         factoryInsts.add(new TopNMeasureType.Factory());
+        factoryInsts.add(new ExTopNMeasureType.Factory());
         factoryInsts.add(new RawMeasureType.Factory());
         factoryInsts.add(new ExtendedColumnMeasureType.Factory());
         factoryInsts.add(new PercentileMeasureType.Factory());

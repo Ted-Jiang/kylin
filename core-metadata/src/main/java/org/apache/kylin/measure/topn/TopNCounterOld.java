@@ -18,10 +18,8 @@
 
 package org.apache.kylin.measure.topn;
 
-import org.apache.kylin.shaded.com.google.common.collect.Maps;
-
 /**
- * Use sort for element pruning
+ * Use sortUnsorted for element pruning
  *
  * @param <T> type of data in the stream to be summarized
  */
@@ -40,17 +38,17 @@ public class TopNCounterOld<T> extends TopNCounterDescending<T> {
 
     @Override
     protected double getMinimum() {
-        if (this.size() < this.capacity) {
+        if (!counterMap.isFull()) {
             return 0.0;
         }
-        sortUnsorted(capacity);
-        return counterSortedList.getLast().count;
+        counterMap.sort();
+        return counterMap.getLast().count;
     }
 
     @Override
     public TopNCounterOld<T> copy() {
-        TopNCounterOld result = new TopNCounterOld(capacity);
-        result.counterMap = Maps.newHashMap(counterMap);
+        TopNCounterOld result = new TopNCounterOld(getCapacity());
+        result.counterMap = counterMap.copy();
         return result;
     }
 }

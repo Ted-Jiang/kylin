@@ -31,6 +31,7 @@ import org.apache.kylin.cube.model.validation.IValidatorRule;
 import org.apache.kylin.cube.model.validation.ResultLevel;
 import org.apache.kylin.cube.model.validation.ValidateContext;
 import org.apache.kylin.measure.topn.TopNMeasureType;
+import org.apache.kylin.measure.topn.extend.ExTopNMeasureType;
 import org.apache.kylin.metadata.model.DataModelDesc;
 import org.apache.kylin.metadata.model.FunctionDesc;
 import org.apache.kylin.metadata.model.MeasureDesc;
@@ -106,7 +107,8 @@ public class FunctionRule implements IValidatorRule<CubeDesc> {
             if (func.isCount() && func.getParameter().isConstant())
                 countStarFuncs.add(func);
 
-            if (TopNMeasureType.FUNC_TOP_N.equalsIgnoreCase(func.getExpression())) {
+            if (TopNMeasureType.FUNC_TOP_N.equalsIgnoreCase(func.getExpression())
+                    || ExTopNMeasureType.FUNC_EXTOP_N.equalsIgnoreCase(func.getExpression())) {
                 if (parameter.getNextParameter() == null) {
                     context.addResult(ResultLevel.ERROR, "Must define at least 2 parameters for function " + func.getExpression() + " in " + measure.getName());
                     return;

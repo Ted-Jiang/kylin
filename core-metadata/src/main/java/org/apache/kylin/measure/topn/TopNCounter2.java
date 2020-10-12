@@ -18,9 +18,6 @@
 
 package org.apache.kylin.measure.topn;
 
-import org.apache.kylin.shaded.com.google.common.collect.Lists;
-import org.apache.kylin.shaded.com.google.common.collect.Maps;
-
 import java.util.PriorityQueue;
 
 /**
@@ -39,11 +36,11 @@ public class TopNCounter2<T> extends TopNCounter<T> {
 
     @Override
     public void sortUnsorted(int newCapacity) {
-        if (ordered()) {
+        if (counterMap.ordered()) {
             return;
         }
         // ----- nln(k)+2k < nln(n) => 2k < n
-        if (newCapacity * 2 < size()) {
+        if (newCapacity * 2 < counterMap.size()) {
             sortByPriorityQueue(newCapacity);
         } else {
             super.sortUnsorted(newCapacity);
@@ -56,13 +53,13 @@ public class TopNCounter2<T> extends TopNCounter<T> {
      * @param newCapacity
      */
     private void sortByPriorityQueue(int newCapacity) {
-        if (ordered()) {
+        if (counterMap.ordered()) {
             return;
         }
 
         // Construct min-heap
-        PriorityQueue<Counter<T>> counterQueue = new PriorityQueue<>(capacity,
-                descending ? ASC_COMPARATOR : DESC_COMPARATOR);
+        PriorityQueue<Counter<T>> counterQueue = new PriorityQueue<>(counterMap.getCapacity(),
+                counterMap.isDescending() ? ASC_COMPARATOR : DESC_COMPARATOR);
         for (Counter<T> entry : counterMap.values()) {
             if (counterQueue.size() < newCapacity) {
                 counterQueue.offer(entry);
@@ -75,19 +72,17 @@ public class TopNCounter2<T> extends TopNCounter<T> {
             }
         }
         // Reconstruct Map & SortedList
-        counterMap = Maps.newHashMapWithExpectedSize(counterQueue.size());
-        counterSortedList = Lists.newLinkedList();
+        counterMap.clear();
         Counter<T> entryTop;
         while ((entryTop = counterQueue.poll()) != null) {
-            counterMap.put(entryTop.item, entryTop);
-            counterSortedList.addFirst(entryTop);
+            counterMap.offerToHead(entryTop);
         }
     }
 
     @Override
     public TopNCounter2<T> copy() {
-        TopNCounter2<T> result = new TopNCounter2<>(capacity);
-        result.counterMap = Maps.newHashMap(counterMap);
+        TopNCounter2<T> result = new TopNCounter2<>(getCapacity());
+        result.counterMap = counterMap.copy();
         return result;
     }
 }

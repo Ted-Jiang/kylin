@@ -39,6 +39,7 @@ import org.apache.kylin.dimension.DictionaryDimEnc;
 import org.apache.kylin.dimension.DimensionEncoding;
 import org.apache.kylin.dimension.DimensionEncodingFactory;
 import org.apache.kylin.measure.topn.TopNMeasureType;
+import org.apache.kylin.measure.topn.extend.ExTopNMeasureType;
 import org.apache.kylin.metadata.cachesync.Broadcaster;
 import org.apache.kylin.metadata.cachesync.Broadcaster.Event;
 import org.apache.kylin.metadata.cachesync.CachedCrudAssist;
@@ -300,6 +301,43 @@ public class CubeDescManager {
                 int precision = returnType.getPrecision() < 1 ? 100 : returnType.getPrecision();
                 DataType newReturnType = new DataType(returnType.getName(), precision, keyLength);
                 measureDesc.getFunction().setReturnType(newReturnType.toString());
+            } else if (ExTopNMeasureType.FUNC_EXTOP_N.equalsIgnoreCase(measureDesc.getFunction().getExpression())) {
+                // Check dict encoding or integer family
+                Map<String, String> configuration = measureDesc.getFunction().getConfiguration();
+                ParameterDesc parameter = measureDesc.getFunction().getParameter();
+                parameter = parameter.getNextParameter();
+                while (parameter != null) {
+                    if (!parameter.isColumnType()) {
+                        throw new IllegalArgumentException("TopN parameter should be column type");
+                    }
+                    String encoding = configuration.get(ExTopNMeasureType.CONFIG_ENCODING_PREFIX + parameter.getValue());
+                    String encodingVersionStr = configuration
+                            .get(ExTopNMeasureType.CONFIG_ENCODING_VERSION_PREFIX + parameter.getValue());
+                    if (StringUtils.isEmpty(encoding) || DictionaryDimEnc.ENCODING_NAME.equals(encoding)) {
+                        // good for mapping encoded value to integer for bitmap
+                    } else if (encoding.startsWith("dict")) {
+                        throw new IllegalArgumentException(
+                                "TOP_N's Encoding is " + encoding + ", please choose the correct one");
+                    } else {
+                        // non-dict encoding
+                        int encodingVersion = 1;
+                        if (!StringUtils.isEmpty(encodingVersionStr)) {
+                            try {
+                                encodingVersion = Integer.parseInt(encodingVersionStr);
+                            } catch (NumberFormatException e) {
+                                throw new IllegalArgumentException("invalid encoding version: " + encodingVersionStr);
+                            }
+                        }
+                        Object[] encodingConf = DimensionEncoding.parseEncodingConf(encoding);
+                        DimensionEncoding dimensionEncoding = DimensionEncodingFactory.create((String) encodingConf[0],
+                                (String[]) encodingConf[1], encodingVersion);
+                        if (dimensionEncoding.getLengthOfEncoding() > 4) {
+                            throw new IllegalArgumentException("Length of encoding should not be larger than 4");
+                        }
+                    }
+
+                    parameter = parameter.getNextParameter();
+                }
             }
         }
     }

@@ -43,6 +43,7 @@ public class KylinKryoRegistrator implements KryoRegistrator {
         kyroClasses.add(byte[].class);
         kyroClasses.add(int[].class);
         kyroClasses.add(byte[][].class);
+        kyroClasses.add(Integer[].class);
         kyroClasses.add(String[].class);
         kyroClasses.add(String[][].class);
         kyroClasses.add(Object[].class);
@@ -76,6 +77,7 @@ public class KylinKryoRegistrator implements KryoRegistrator {
         kyroClasses.add(org.apache.spark.sql.types.Decimal.class);
         kyroClasses.add(scala.math.BigDecimal.class);
 
+        kyroClasses.add(org.apache.kylin.common.util.ByteArray[].class);
         kyroClasses.add(org.apache.kylin.common.util.SplittedBytes[].class);
         kyroClasses.add(org.apache.kylin.metadata.model.ColumnDesc[].class);
         kyroClasses.add(org.apache.kylin.metadata.model.JoinTableDesc[].class);
@@ -93,6 +95,8 @@ public class KylinKryoRegistrator implements KryoRegistrator {
         kyroClasses.add(org.roaringbitmap.buffer.MutableRoaringArray.class);
         kyroClasses.add(org.roaringbitmap.buffer.MappeableContainer[].class);
         kyroClasses.add(org.roaringbitmap.buffer.MutableRoaringBitmap.class);
+        kyroClasses.add(org.roaringbitmap.buffer.MutableRoaringBitmap[].class);
+        kyroClasses.add(org.roaringbitmap.buffer.ImmutableRoaringBitmap[].class);
         kyroClasses.add(org.roaringbitmap.buffer.MappeableArrayContainer.class);
         kyroClasses.add(org.roaringbitmap.buffer.MappeableBitmapContainer.class);
 
@@ -106,6 +110,8 @@ public class KylinKryoRegistrator implements KryoRegistrator {
         addClassQuitely(kyroClasses, "org.apache.kylin.job.shaded.org.roaringbitmap.buffer.ImmutableRoaringBitmap");
         addClassQuitely(kyroClasses, "org.apache.kylin.job.shaded.org.roaringbitmap.buffer.ImmutableRoaringArray");
         addClassQuitely(kyroClasses, "org.apache.kylin.job.shaded.org.roaringbitmap.buffer.MappeableRunContainer");
+        addClassQuitely(kyroClasses, "org.apache.kylin.job.shaded.org.roaringbitmap.buffer.MutableRoaringBitmap[]");
+        addClassQuitely(kyroClasses, "org.apache.kylin.job.shaded.org.roaringbitmap.buffer.ImmutableRoaringBitmap[]");
 
         addClassQuitely(kyroClasses, "java.nio.HeapShortBuffer");
         addClassQuitely(kyroClasses, "java.nio.HeapLongBuffer");
@@ -114,6 +120,7 @@ public class KylinKryoRegistrator implements KryoRegistrator {
         addClassQuitely(kyroClasses, "org.apache.spark.sql.catalyst.expressions.GenericInternalRow");
         addClassQuitely(kyroClasses, "org.apache.spark.unsafe.types.UTF8String");
 
+        addClassQuitely(kyroClasses, "org.apache.kylin.measure.topn.extend.ExItem$ExByteArrayItem");
         addClassQuitely(kyroClasses, "org.apache.spark.internal.io.FileCommitProtocol$TaskCommitMessage");
         addClassQuitely(kyroClasses, "scala.collection.immutable.Set$EmptySet$");
         addClassQuitely(kyroClasses, "scala.reflect.ManifestFactory$$anon$2");
@@ -269,6 +276,11 @@ public class KylinKryoRegistrator implements KryoRegistrator {
         kyroClasses.add(org.apache.kylin.measure.topn.TopNCounter.class);
         kyroClasses.add(org.apache.kylin.measure.topn.TopNCounterSerializer.class);
         kyroClasses.add(org.apache.kylin.measure.topn.TopNMeasureType.class);
+        kyroClasses.add(org.apache.kylin.measure.topn.extend.ExItem.class);
+        kyroClasses.add(org.apache.kylin.measure.topn.extend.ExTopNAggregator.class);
+        kyroClasses.add(org.apache.kylin.measure.topn.extend.ExTopNCounter.class);
+        kyroClasses.add(org.apache.kylin.measure.topn.extend.ExTopNCounterSerializer.class);
+        kyroClasses.add(org.apache.kylin.measure.topn.extend.ExTopNMeasureType.class);
         kyroClasses.add(org.apache.kylin.metadata.badquery.BadQueryEntry.class);
         kyroClasses.add(org.apache.kylin.metadata.badquery.BadQueryHistory.class);
         kyroClasses.add(org.apache.kylin.metadata.datatype.BigDecimalSerializer.class);

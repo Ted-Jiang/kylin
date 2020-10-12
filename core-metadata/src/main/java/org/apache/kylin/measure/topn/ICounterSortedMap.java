@@ -18,19 +18,34 @@
 
 package org.apache.kylin.measure.topn;
 
-public abstract class TopNCounterDescending<T> extends TopNCounterSummary<T> {
+import java.util.Iterator;
 
-    public TopNCounterDescending(int capacity) {
-        super(capacity);
-    }
+public interface ICounterSortedMap<T> {
+    boolean isDescending();
 
-    protected abstract double getMinimum();
+    Iterator<Counter<T>> descendingIterator();
 
-    protected double getCounterSummaryBoundary() {
-        return getMinimum();
-    }
+    Iterator<Counter<T>> iterator();
 
-    protected boolean occur(T item) {
-        return true;
-    }
+    double[] getCounters();
+
+    Counter<T> getLast();
+
+    int getCapacity();
+
+    boolean isFull();
+
+    boolean ordered();
+
+    void toUnordered();
+
+    void retain(int newCapacity);
+
+    void sort();
+
+    void sortAndRetain();
+
+    void offer(Counter<T> c);
+
+    void offerToHead(Counter<T> c);
 }

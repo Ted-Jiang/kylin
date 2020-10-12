@@ -6,29 +6,29 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package org.apache.kylin.measure.topn;
-
-import java.nio.ByteBuffer;
-import java.util.Iterator;
-import java.util.List;
 
 import org.apache.kylin.common.util.ByteArray;
 import org.apache.kylin.dimension.DictionaryDimEnc;
 import org.apache.kylin.metadata.datatype.DataType;
 import org.apache.kylin.metadata.datatype.DataTypeSerializer;
 
+import java.nio.ByteBuffer;
+import java.util.Iterator;
+import java.util.List;
+
 /**
- * 
+ *
  */
 public class TopNCounterSerializer extends DataTypeSerializer<TopNCounter<ByteArray>> {
 
@@ -61,12 +61,12 @@ public class TopNCounterSerializer extends DataTypeSerializer<TopNCounter<ByteAr
 
     @Override
     public int maxLength() {
-        return Math.max(precision * TopNCounter.EXTRA_SPACE_RATE * storageBytesEstimatePerCounter(), 1024 * 1024); // use at least 1M
+        return Math.max(precision * TopNCounterSummary.EXTRA_SPACE_RATE * storageBytesEstimatePerCounter(), 1024 * 1024); // use at least 1M
     }
 
     @Override
     public int getStorageBytesEstimate() {
-        return precision * TopNCounter.EXTRA_SPACE_RATE * storageBytesEstimatePerCounter();
+        return precision * TopNCounterSummary.EXTRA_SPACE_RATE * storageBytesEstimatePerCounter();
     }
 
     @Override
@@ -109,7 +109,7 @@ public class TopNCounterSerializer extends DataTypeSerializer<TopNCounter<ByteAr
 
     @Override
     protected double getStorageBytesEstimate(double averageNumOfElementsInCounter) {
-        if (averageNumOfElementsInCounter < precision * TopNCounter.EXTRA_SPACE_RATE) {
+        if (averageNumOfElementsInCounter < precision * TopNCounterSummary.EXTRA_SPACE_RATE) {
             return averageNumOfElementsInCounter * storageBytesEstimatePerCounter() + 12;
         } else {
             return getStorageBytesEstimate();

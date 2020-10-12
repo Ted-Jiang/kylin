@@ -18,6 +18,10 @@
 
 package org.apache.kylin.measure.topn;
 
+import org.apache.kylin.shaded.com.google.common.base.Preconditions;
+import org.apache.kylin.shaded.com.google.common.collect.Lists;
+import org.apache.kylin.shaded.com.google.common.collect.Maps;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -25,19 +29,21 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.kylin.shaded.com.google.common.base.Preconditions;
-import org.apache.kylin.shaded.com.google.common.collect.Lists;
-import org.apache.kylin.shaded.com.google.common.collect.Maps;
-
 public class TopNPreciseCounter<T> implements ITopNCounter<T> {
     protected Map<T, Counter<T>> counterMap;
     protected LinkedList<Counter<T>> counterSortedList; //a linked list, first the is the toppest element
+    protected boolean descending;
+
     protected boolean ordered = true;
-    protected boolean descending = true;
 
     public TopNPreciseCounter() {
+        this(true);
+    }
+
+    public TopNPreciseCounter(boolean descending) {
         this.counterMap = Maps.newHashMap();
         this.counterSortedList = Lists.newLinkedList();
+        this.descending = descending;
     }
 
     public int size() {
@@ -93,7 +99,7 @@ public class TopNPreciseCounter<T> implements ITopNCounter<T> {
 
     public List<Counter<T>> topK(int k) {
         List<Counter<T>> topK = new ArrayList<>(k);
-        Iterator<Counter<T>> iterator = iteratorForTopK();
+        Iterator<Counter<T>> iterator = getIterator(false);
         while (iterator.hasNext()) {
             Counter<T> b = iterator.next();
             if (topK.size() == k) {
@@ -107,6 +113,7 @@ public class TopNPreciseCounter<T> implements ITopNCounter<T> {
 
     /**
      * Get the counter values in ascending order which will be used for better serialization
+     *
      * @return
      */
     public double[] getCounters() {
@@ -124,27 +131,23 @@ public class TopNPreciseCounter<T> implements ITopNCounter<T> {
         return counters;
     }
 
-    private Iterator<Counter<T>> iteratorForTopK() {
-        sort();
-        if (this.descending) {
-            return this.counterSortedList.iterator();
-        } else {
-            throw new IllegalStateException(); // support in future
-        }
-    }
-
     @Override
     public Iterator<Counter<T>> iterator() {
+        return getIterator(true);
+    }
+
+    private Iterator<Counter<T>> getIterator(boolean reverseOrder) {
         sort();
-        if (this.descending) {
+        if (reverseOrder) {
             return this.counterSortedList.descendingIterator();
         } else {
-            throw new IllegalStateException(); // support in future
+            return this.counterSortedList.iterator();
         }
     }
 
     /**
      * For TopNAggregator to avoid concurrency issues
+     *
      * @return
      */
     public TopNPreciseCounter<T> copy() {

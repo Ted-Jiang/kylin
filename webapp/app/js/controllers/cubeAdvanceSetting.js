@@ -541,6 +541,12 @@ KylinApp.controller('CubeAdvanceSettingCtrl', function ($scope, $modal,cubeConfi
     }
   };
 
+  $scope.defaultNewSnapshotTable = function(){
+    $scope.newSnapshot.select.global = true;
+    $scope.cubeMetaFrame.snapshot_table_desc_list = [];
+    $scope.cubeLookups.forEach(a => $scope.cubeMetaFrame.snapshot_table_desc_list.push({global: true, storage_type: "metaStore", table_name: a}))
+}
+
   $scope.cancelEditSnapshot = function() {
     $scope.newSnapshot.select = {};
     $scope.addNewSanpshot = !$scope.addNewSanpshot;

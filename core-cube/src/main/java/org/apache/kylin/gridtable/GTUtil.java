@@ -248,7 +248,8 @@ public class GTUtil {
             }
 
             Collection constValues = oldCompareFilter.getValues();
-            if (constValues == null || constValues.isEmpty()) {
+            if (oldCompareFilter.getOperator() != FilterOperatorEnum.ISNULL
+                    && (constValues == null || constValues.isEmpty())) {
                 return oldCompareFilter;
             }
 
@@ -259,11 +260,13 @@ public class GTUtil {
             //for CompareTupleFilter containing dynamicVariables, the below codes will actually replace dynamicVariables
             //with normal ConstantTupleFilter
 
-            Object firstValue = constValues.iterator().next();
             int col = colMapping == null ? externalCol.getColumnDesc().getZeroBasedIndex() : mapCol(externalCol);
 
             TupleFilter result;
             ByteArray code;
+
+            // Deal with isNull, fill the values with null encoded values
+            Object firstValue = oldCompareFilter.getOperator() == FilterOperatorEnum.ISNULL ? null : constValues.iterator().next();
 
             // translate constant into code
             switch (newCompareFilter.getOperator()) {
@@ -342,6 +345,15 @@ public class GTUtil {
                 break;
             case GTE:
                 code = translate(col, firstValue, 1);
+                if (code == null) {
+                    result = ConstantTupleFilter.FALSE;
+                } else {
+                    newCompareFilter.addChild(new ConstantTupleFilter(code));
+                    result = newCompareFilter;
+                }
+                break;
+            case ISNULL:
+                code = translate(col, firstValue, 0);
                 if (code == null) {
                     result = ConstantTupleFilter.FALSE;
                 } else {

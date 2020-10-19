@@ -180,13 +180,15 @@ public abstract class ScanRangePlannerBase {
 
             //TODO: the treatment is un-precise
             if (op == TupleFilter.FilterOperatorEnum.EQ || op == TupleFilter.FilterOperatorEnum.IN
-                    || op == TupleFilter.FilterOperatorEnum.LTE || op == TupleFilter.FilterOperatorEnum.GTE) {
+                    || op == TupleFilter.FilterOperatorEnum.LTE || op == TupleFilter.FilterOperatorEnum.GTE
+                    || op == TupleFilter.FilterOperatorEnum.ISNULL) {
                 isBoundryInclusive = true;
             }
 
             switch (op) {
             case EQ:
             case IN:
+            case ISNULL:
                 valueSet = new HashSet<ByteArray>(values);
                 refreshBeginEndFromEquals();
                 break;
@@ -200,7 +202,6 @@ public abstract class ScanRangePlannerBase {
                 break;
             case NEQ:
             case NOTIN:
-            case ISNULL:
             case ISNOTNULL:
                 // let Optiq filter it!
                 break;

@@ -64,7 +64,7 @@ public class TopNCounterTest {
         TOP_K = 100;
         KEY_SPACE = 100 * TOP_K;
         TOTAL_RECORDS = 100 * KEY_SPACE;
-        SPACE_SAVING_ROOM = TopNCounterSummary.EXTRA_SPACE_RATE;
+        SPACE_SAVING_ROOM = TopNCounter.EXTRA_SPACE_RATE;
     }
 
     @Before

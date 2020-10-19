@@ -110,8 +110,6 @@ public class KylinKryoRegistrator implements KryoRegistrator {
         addClassQuitely(kyroClasses, "org.apache.kylin.job.shaded.org.roaringbitmap.buffer.ImmutableRoaringBitmap");
         addClassQuitely(kyroClasses, "org.apache.kylin.job.shaded.org.roaringbitmap.buffer.ImmutableRoaringArray");
         addClassQuitely(kyroClasses, "org.apache.kylin.job.shaded.org.roaringbitmap.buffer.MappeableRunContainer");
-        addClassQuitely(kyroClasses, "org.apache.kylin.job.shaded.org.roaringbitmap.buffer.MutableRoaringBitmap[]");
-        addClassQuitely(kyroClasses, "org.apache.kylin.job.shaded.org.roaringbitmap.buffer.ImmutableRoaringBitmap[]");
 
         addClassQuitely(kyroClasses, "java.nio.HeapShortBuffer");
         addClassQuitely(kyroClasses, "java.nio.HeapLongBuffer");
@@ -276,11 +274,20 @@ public class KylinKryoRegistrator implements KryoRegistrator {
         kyroClasses.add(org.apache.kylin.measure.topn.TopNCounter.class);
         kyroClasses.add(org.apache.kylin.measure.topn.TopNCounterSerializer.class);
         kyroClasses.add(org.apache.kylin.measure.topn.TopNMeasureType.class);
+        kyroClasses.add(org.apache.kylin.measure.topn.BiTopNAggregator.class);
+        kyroClasses.add(org.apache.kylin.measure.topn.BiTopNCounter.class);
+        kyroClasses.add(org.apache.kylin.measure.topn.BiTopNCounterSerializer.class);
+        kyroClasses.add(org.apache.kylin.measure.topn.BiTopNMeasureType.class);
         kyroClasses.add(org.apache.kylin.measure.topn.extend.ExItem.class);
+        kyroClasses.add(org.apache.kylin.measure.topn.extend.ExBitmaps.class);
         kyroClasses.add(org.apache.kylin.measure.topn.extend.ExTopNAggregator.class);
         kyroClasses.add(org.apache.kylin.measure.topn.extend.ExTopNCounter.class);
         kyroClasses.add(org.apache.kylin.measure.topn.extend.ExTopNCounterSerializer.class);
         kyroClasses.add(org.apache.kylin.measure.topn.extend.ExTopNMeasureType.class);
+        kyroClasses.add(org.apache.kylin.measure.topn.extend.ExBiTopNAggregator.class);
+        kyroClasses.add(org.apache.kylin.measure.topn.extend.ExBiTopNCounter.class);
+        kyroClasses.add(org.apache.kylin.measure.topn.extend.ExBiTopNCounterSerializer.class);
+        kyroClasses.add(org.apache.kylin.measure.topn.extend.ExBiTopNMeasureType.class);
         kyroClasses.add(org.apache.kylin.metadata.badquery.BadQueryEntry.class);
         kyroClasses.add(org.apache.kylin.metadata.badquery.BadQueryHistory.class);
         kyroClasses.add(org.apache.kylin.metadata.datatype.BigDecimalSerializer.class);

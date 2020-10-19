@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.kylin.measure.topn.extend;
+package org.apache.kylin.measure.topn;
 
 import org.apache.kylin.common.util.ByteArray;
 import org.apache.kylin.dimension.DimensionEncoding;
@@ -24,8 +24,6 @@ import org.apache.kylin.measure.MeasureAggregator;
 import org.apache.kylin.measure.MeasureIngester;
 import org.apache.kylin.measure.MeasureType;
 import org.apache.kylin.measure.MeasureTypeFactory;
-import org.apache.kylin.measure.topn.Counter;
-import org.apache.kylin.measure.topn.TopNMeasureTypeBase;
 import org.apache.kylin.metadata.datatype.DataType;
 import org.apache.kylin.metadata.datatype.DataTypeSerializer;
 import org.apache.kylin.metadata.tuple.Tuple;
@@ -35,17 +33,17 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.Iterator;
 
-public class ExTopNMeasureType extends TopNMeasureTypeBase<ExItem<ByteArray>, ExTopNCounter<ByteArray>> {
+public class BiTopNMeasureType extends TopNMeasureTypeBase<ByteArray, BiTopNCounter<ByteArray>> {
 
-    private static final Logger logger = LoggerFactory.getLogger(ExTopNMeasureType.class);
+    private static final Logger logger = LoggerFactory.getLogger(BiTopNMeasureType.class);
 
-    public static final String DATATYPE_TOPN = "ex_topn";
+    public static final String DATATYPE_TOPN = "bi_topn";
 
-    public static class Factory extends MeasureTypeFactory<ExTopNCounter<ByteArray>> {
+    public static class Factory extends MeasureTypeFactory<BiTopNCounter<ByteArray>> {
 
         @Override
-        public MeasureType<ExTopNCounter<ByteArray>> createMeasureType(String funcName, DataType dataType) {
-            return new ExTopNMeasureType(dataType);
+        public MeasureType<BiTopNCounter<ByteArray>> createMeasureType(String funcName, DataType dataType) {
+            return new BiTopNMeasureType(dataType);
         }
 
         @Override
@@ -59,14 +57,14 @@ public class ExTopNMeasureType extends TopNMeasureTypeBase<ExItem<ByteArray>, Ex
         }
 
         @Override
-        public Class<? extends DataTypeSerializer<ExTopNCounter<ByteArray>>> getAggrDataTypeSerializer() {
-            return ExTopNCounterSerializer.class;
+        public Class<? extends DataTypeSerializer<BiTopNCounter<ByteArray>>> getAggrDataTypeSerializer() {
+            return BiTopNCounterSerializer.class;
         }
     }
 
     // ============================================================================
 
-    public ExTopNMeasureType(DataType dataType) {
+    public BiTopNMeasureType(DataType dataType) {
         super(dataType);
     }
 
@@ -76,54 +74,52 @@ public class ExTopNMeasureType extends TopNMeasureTypeBase<ExItem<ByteArray>, Ex
             throw new IllegalArgumentException();
     }
 
-    private boolean isDescending() {
-        return dataType.getScale() <= 0;
-    }
-
     @Override
-    public MeasureIngester<ExTopNCounter<ByteArray>> newIngester() {
-        return new TopNMeasureIngester<ExItem<ByteArray>, ExTopNCounter<ByteArray>>() {
+    public MeasureIngester<BiTopNCounter<ByteArray>> newIngester() {
+        return new TopNMeasureIngester<ByteArray, BiTopNCounter<ByteArray>>() {
 
-            protected ExTopNCounter<ByteArray> valueOf(String[] values) {
+            protected BiTopNCounter<ByteArray> valueOf(String[] values) {
                 // Construct key
-                byte[] keyArray = new byte[keyLength];
+                final ByteArray key = new ByteArray(keyLength);
                 int offset = 0;
-                ByteArray[] keys = new ByteArray[dimensionEncodings.length];
                 for (int i = 0; i < dimensionEncodings.length; i++) {
-                    keys[i] = new ByteArray(keyArray, offset, dimensionEncodings[i].getLengthOfEncoding());
                     if (values[i + 1] == null) {
-                        Arrays.fill(keyArray, offset, offset + dimensionEncodings[i].getLengthOfEncoding(),
+                        Arrays.fill(key.array(), offset, offset + dimensionEncodings[i].getLengthOfEncoding(),
                                 DimensionEncoding.NULL);
                     } else {
-                        dimensionEncodings[i].encode(values[i + 1], keyArray, offset);
+                        dimensionEncodings[i].encode(values[i + 1], key.array(), offset);
                     }
                     offset += dimensionEncodings[i].getLengthOfEncoding();
                 }
                 // Construct value
                 double counter = values[0] == null ? 0 : Double.parseDouble(values[0]);
 
-                ExTopNCounter<ByteArray> topNCounter = new ExTopNCounter<>(
-                        dataType.getPrecision() * ExTopNCounter.EXTRA_SPACE_RATE, isDescending(), dimensionEncodings.length);
-                topNCounter.offer(new ExItem.ExByteArrayItem(keys), counter);
+                BiTopNCounter<ByteArray> topNCounter = new BiTopNCounter<ByteArray>(
+                        dataType.getPrecision() * BiTopNCounter.EXTRA_SPACE_RATE);
+                topNCounter.offer(key, counter);
                 return topNCounter;
             }
 
-            protected ExTopNCounter<ByteArray> reEncodeDictionary(ExTopNCounter<ByteArray> value) {
-                ExTopNCounter<ByteArray> topNCounter = value;
+            protected BiTopNCounter<ByteArray> reEncodeDictionary(BiTopNCounter<ByteArray> value) {
+                BiTopNCounter<ByteArray> topNCounter = value;
 
                 int topNSize = topNCounter.size();
-                byte[] newKeyBuf = new byte[topNSize * newKeyLength];
-                int offset = 0;
-                for (Counter<ExItem<ByteArray>> c : topNCounter) {
-                    for (int i = 0; i < newDimensionEncodings.length; i++) {
-                        ByteArray keyArray = c.getItem().elems[i];
-                        String dimValue = dimensionEncodings[i].decode(keyArray.array(), keyArray.offset(),
-                                keyArray.length());
+                byte[] newIdBuf = new byte[topNSize * newKeyLength];
 
-                        keyArray.reset(newKeyBuf, offset, newDimensionEncodings[i].getLengthOfEncoding());
-                        newDimensionEncodings[i].encode(dimValue, newKeyBuf, offset);
-                        offset += newDimensionEncodings[i].getLengthOfEncoding();
+                int bufOffset = 0;
+                for (Counter<ByteArray> c : topNCounter) {
+                    int offset = c.getItem().offset();
+                    int innerBuffOffset = 0;
+                    for (int i = 0; i < dimensionEncodings.length; i++) {
+                        String dimValue = dimensionEncodings[i].decode(c.getItem().array(), offset,
+                                dimensionEncodings[i].getLengthOfEncoding());
+                        newDimensionEncodings[i].encode(dimValue, newIdBuf, bufOffset + innerBuffOffset);
+                        innerBuffOffset += newDimensionEncodings[i].getLengthOfEncoding();
+                        offset += dimensionEncodings[i].getLengthOfEncoding();
                     }
+
+                    c.getItem().reset(newIdBuf, bufOffset, newKeyLength);
+                    bufOffset += newKeyLength;
                 }
                 return topNCounter;
             }
@@ -133,14 +129,14 @@ public class ExTopNMeasureType extends TopNMeasureTypeBase<ExItem<ByteArray>, Ex
     @Override
     protected IAdvMeasureFiller getTopNMeasureFiller(DimensionEncoding[] dimensionEncodings, int[] literalTupleIdx, int numericTupleIdx) {
         return new IAdvMeasureFiller() {
-            private ExTopNCounter<ByteArray> topNCounter;
-            private Iterator<Counter<ExItem<ByteArray>>> topNCounterIterator;
+            private BiTopNCounter<ByteArray> topNCounter;
+            private Iterator<Counter<ByteArray>> topNCounterIterator;
             private int expectRow = 0;
 
             @SuppressWarnings("unchecked")
             @Override
             public void reload(Object measureValue) {
-                this.topNCounter = (ExTopNCounter<ByteArray>) measureValue;
+                this.topNCounter = (BiTopNCounter<ByteArray>) measureValue;
                 this.topNCounterIterator = topNCounter.iterator();
                 this.expectRow = 0;
             }
@@ -155,12 +151,13 @@ public class ExTopNMeasureType extends TopNMeasureTypeBase<ExItem<ByteArray>, Ex
                 if (expectRow++ != row)
                     throw new IllegalStateException();
 
-                Counter<ExItem<ByteArray>> counter = topNCounterIterator.next();
+                Counter<ByteArray> counter = topNCounterIterator.next();
+                int offset = counter.getItem().offset();
                 for (int i = 0; i < dimensionEncodings.length; i++) {
-                    ByteArray byteArray = counter.getItem().elems[i];
-                    String colValue = dimensionEncodings[i].decode(byteArray.array(), byteArray.offset(),
-                            byteArray.length());
+                    String colValue = dimensionEncodings[i].decode(counter.getItem().array(), offset,
+                            dimensionEncodings[i].getLengthOfEncoding());
                     tuple.setDimensionValue(literalTupleIdx[i], colValue);
+                    offset += dimensionEncodings[i].getLengthOfEncoding();
                 }
                 tuple.setMeasureValue(numericTupleIdx, counter.getCount());
                 if (expectRow < 5) {
@@ -171,7 +168,7 @@ public class ExTopNMeasureType extends TopNMeasureTypeBase<ExItem<ByteArray>, Ex
     }
 
     @Override
-    public MeasureAggregator<ExTopNCounter<ByteArray>> newAggregator() {
-        return new ExTopNAggregator();
+    public MeasureAggregator<BiTopNCounter<ByteArray>> newAggregator() {
+        return new BiTopNAggregator();
     }
 }

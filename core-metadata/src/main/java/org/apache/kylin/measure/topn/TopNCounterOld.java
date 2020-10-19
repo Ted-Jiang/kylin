@@ -18,6 +18,8 @@
 
 package org.apache.kylin.measure.topn;
 
+import org.apache.kylin.shaded.com.google.common.collect.Maps;
+
 /**
  * Use sortUnsorted for element pruning
  *
@@ -32,23 +34,24 @@ public class TopNCounterOld<T> extends TopNCounterDescending<T> {
         super(capacity);
     }
 
-    protected void retainUnsorted(int newCapacity) {
-        sortAndRetain(newCapacity);
+    @Override
+    protected int getRetainThresholdForMerge() {
+        return 0;
     }
 
     @Override
     protected double getMinimum() {
-        if (!counterMap.isFull()) {
+        if (!isFull()) {
             return 0.0;
         }
-        counterMap.sort();
-        return counterMap.getLast().count;
+        sortUnsorted(capacity);
+        return counterSortedList.getLast().count;
     }
 
     @Override
     public TopNCounterOld<T> copy() {
         TopNCounterOld result = new TopNCounterOld(getCapacity());
-        result.counterMap = counterMap.copy();
+        result.counterMap = Maps.newHashMap(counterMap);
         return result;
     }
 }

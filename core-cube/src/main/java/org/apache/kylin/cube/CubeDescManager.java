@@ -39,12 +39,14 @@ import org.apache.kylin.dimension.DictionaryDimEnc;
 import org.apache.kylin.dimension.DimensionEncoding;
 import org.apache.kylin.dimension.DimensionEncodingFactory;
 import org.apache.kylin.measure.topn.TopNMeasureType;
+import org.apache.kylin.measure.topn.TopNMeasureTypeBase;
 import org.apache.kylin.measure.topn.extend.ExTopNMeasureType;
 import org.apache.kylin.metadata.cachesync.Broadcaster;
 import org.apache.kylin.metadata.cachesync.Broadcaster.Event;
 import org.apache.kylin.metadata.cachesync.CachedCrudAssist;
 import org.apache.kylin.metadata.cachesync.CaseInsensitiveStringCache;
 import org.apache.kylin.metadata.datatype.DataType;
+import org.apache.kylin.metadata.model.FunctionDesc;
 import org.apache.kylin.metadata.model.MeasureDesc;
 import org.apache.kylin.metadata.model.ParameterDesc;
 import org.apache.kylin.metadata.project.ProjectInstance;
@@ -263,14 +265,15 @@ public class CubeDescManager {
      */
     private void postProcessCubeDesc(CubeDesc cubeDesc) {
         for (MeasureDesc measureDesc : cubeDesc.getMeasures()) {
-            if (TopNMeasureType.FUNC_TOP_N.equalsIgnoreCase(measureDesc.getFunction().getExpression())) {
+            FunctionDesc functionDesc = measureDesc.getFunction();
+            if (TopNMeasureTypeBase.FUNC_TOP_N.equalsIgnoreCase(functionDesc.getExpression())) {
                 // update return type scale with the estimated key length
-                Map<String, String> configuration = measureDesc.getFunction().getConfiguration();
-                ParameterDesc parameter = measureDesc.getFunction().getParameter();
+                Map<String, String> configuration = functionDesc.getConfiguration();
+                ParameterDesc parameter = functionDesc.getParameter();
                 parameter = parameter.getNextParameter();
                 int keyLength = 0;
                 while (parameter != null) {
-                    String encoding = configuration.get(TopNMeasureType.CONFIG_ENCODING_PREFIX + parameter.getValue());
+                    String encoding = configuration.get(TopNMeasureTypeBase.CONFIG_ENCODING_PREFIX + parameter.getValue());
                     String encodingVersionStr = configuration
                             .get(TopNMeasureType.CONFIG_ENCODING_VERSION_PREFIX + parameter.getValue());
                     if (StringUtils.isEmpty(encoding) || DictionaryDimEnc.ENCODING_NAME.equals(encoding)) {
@@ -297,46 +300,11 @@ public class CubeDescManager {
                     parameter = parameter.getNextParameter();
                 }
 
-                DataType returnType = DataType.getType(measureDesc.getFunction().getReturnType());
-                int precision = returnType.getPrecision() < 1 ? 100 : returnType.getPrecision();
-                DataType newReturnType = new DataType(returnType.getName(), precision, keyLength);
-                measureDesc.getFunction().setReturnType(newReturnType.toString());
-            } else if (ExTopNMeasureType.FUNC_EXTOP_N.equalsIgnoreCase(measureDesc.getFunction().getExpression())) {
-                // Check dict encoding or integer family
-                Map<String, String> configuration = measureDesc.getFunction().getConfiguration();
-                ParameterDesc parameter = measureDesc.getFunction().getParameter();
-                parameter = parameter.getNextParameter();
-                while (parameter != null) {
-                    if (!parameter.isColumnType()) {
-                        throw new IllegalArgumentException("TopN parameter should be column type");
-                    }
-                    String encoding = configuration.get(ExTopNMeasureType.CONFIG_ENCODING_PREFIX + parameter.getValue());
-                    String encodingVersionStr = configuration
-                            .get(ExTopNMeasureType.CONFIG_ENCODING_VERSION_PREFIX + parameter.getValue());
-                    if (StringUtils.isEmpty(encoding) || DictionaryDimEnc.ENCODING_NAME.equals(encoding)) {
-                        // good for mapping encoded value to integer for bitmap
-                    } else if (encoding.startsWith("dict")) {
-                        throw new IllegalArgumentException(
-                                "TOP_N's Encoding is " + encoding + ", please choose the correct one");
-                    } else {
-                        // non-dict encoding
-                        int encodingVersion = 1;
-                        if (!StringUtils.isEmpty(encodingVersionStr)) {
-                            try {
-                                encodingVersion = Integer.parseInt(encodingVersionStr);
-                            } catch (NumberFormatException e) {
-                                throw new IllegalArgumentException("invalid encoding version: " + encodingVersionStr);
-                            }
-                        }
-                        Object[] encodingConf = DimensionEncoding.parseEncodingConf(encoding);
-                        DimensionEncoding dimensionEncoding = DimensionEncodingFactory.create((String) encodingConf[0],
-                                (String[]) encodingConf[1], encodingVersion);
-                        if (dimensionEncoding.getLengthOfEncoding() > 4) {
-                            throw new IllegalArgumentException("Length of encoding should not be larger than 4");
-                        }
-                    }
-
-                    parameter = parameter.getNextParameter();
+                DataType returnType = DataType.getType(functionDesc.getReturnType());
+                if (!ExTopNMeasureType.DATATYPE_TOPN.equalsIgnoreCase(returnType.getName())) {
+                    int precision = returnType.getPrecision() < 1 ? 100 : returnType.getPrecision();
+                    DataType newReturnType = new DataType(returnType.getName(), precision, keyLength);
+                    measureDesc.getFunction().setReturnType(newReturnType.toString());
                 }
             }
         }

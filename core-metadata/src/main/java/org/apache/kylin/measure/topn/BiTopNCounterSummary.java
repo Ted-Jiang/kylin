@@ -18,29 +18,31 @@
 
 package org.apache.kylin.measure.topn;
 
-public abstract class TopNCounterSummary<T> extends TopNCounterSummaryBase<T> {
+import java.util.Iterator;
 
-    public TopNCounterSummary(int capacity) {
-        this(capacity, true);
+public abstract class BiTopNCounterSummary<T> extends TopNCounterSummaryBase<T> {
+
+    public BiTopNCounterSummary(int capacity) {
+        super(capacity, true);
     }
 
-    public TopNCounterSummary(int capacity, boolean descending) {
-        super(capacity, descending);
+    private int getBiCapacity() {
+        return capacity * 2;
     }
 
     @Override
     public boolean isFull() {
-        return size() >= capacity;
+        return size() >= getBiCapacity();
     }
 
     @Override
     protected int getRetainThresholdForOffer() {
-        return capacity * 2;
+        return getBiCapacity() * 2;
     }
 
     @Override
     protected int getRetainThresholdForMerge() {
-        return capacity * 2;
+        return getBiCapacity();
     }
 
     @Override
@@ -48,7 +50,7 @@ public abstract class TopNCounterSummary<T> extends TopNCounterSummaryBase<T> {
         assert newCapacity > 0;
 
         this.capacity = newCapacity;
-        if (size() > capacity) {
+        if (size() > getBiCapacity()) {
             sortAndRetain();
         }
     }
@@ -56,12 +58,28 @@ public abstract class TopNCounterSummary<T> extends TopNCounterSummaryBase<T> {
     @Override
     protected void retainSorted(int newCapacity) {
         this.capacity = newCapacity;
-        if (this.size() > capacity) {
+        if (this.size() > getBiCapacity()) {
+            //Remove the middle values
+            Iterator<Counter<T>> iterator = counterSortedList.listIterator(capacity);
+            int index = this.size() - getBiCapacity();
             Counter<T> toRemoved;
-            for (int i = 0, n = this.size() - newCapacity; i < n; i++) {
-                toRemoved = counterSortedList.pollLast();
+            while (index > 0) {
+                toRemoved = iterator.next();
+                iterator.remove();
                 this.counterMap.remove(toRemoved.item);
+                index--;
             }
         }
+    }
+
+    protected double getCounterSummaryBoundary() {
+        if (!isFull()) {
+            return 0.0;
+        }
+        sortUnsorted(capacity);
+        Counter<T> highMinCounter = counterSortedList.get(capacity - 1);
+        Counter<T> lowMaxCounter = counterSortedList.get(counterSortedList.size() - capacity);
+
+        return (highMinCounter.count + lowMaxCounter.count) / 2;
     }
 }

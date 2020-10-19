@@ -16,27 +16,27 @@
  * limitations under the License.
  */
 
-package org.apache.kylin.measure.topn.extend;
+package org.apache.kylin.measure.topn;
 
-import org.apache.kylin.common.util.ByteArray;
-import org.apache.kylin.measure.topn.TopNAggregatorBase;
+import org.apache.kylin.shaded.com.google.common.collect.Maps;
 
-/**
- *
- */
-@SuppressWarnings("serial")
-public class ExTopNAggregator extends TopNAggregatorBase<ExItem<ByteArray>, ExTopNCounter<ByteArray>> {
+public class BiTopNCounter<T> extends BiTopNCounterSummary<T> {
 
-    protected ExTopNCounter<ByteArray> getEmptyCounter(ExTopNCounter<ByteArray> template, int capacity) {
-        return new ExTopNCounter<>(capacity, template.isDescending(), template.getnElems());
+    public static final int EXTRA_SPACE_RATE = 25;
+
+    public BiTopNCounter(int capacity) {
+        super(capacity);
     }
 
     @Override
-    public ExTopNAggregator copy() {
-        ExTopNAggregator result = new ExTopNAggregator();
-        result.capacity = this.capacity;
-        result.sum = sum.copy();
-        return result;
+    protected boolean occur(T item) {
+        return true;
     }
 
+    @Override
+    public BiTopNCounter<T> copy() {
+        BiTopNCounter<T> result = new BiTopNCounter<>(capacity);
+        result.counterMap = Maps.newHashMap(counterMap);
+        return result;
+    }
 }

@@ -35,17 +35,17 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.Iterator;
 
-public class ExTopNMeasureType extends TopNMeasureTypeBase<ExItem<ByteArray>, ExTopNCounter<ByteArray>> {
+public class ExBiTopNMeasureType extends TopNMeasureTypeBase<ExItem<ByteArray>, ExBiTopNCounter<ByteArray>> {
 
-    private static final Logger logger = LoggerFactory.getLogger(ExTopNMeasureType.class);
+    private static final Logger logger = LoggerFactory.getLogger(ExBiTopNMeasureType.class);
 
-    public static final String DATATYPE_TOPN = "ex_topn";
+    public static final String DATATYPE_TOPN = "ex_bi_topn";
 
-    public static class Factory extends MeasureTypeFactory<ExTopNCounter<ByteArray>> {
+    public static class Factory extends MeasureTypeFactory<ExBiTopNCounter<ByteArray>> {
 
         @Override
-        public MeasureType<ExTopNCounter<ByteArray>> createMeasureType(String funcName, DataType dataType) {
-            return new ExTopNMeasureType(dataType);
+        public MeasureType<ExBiTopNCounter<ByteArray>> createMeasureType(String funcName, DataType dataType) {
+            return new ExBiTopNMeasureType(dataType);
         }
 
         @Override
@@ -59,14 +59,14 @@ public class ExTopNMeasureType extends TopNMeasureTypeBase<ExItem<ByteArray>, Ex
         }
 
         @Override
-        public Class<? extends DataTypeSerializer<ExTopNCounter<ByteArray>>> getAggrDataTypeSerializer() {
-            return ExTopNCounterSerializer.class;
+        public Class<? extends DataTypeSerializer<ExBiTopNCounter<ByteArray>>> getAggrDataTypeSerializer() {
+            return ExBiTopNCounterSerializer.class;
         }
     }
 
     // ============================================================================
 
-    public ExTopNMeasureType(DataType dataType) {
+    public ExBiTopNMeasureType(DataType dataType) {
         super(dataType);
     }
 
@@ -76,15 +76,11 @@ public class ExTopNMeasureType extends TopNMeasureTypeBase<ExItem<ByteArray>, Ex
             throw new IllegalArgumentException();
     }
 
-    private boolean isDescending() {
-        return dataType.getScale() <= 0;
-    }
-
     @Override
-    public MeasureIngester<ExTopNCounter<ByteArray>> newIngester() {
-        return new TopNMeasureIngester<ExItem<ByteArray>, ExTopNCounter<ByteArray>>() {
+    public MeasureIngester<ExBiTopNCounter<ByteArray>> newIngester() {
+        return new TopNMeasureIngester<ExItem<ByteArray>, ExBiTopNCounter<ByteArray>>() {
 
-            protected ExTopNCounter<ByteArray> valueOf(String[] values) {
+            protected ExBiTopNCounter<ByteArray> valueOf(String[] values) {
                 // Construct key
                 byte[] keyArray = new byte[keyLength];
                 int offset = 0;
@@ -102,14 +98,14 @@ public class ExTopNMeasureType extends TopNMeasureTypeBase<ExItem<ByteArray>, Ex
                 // Construct value
                 double counter = values[0] == null ? 0 : Double.parseDouble(values[0]);
 
-                ExTopNCounter<ByteArray> topNCounter = new ExTopNCounter<>(
-                        dataType.getPrecision() * ExTopNCounter.EXTRA_SPACE_RATE, isDescending(), dimensionEncodings.length);
+                ExBiTopNCounter<ByteArray> topNCounter = new ExBiTopNCounter<>(
+                        dataType.getPrecision() * ExBiTopNCounter.EXTRA_SPACE_RATE, dimensionEncodings.length);
                 topNCounter.offer(new ExItem.ExByteArrayItem(keys), counter);
                 return topNCounter;
             }
 
-            protected ExTopNCounter<ByteArray> reEncodeDictionary(ExTopNCounter<ByteArray> value) {
-                ExTopNCounter<ByteArray> topNCounter = value;
+            protected ExBiTopNCounter<ByteArray> reEncodeDictionary(ExBiTopNCounter<ByteArray> value) {
+                ExBiTopNCounter<ByteArray> topNCounter = value;
 
                 int topNSize = topNCounter.size();
                 byte[] newKeyBuf = new byte[topNSize * newKeyLength];
@@ -120,7 +116,7 @@ public class ExTopNMeasureType extends TopNMeasureTypeBase<ExItem<ByteArray>, Ex
                         String dimValue = dimensionEncodings[i].decode(keyArray.array(), keyArray.offset(),
                                 keyArray.length());
 
-                        keyArray.reset(newKeyBuf, offset, newDimensionEncodings[i].getLengthOfEncoding());
+                        c.getItem().elems[i].reset(newKeyBuf, offset, newDimensionEncodings[i].getLengthOfEncoding());
                         newDimensionEncodings[i].encode(dimValue, newKeyBuf, offset);
                         offset += newDimensionEncodings[i].getLengthOfEncoding();
                     }
@@ -133,14 +129,14 @@ public class ExTopNMeasureType extends TopNMeasureTypeBase<ExItem<ByteArray>, Ex
     @Override
     protected IAdvMeasureFiller getTopNMeasureFiller(DimensionEncoding[] dimensionEncodings, int[] literalTupleIdx, int numericTupleIdx) {
         return new IAdvMeasureFiller() {
-            private ExTopNCounter<ByteArray> topNCounter;
+            private ExBiTopNCounter<ByteArray> topNCounter;
             private Iterator<Counter<ExItem<ByteArray>>> topNCounterIterator;
             private int expectRow = 0;
 
             @SuppressWarnings("unchecked")
             @Override
             public void reload(Object measureValue) {
-                this.topNCounter = (ExTopNCounter<ByteArray>) measureValue;
+                this.topNCounter = (ExBiTopNCounter<ByteArray>) measureValue;
                 this.topNCounterIterator = topNCounter.iterator();
                 this.expectRow = 0;
             }
@@ -171,7 +167,7 @@ public class ExTopNMeasureType extends TopNMeasureTypeBase<ExItem<ByteArray>, Ex
     }
 
     @Override
-    public MeasureAggregator<ExTopNCounter<ByteArray>> newAggregator() {
-        return new ExTopNAggregator();
+    public MeasureAggregator<ExBiTopNCounter<ByteArray>> newAggregator() {
+        return new ExBiTopNAggregator();
     }
 }

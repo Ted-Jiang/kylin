@@ -26,10 +26,12 @@ public abstract class TopNCounterDescending<T> extends TopNCounterSummary<T> {
 
     protected abstract double getMinimum();
 
+    @Override
     protected double getCounterSummaryBoundary() {
         return getMinimum();
     }
 
+    @Override
     protected boolean occur(T item) {
         return true;
     }

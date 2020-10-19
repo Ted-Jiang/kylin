@@ -18,23 +18,22 @@
 
 package org.apache.kylin.measure.topn.extend;
 
+import org.apache.kylin.measure.topn.BiTopNCounterSummary;
 import org.apache.kylin.measure.topn.Counter;
 import org.apache.kylin.measure.topn.ITopNCounter;
-import org.apache.kylin.measure.topn.TopNCounterSummary;
 import org.apache.kylin.shaded.com.google.common.base.Preconditions;
 import org.apache.kylin.shaded.com.google.common.collect.Maps;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class ExTopNCounter<T> extends TopNCounterSummary<ExItem<T>> {
-
-    public static final int EXTRA_SPACE_RATE = 40;
+public class ExBiTopNCounter<T> extends BiTopNCounterSummary<ExItem<T>> {
+    public static final int EXTRA_SPACE_RATE = 20;
 
     private ExBitmaps exBitmaps;
 
-    public ExTopNCounter(int capacity, boolean descending, int nElems) {
-        super(capacity, descending);
+    public ExBiTopNCounter(int capacity, int nElems) {
+        super(capacity);
         this.exBitmaps = new ExBitmaps(nElems);
     }
 
@@ -55,10 +54,10 @@ public class ExTopNCounter<T> extends TopNCounterSummary<ExItem<T>> {
 
     @Override
     public ITopNCounter<ExItem<T>> merge(ITopNCounter<ExItem<T>> another0) {
-        Preconditions.checkArgument(another0 instanceof ExTopNCounter,
+        Preconditions.checkArgument(another0 instanceof ExBiTopNCounter,
                 "The class for another is " + another0.getClass() + " which should be " + this.getClass());
 
-        ExTopNCounter<T> another = (ExTopNCounter<T>) another0;
+        ExBiTopNCounter<T> another = (ExBiTopNCounter<T>) another0;
         if (another.isEmpty()) {
             return this;
         }
@@ -77,13 +76,14 @@ public class ExTopNCounter<T> extends TopNCounterSummary<ExItem<T>> {
         return this;
     }
 
-    protected void mergeDirectly(ExTopNCounter<T> another) {
+    protected void mergeDirectly(ExBiTopNCounter<T> another) {
         toUnordered();
 
         for (Counter<ExItem<T>> entry : another.counterMap.values()) {
             Counter<ExItem<T>> counter = new Counter<>(entry.getItem(), entry.getCount());
             counterMap.put(counter.getItem(), counter);
         }
+
         if (counterMap.size() >= getRetainThresholdForMerge()) {
             retainUnsorted(capacity);
         }
@@ -94,33 +94,16 @@ public class ExTopNCounter<T> extends TopNCounterSummary<ExItem<T>> {
         return super.toString() + ";RoaringBitmapCounters[" + exBitmaps.getCardinality() + "]";
     }
 
-    @Override
-    public ExTopNCounter<T> copy() {
-        ExTopNCounter<T> result = new ExTopNCounter<>(getCapacity(), isDescending(), getnElems());
+    /**
+     * For TopNAggregator to avoid concurrency issues
+     *
+     * @return
+     */
+    public ExBiTopNCounter<T> copy() {
+        ExBiTopNCounter<T> result = new ExBiTopNCounter<>(capacity, getnElems());
         result.counterMap = Maps.newHashMap(counterMap);
         result.exBitmaps = exBitmaps.copy();
         return result;
-    }
-
-    /**
-     * It's for the merge process to estimate the count of removed elements
-     */
-    protected double getCounterSummaryBoundary() {
-        if (!isFull()) {
-            return 0.0;
-        }
-        Counter<ExItem<T>> boundaryCounter = null;
-        for (Counter<ExItem<T>> entry : counterMap.values()) {
-            if (boundaryCounter == null || beyondBoundary(boundaryCounter, entry)) {
-                boundaryCounter = entry;
-            }
-        }
-        return boundaryCounter != null ? boundaryCounter.getCount() : 0.0;
-    }
-
-    private boolean beyondBoundary(Counter<ExItem<T>> boundaryCounter, Counter<ExItem<T>> counter) {
-        int ret = isDescending() ? ASC_COMPARATOR.compare(boundaryCounter, counter) : DESC_COMPARATOR.compare(boundaryCounter, counter);
-        return ret > 0;
     }
 
     /**

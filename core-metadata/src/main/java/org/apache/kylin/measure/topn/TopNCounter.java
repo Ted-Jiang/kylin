@@ -19,6 +19,7 @@
 package org.apache.kylin.measure.topn;
 
 import org.apache.kylin.shaded.com.google.common.base.Preconditions;
+import org.apache.kylin.shaded.com.google.common.collect.Maps;
 
 /**
  * Reduce the chance to call retain method
@@ -26,6 +27,8 @@ import org.apache.kylin.shaded.com.google.common.base.Preconditions;
  * @param <T> type of data in the stream to be summarized
  */
 public class TopNCounter<T> extends TopNCounterDescending<T> {
+
+    public static final int EXTRA_SPACE_RATE = 50;
 
     private Counter<T> minCounter = null;
 
@@ -81,10 +84,10 @@ public class TopNCounter<T> extends TopNCounterDescending<T> {
 
     @Override
     protected double getMinimum() {
-        if (counterMap.ordered()) {
-            minCounter = counterMap.getLast();
+        if (!counterSortedList.isEmpty()) {
+            minCounter = counterSortedList.getLast();
         }
-        if (!counterMap.isFull()) {
+        if (!isFull()) {
             return 0.0;
         }
         if (minCounter != null) {
@@ -101,7 +104,7 @@ public class TopNCounter<T> extends TopNCounterDescending<T> {
     @Override
     public TopNCounter<T> copy() {
         TopNCounter result = new TopNCounter(getCapacity());
-        result.counterMap = counterMap.copy();
+        result.counterMap = Maps.newHashMap(counterMap);
         return result;
     }
 }

@@ -20,9 +20,10 @@ package org.apache.kylin.measure.topn.extend;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.kylin.common.util.Pair;
+import org.apache.kylin.measure.topn.BiTopNCounter;
 import org.apache.kylin.measure.topn.Counter;
 import org.apache.kylin.measure.topn.ITopNCounter;
-import org.apache.kylin.measure.topn.TopNCounterSummary;
+import org.apache.kylin.measure.topn.ITopNCounterSummary;
 import org.apache.kylin.measure.topn.TopNPreciseCounter;
 import org.apache.kylin.shaded.com.google.common.collect.Lists;
 import org.apache.kylin.util.FastZipfGenerator;
@@ -69,7 +70,7 @@ public class ExTopNCounterTest {
         TOP_K = 100;
         KEY_SPACE = 100 * TOP_K;
         TOTAL_RECORDS = 100 * KEY_SPACE;
-        SPACE_SAVING_ROOM = TopNCounterSummary.EXTRA_SPACE_RATE;
+        SPACE_SAVING_ROOM = ExTopNCounter.EXTRA_SPACE_RATE;
     }
 
     @Before
@@ -134,11 +135,23 @@ public class ExTopNCounterTest {
                 + mergedCountersAccurate[0].getFeedSpentTime() + " & " + mergedCountersAccurate[0].getQuerySpentTime()
                 + "ms");
 
-        TestDataConsumer[] mergedCounters = getMergedCounters(TopNCounterEnum.Current);
+        TestDataConsumer[] mergedCounters = getMergedCounters(TopNCounterEnum.EXTOP);
         List<Pair<ExItem<Integer>, Double>> retCurrent = mergedCounters[0].getTopN(TOP_K);
         compareResult(retCurrent, retAccurate);
-        System.out.println("Get topN,      TopNCounter takes [data feeding] & [querying topK]: "
+        System.out.println("Get topN,      ExTopNCounter takes [data feeding] & [querying topK]: "
                 + mergedCounters[0].getFeedSpentTime() + " & " + mergedCounters[0].getQuerySpentTime() + "ms");
+
+        TestDataConsumer[] mergedCounters2 = getMergedCounters(TopNCounterEnum.BITOP);
+        List<Pair<ExItem<Integer>, Double>> retCurrent2 = mergedCounters2[0].getTopN(TOP_K);
+        compareResult(retCurrent2, retAccurate);
+        System.out.println("Get topN,      BiTopNCounter takes [data feeding] & [querying topK]: "
+                + mergedCounters2[0].getFeedSpentTime() + " & " + mergedCounters2[0].getQuerySpentTime() + "ms");
+
+        TestDataConsumer[] mergedCounters3 = getMergedCounters(TopNCounterEnum.EXBITOP);
+        List<Pair<ExItem<Integer>, Double>> retCurrent3 = mergedCounters3[0].getTopN(TOP_K);
+        compareResult(retCurrent3, retAccurate);
+        System.out.println("Get topN,      ExBiTopNCounter takes [data feeding] & [querying topK]: "
+                + mergedCounters3[0].getFeedSpentTime() + " & " + mergedCounters3[0].getQuerySpentTime() + "ms");
     }
 
     private void compareResult(List<Pair<ExItem<Integer>, Double>> topResult1, List<Pair<ExItem<Integer>, Double>> realSequence) {
@@ -282,13 +295,13 @@ public class ExTopNCounterTest {
 
     private static class SpaceSavingConsumer extends TestDataConsumer {
 
-        protected TopNCounterSummary<ExItem<Integer>> vs;
+        protected ITopNCounterSummary vs;
 
         public SpaceSavingConsumer(TopNCounterEnum type, int capacity) {
-            this((TopNCounterSummary<ExItem<Integer>>) createTopNCounter(type, capacity));
+            this((ITopNCounterSummary) createTopNCounter(type, capacity));
         }
 
-        public SpaceSavingConsumer(TopNCounterSummary<ExItem<Integer>> vs) {
+        public SpaceSavingConsumer(ITopNCounterSummary vs) {
             super(vs);
             this.vs = vs;
         }
@@ -337,14 +350,16 @@ public class ExTopNCounterTest {
     }
 
     private enum TopNCounterEnum {
-        Current, Accurate
+        Accurate, EXTOP, BITOP, EXBITOP
     }
 
     private TestDataConsumer createTestDataConsumer(TopNCounterEnum type, int capacity) {
         switch (type) {
             case Accurate:
                 return new HashMapConsumer();
-            case Current:
+            case EXTOP:
+            case BITOP:
+            case EXBITOP:
             default:
                 return new SpaceSavingConsumer(type, capacity);
         }
@@ -353,10 +368,14 @@ public class ExTopNCounterTest {
     private static ITopNCounter<ExItem<Integer>> createTopNCounter(TopNCounterEnum type, int capacity) {
         switch (type) {
             case Accurate:
-                return new TopNPreciseCounter<>(false);
-            case Current:
+                return new TopNPreciseCounter<>(true);
+            case EXTOP:
+                return new ExTopNCounter<>(capacity, true, nElems);
+            case BITOP:
+                return new BiTopNCounter<>(capacity);
+            case EXBITOP:
             default:
-                return new ExTopNCounter<>(capacity, false, nElems);
+                return new ExBiTopNCounter<>(capacity, nElems);
         }
     }
 }

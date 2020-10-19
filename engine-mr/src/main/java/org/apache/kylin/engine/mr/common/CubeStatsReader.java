@@ -60,8 +60,7 @@ import org.apache.kylin.cube.kv.CubeDimEncMap;
 import org.apache.kylin.cube.kv.RowKeyEncoder;
 import org.apache.kylin.cube.model.CubeDesc;
 import org.apache.kylin.measure.hllc.HLLCounter;
-import org.apache.kylin.measure.topn.TopNMeasureType;
-import org.apache.kylin.measure.topn.extend.ExTopNMeasureType;
+import org.apache.kylin.measure.topn.TopNMeasureTypeBase;
 import org.apache.kylin.metadata.datatype.DataType;
 import org.apache.kylin.metadata.model.FunctionDesc;
 import org.apache.kylin.metadata.model.MeasureDesc;
@@ -351,8 +350,7 @@ public class CubeStatsReader {
                 countDistinctSpace += returnType.getStorageBytesEstimate(estimateDistinctCount);
             } else if (measureDesc.getFunction().getExpression().equals(FunctionDesc.FUNC_PERCENTILE)) {
                 percentileSpace += returnType.getStorageBytesEstimate(baseCuboidCount * 1.0 / rowCount);
-            } else if (measureDesc.getFunction().getExpression().equals(TopNMeasureType.FUNC_TOP_N)
-                    || measureDesc.getFunction().getExpression().equals(ExTopNMeasureType.FUNC_EXTOP_N)) {
+            } else if (measureDesc.getFunction().getExpression().equals(TopNMeasureTypeBase.FUNC_TOP_N)) {
                 long estimateTopNCount = sourceRowCount / rowCount;
                 estimateTopNCount = estimateTopNCount == 0 ? 1L : estimateTopNCount;
                 topNSpace += returnType.getStorageBytesEstimate(estimateTopNCount);

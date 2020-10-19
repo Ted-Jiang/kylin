@@ -27,18 +27,14 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 
-/**
- *
- */
-public class TopNCounterSerializer extends DataTypeSerializer<TopNCounter<ByteArray>> {
-
+public class BiTopNCounterSerializer extends DataTypeSerializer<BiTopNCounter<ByteArray>> {
     private DoubleDeltaSerializer dds = new DoubleDeltaSerializer(3);
 
     private int precision;
 
     private int scale;
 
-    public TopNCounterSerializer(DataType dataType) {
+    public BiTopNCounterSerializer(DataType dataType) {
         this.precision = dataType.getPrecision();
         this.scale = dataType.getScale();
         if (scale < 0) {
@@ -53,31 +49,49 @@ public class TopNCounterSerializer extends DataTypeSerializer<TopNCounter<ByteAr
         int capacity = in.getInt();
         int size = in.getInt();
         int keyLength = in.getInt();
-        dds.deserialize(in);
-        int len = in.position() - mark + keyLength * size;
+        int len = in.position() - mark;
+        if (size != 0) {
+            @SuppressWarnings("unused")
+            double valueBase = in.getDouble();
+            dds.deserialize(in);
+            len = in.position() - mark + keyLength * size;
+        }
         in.position(mark);
         return len;
     }
 
     @Override
     public int maxLength() {
-        return Math.max(precision * TopNCounter.EXTRA_SPACE_RATE * storageBytesEstimatePerCounter(), 1024 * 1024); // use at least 1M
+        return Math.max(precision * BiTopNCounter.EXTRA_SPACE_RATE * storageBytesEstimatePerCounter(), 1024 * 1024); // use at least 1M
     }
 
     @Override
     public int getStorageBytesEstimate() {
-        return precision * TopNCounter.EXTRA_SPACE_RATE * storageBytesEstimatePerCounter();
+        return precision * BiTopNCounter.EXTRA_SPACE_RATE * storageBytesEstimatePerCounter();
     }
 
     @Override
-    public void serialize(TopNCounter<ByteArray> value, ByteBuffer out) {
+    public void serialize(BiTopNCounter<ByteArray> value, ByteBuffer out) {
         double[] counters = value.getCounters();
         List<Counter<ByteArray>> peek = value.topK(1);
         int keyLength = !peek.isEmpty() ? peek.get(0).getItem().length() : 0;
+
+        // write out headers
         out.putInt(value.getCapacity());
         out.putInt(value.size());
         out.putInt(keyLength);
+
+        if (value.size() == 0) {
+            return;
+        }
+        // write out values
+        double valueBase = counters[0];
+        for (int i = 0; i < counters.length; i++) {
+            counters[i] -= valueBase;
+        }
+        out.putDouble(valueBase);
         dds.serialize(counters, out);
+        // write out keys
         Iterator<Counter<ByteArray>> iterator = value.iterator();
         ByteArray item;
         while (iterator.hasNext()) {
@@ -87,13 +101,22 @@ public class TopNCounterSerializer extends DataTypeSerializer<TopNCounter<ByteAr
     }
 
     @Override
-    public TopNCounter<ByteArray> deserialize(ByteBuffer in) {
+    public BiTopNCounter<ByteArray> deserialize(ByteBuffer in) {
         int capacity = in.getInt();
         int size = in.getInt();
         int keyLength = in.getInt();
-        double[] counters = dds.deserialize(in);
 
-        TopNCounter<ByteArray> counter = new TopNCounter<>(capacity);
+        BiTopNCounter<ByteArray> counter = new BiTopNCounter<>(capacity);
+        if (size == 0) {
+            return counter;
+        }
+        // read values
+        double valueBase = in.getDouble();
+        double[] counters = dds.deserialize(in);
+        for (int i = 0; i < counters.length; i++) {
+            counters[i] += valueBase;
+        }
+        // read keys
         ByteArray byteArray;
         byte[] keyArray = new byte[size * keyLength];
         int offset = 0;
@@ -109,7 +132,7 @@ public class TopNCounterSerializer extends DataTypeSerializer<TopNCounter<ByteAr
 
     @Override
     protected double getStorageBytesEstimate(double averageNumOfElementsInCounter) {
-        if (averageNumOfElementsInCounter < precision * TopNCounter.EXTRA_SPACE_RATE) {
+        if (averageNumOfElementsInCounter < precision * BiTopNCounter.EXTRA_SPACE_RATE) {
             return averageNumOfElementsInCounter * storageBytesEstimatePerCounter() + 12;
         } else {
             return getStorageBytesEstimate();
@@ -119,5 +142,4 @@ public class TopNCounterSerializer extends DataTypeSerializer<TopNCounter<ByteAr
     private int storageBytesEstimatePerCounter() {
         return (scale + 8);
     }
-
 }

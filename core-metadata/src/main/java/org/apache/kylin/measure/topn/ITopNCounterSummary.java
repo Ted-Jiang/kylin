@@ -16,27 +16,12 @@
  * limitations under the License.
  */
 
-package org.apache.kylin.measure.topn.extend;
+package org.apache.kylin.measure.topn;
 
-import org.apache.kylin.common.util.ByteArray;
-import org.apache.kylin.measure.topn.TopNAggregatorBase;
+public interface ITopNCounterSummary<T> extends ITopNCounter<T> {
+    int getCapacity();
 
-/**
- *
- */
-@SuppressWarnings("serial")
-public class ExTopNAggregator extends TopNAggregatorBase<ExItem<ByteArray>, ExTopNCounter<ByteArray>> {
+    void retain(int newCapacity);
 
-    protected ExTopNCounter<ByteArray> getEmptyCounter(ExTopNCounter<ByteArray> template, int capacity) {
-        return new ExTopNCounter<>(capacity, template.isDescending(), template.getnElems());
-    }
-
-    @Override
-    public ExTopNAggregator copy() {
-        ExTopNAggregator result = new ExTopNAggregator();
-        result.capacity = this.capacity;
-        result.sum = sum.copy();
-        return result;
-    }
-
+    void sortAndRetain();
 }

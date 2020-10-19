@@ -19,6 +19,7 @@
 package org.apache.kylin.measure.topn.extend;
 
 import org.apache.kylin.common.util.ByteArray;
+import org.apache.kylin.dimension.DictionaryDimEnc;
 import org.apache.kylin.measure.topn.Counter;
 import org.apache.kylin.measure.topn.DoubleDeltaSerializer;
 import org.apache.kylin.metadata.datatype.DataType;
@@ -30,18 +31,21 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 
-/**
- *
- */
-public class ExTopNCounterSerializer extends DataTypeSerializer<ExTopNCounter<ByteArray>> {
+public class ExBiTopNCounterSerializer extends DataTypeSerializer<ExBiTopNCounter<ByteArray>> {
     private DoubleDeltaSerializer dds = new DoubleDeltaSerializer(3);
 
     private static final int DEFAULT_MAX_SIZE = 1024;
 
     private int precision;
 
-    public ExTopNCounterSerializer(DataType dataType) {
+    private int scale;
+
+    public ExBiTopNCounterSerializer(DataType dataType) {
         this.precision = dataType.getPrecision();
+        this.scale = dataType.getScale();
+        if (scale < 0) {
+            scale = DictionaryDimEnc.MAX_ENCODING_LENGTH;
+        }
     }
 
     @Override
@@ -50,8 +54,6 @@ public class ExTopNCounterSerializer extends DataTypeSerializer<ExTopNCounter<By
 
         @SuppressWarnings("unused")
         int capacity = in.getInt();
-        @SuppressWarnings("unused")
-        boolean descending = in.getInt() > 0;
         int size = in.getInt();
         int nElems = in.getInt();
 
@@ -85,7 +87,7 @@ public class ExTopNCounterSerializer extends DataTypeSerializer<ExTopNCounter<By
     }
 
     private int topNMaxLength() {
-        return Math.max(precision * ExTopNCounter.EXTRA_SPACE_RATE * storageBytesEstimatePerCounter(), 1024 * 1024); // use at least 1M
+        return Math.max(precision * ExBiTopNCounter.EXTRA_SPACE_RATE * storageBytesEstimatePerCounter(), 1024 * 1024); // use at least 1M
     }
 
     private int bitmapMaxLength() {
@@ -98,12 +100,11 @@ public class ExTopNCounterSerializer extends DataTypeSerializer<ExTopNCounter<By
     }
 
     @Override
-    public void serialize(ExTopNCounter<ByteArray> value, ByteBuffer out) {
+    public void serialize(ExBiTopNCounter<ByteArray> value, ByteBuffer out) {
         int nElems = value.getnElems();
 
         // write out headers
         out.putInt(value.getCapacity());
-        out.putInt(value.isDescending() ? 0 : 1);
         out.putInt(value.size());
         out.putInt(nElems);
 
@@ -144,14 +145,13 @@ public class ExTopNCounterSerializer extends DataTypeSerializer<ExTopNCounter<By
     }
 
     @Override
-    public ExTopNCounter<ByteArray> deserialize(ByteBuffer in) {
+    public ExBiTopNCounter<ByteArray> deserialize(ByteBuffer in) {
         // read headers
         int capacity = in.getInt();
-        boolean descending = in.getInt() <= 0;
         int size = in.getInt();
         int nElems = in.getInt();
 
-        ExTopNCounter<ByteArray> counter = new ExTopNCounter<>(capacity, descending, nElems);
+        ExBiTopNCounter<ByteArray> counter = new ExBiTopNCounter<>(capacity, nElems);
         if (size == 0) {
             return counter;
         }
@@ -204,7 +204,7 @@ public class ExTopNCounterSerializer extends DataTypeSerializer<ExTopNCounter<By
     }
 
     private int getTopNStorageBytesEstimate() {
-        return precision * ExTopNCounter.EXTRA_SPACE_RATE * storageBytesEstimatePerCounter();
+        return precision * ExBiTopNCounter.EXTRA_SPACE_RATE * storageBytesEstimatePerCounter();
     }
 
     private int getBitmapStorageBytesEstimate() {
@@ -225,7 +225,7 @@ public class ExTopNCounterSerializer extends DataTypeSerializer<ExTopNCounter<By
     }
 
     private double getTopNStorageBytesEstimate(double averageNumOfElementsInCounter) {
-        if (averageNumOfElementsInCounter < precision * ExTopNCounter.EXTRA_SPACE_RATE) {
+        if (averageNumOfElementsInCounter < precision * ExBiTopNCounter.EXTRA_SPACE_RATE) {
             return averageNumOfElementsInCounter * storageBytesEstimatePerCounter() + 12;
         } else {
             return getTopNStorageBytesEstimate();
@@ -233,6 +233,6 @@ public class ExTopNCounterSerializer extends DataTypeSerializer<ExTopNCounter<By
     }
 
     private int storageBytesEstimatePerCounter() {
-        return 4 + 8;
+        return (scale + 8);
     }
 }

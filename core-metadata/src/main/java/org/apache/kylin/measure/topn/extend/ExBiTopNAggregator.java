@@ -25,18 +25,18 @@ import org.apache.kylin.measure.topn.TopNAggregatorBase;
  *
  */
 @SuppressWarnings("serial")
-public class ExTopNAggregator extends TopNAggregatorBase<ExItem<ByteArray>, ExTopNCounter<ByteArray>> {
+public class ExBiTopNAggregator extends TopNAggregatorBase<ExItem<ByteArray>, ExBiTopNCounter<ByteArray>> {
 
-    protected ExTopNCounter<ByteArray> getEmptyCounter(ExTopNCounter<ByteArray> template, int capacity) {
-        return new ExTopNCounter<>(capacity, template.isDescending(), template.getnElems());
+    @Override
+    protected ExBiTopNCounter<ByteArray> getEmptyCounter(ExBiTopNCounter<ByteArray> template, int capacity) {
+        return new ExBiTopNCounter<>(capacity, template.getnElems());
     }
 
     @Override
-    public ExTopNAggregator copy() {
-        ExTopNAggregator result = new ExTopNAggregator();
+    public ExBiTopNAggregator copy() {
+        ExBiTopNAggregator result = new ExBiTopNAggregator();
         result.capacity = this.capacity;
         result.sum = sum.copy();
         return result;
     }
-
 }

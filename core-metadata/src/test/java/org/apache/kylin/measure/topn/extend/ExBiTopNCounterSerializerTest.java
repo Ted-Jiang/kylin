@@ -30,18 +30,19 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
-public class ExTopNCounterSerializerTest extends LocalFileMetadataTestCase {
+public class ExBiTopNCounterSerializerTest extends LocalFileMetadataTestCase {
 
     private static final int nElems = 1;
-    private static ExTopNCounterSerializer serializer;
+    private static ExBiTopNCounterSerializer serializer;
 
     @BeforeClass
     public static void setUp() throws Exception {
         staticCreateTestMetadata();
 
-        DataType.register("ex_topn");
-        serializer = new ExTopNCounterSerializer(DataType.getType("ex_topn(10)"));
+        DataType.register("ex_bi_topn");
+        serializer = new ExBiTopNCounterSerializer(DataType.getType("ex_bi_topn(10)"));
     }
 
     @AfterClass
@@ -51,38 +52,33 @@ public class ExTopNCounterSerializerTest extends LocalFileMetadataTestCase {
 
     @Test
     public void testSerialization() {
-        int keyLength = 4;
+        Random rand = new Random();
 
-        List<Integer[]> streams = new ArrayList<>(3);
-        Integer[] stream1 = {5};
+        ExBiTopNCounter<ByteArray> vs = new ExBiTopNCounter<>(50, nElems);
+        List<Integer[]> streams = new ArrayList<>(2);
+        Integer[] stream1 = {};
         streams.add(stream1);
-        Integer[] stream2 = {1, 1, 2, 9, 1, 2, 3, 7, 7, 1, 3, 1, 1};
+        Integer[] stream2 = {1, 1, 2, 9, 1, 2, 3, 7, 7, 1, 3, 1, 3, 4, 1, 2, 9, 1, 2, 3, 7, 5, 7, 3, 1, 1};
         streams.add(stream2);
-        Integer[] stream3 = {4, 6, 2, 9, 1, 2, 3, 8, 8, 1, 5, 2, 1};
-        streams.add(stream3);
-
+        int keyLength = 4;
         for (Integer[] stream : streams) {
-            ExTopNAggregator aggregator = new ExTopNAggregator();
+            byte[] keyArray = new byte[stream.length * keyLength];
+            int offset = 0;
             for (Integer i : stream) {
-                byte[] keyArray = new byte[keyLength];
-                ByteArray[] elems = {new ByteArray(keyArray, 0, keyLength)};
-                BytesUtil.writeUnsigned(i, keyArray, 0, keyLength);
-
-                ExTopNCounter<ByteArray> vs = new ExTopNCounter<>(100 * 50, true, nElems);
-                vs.offer(new ExItem.ExByteArrayItem(elems));
-
-                aggregator.aggregate(vs);
+                ByteArray[] elems = {new ByteArray(keyArray, offset, keyLength)};
+                BytesUtil.writeUnsigned(i, keyArray, offset, keyLength);
+                vs.offer(new ExItem.ExByteArrayItem(elems), rand.nextBoolean() ? 1.0 : -1.0);
+                offset += keyLength;
             }
-
-            ExTopNCounter<ByteArray> vs = aggregator.getState();
             ByteBuffer out = ByteBuffer.allocate(1024);
             serializer.serialize(vs, out);
 
             byte[] copyBytes = new byte[out.position()];
             System.arraycopy(out.array(), 0, copyBytes, 0, out.position());
-            ByteBuffer in = ByteBuffer.wrap(copyBytes);
 
-            ExTopNCounter<ByteArray> vsNew = serializer.deserialize(in);
+            ByteBuffer in = ByteBuffer.wrap(copyBytes);
+            ExBiTopNCounter vsNew = serializer.deserialize(in);
+
             Assert.assertEquals(vs.toString(), vsNew.toString());
         }
     }

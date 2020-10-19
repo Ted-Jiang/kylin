@@ -18,34 +18,22 @@
 
 package org.apache.kylin.measure.topn;
 
-import java.util.Iterator;
+import org.apache.kylin.common.util.ByteArray;
 
-public interface ICounterSortedMap<T> {
-    boolean isDescending();
+/**
+ *
+ */
+@SuppressWarnings("serial")
+public class BiTopNAggregator extends TopNAggregatorBase<ByteArray, BiTopNCounter<ByteArray>> {
 
-    Iterator<Counter<T>> descendingIterator();
+    protected BiTopNCounter<ByteArray> getEmptyCounter(BiTopNCounter<ByteArray> template, int capacity) {
+        return new BiTopNCounter<>(capacity);
+    }
 
-    Iterator<Counter<T>> iterator();
-
-    double[] getCounters();
-
-    Counter<T> getLast();
-
-    int getCapacity();
-
-    boolean isFull();
-
-    boolean ordered();
-
-    void toUnordered();
-
-    void retain(int newCapacity);
-
-    void sort();
-
-    void sortAndRetain();
-
-    void offer(Counter<T> c);
-
-    void offerToHead(Counter<T> c);
+    public BiTopNAggregator copy() {
+        BiTopNAggregator result = new BiTopNAggregator();
+        result.capacity = this.capacity;
+        result.sum = sum.copy();
+        return result;
+    }
 }

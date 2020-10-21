@@ -328,8 +328,8 @@ public class HiveInputBase {
             final String hiveInitStatements = JoinedFlatTable.generateHiveInitStatements(flatTableDatabase);
             final String jobWorkingDir = getJobWorkingDir(jobFlow, hdfsWorkingDir);
 
-            final KylinConfig kylinConfig = KylinConfig.getInstanceFromEnv();
-            CubeInstance cubeInstance = CubeManager.getInstance(kylinConfig).getCube(cubeName);
+            CubeInstance cubeInstance = CubeManager.getInstance(KylinConfig.getInstanceFromEnv()).getCube(cubeName);
+            final KylinConfig kylinConfig = cubeInstance.getConfig();
 
             if (cubeInstance.getEngineType() == IEngineAware.ID_SPARK) {
                 if (kylinConfig.isLivyEnabled()) {

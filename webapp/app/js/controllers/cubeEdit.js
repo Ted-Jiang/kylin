@@ -19,7 +19,7 @@
 'use strict';
 
 
-KylinApp.controller('CubeEditCtrl', function ($scope, $q, $routeParams, $location, $templateCache, $interpolate, MessageService, TableService, CubeDescService, CubeService, loadingRequest, SweetAlert, $log, cubeConfig, CubeDescModel, MetaModel, TableModel, ModelDescService, modelsManager, cubesManager, ProjectModel, StreamingModel, StreamingService,VdmUtil, MessageBox) {
+KylinApp.controller('CubeEditCtrl', function ($scope, $rootScope , $q, $routeParams, $location, $templateCache, $interpolate, MessageService, TableService, CubeDescService, CubeService, loadingRequest, SweetAlert, $log, cubeConfig, CubeDescModel, MetaModel, TableModel, ModelDescService, modelsManager, cubesManager, ProjectModel, StreamingModel, StreamingService,VdmUtil, MessageBox) {
   $scope.cubeConfig = cubeConfig;
   $scope.metaModel = {};
   $scope.modelsManager = modelsManager;
@@ -34,6 +34,14 @@ KylinApp.controller('CubeEditCtrl', function ($scope, $q, $routeParams, $locatio
     return;
   }
 
+  //for SnapshotDefault Set
+  if($scope.cubeMode == 'addNewCube'){
+     $rootScope.newCubeState = 'true';
+  }
+
+  if($scope.cubeMode == 'editExistCube'){
+    $rootScope.newCubeState = 'false';
+  }
 
   //init encoding list
   $scope.store = {

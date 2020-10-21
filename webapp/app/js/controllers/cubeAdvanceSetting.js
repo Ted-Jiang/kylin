@@ -18,7 +18,7 @@
 
 'use strict';
 
-KylinApp.controller('CubeAdvanceSettingCtrl', function ($scope, $modal,cubeConfig,MetaModel,TableService,cubesManager,CubeDescModel,SweetAlert,VdmUtil,modelsManager) {
+KylinApp.controller('CubeAdvanceSettingCtrl', function ($scope, $rootScope, $modal,cubeConfig,MetaModel,TableService,cubesManager,CubeDescModel,SweetAlert,VdmUtil,modelsManager) {
   $scope.cubesManager = cubesManager;
 
   var needLengthKeyList=cubeConfig.needSetLengthEncodingList;
@@ -542,10 +542,13 @@ KylinApp.controller('CubeAdvanceSettingCtrl', function ($scope, $modal,cubeConfi
   };
 
   $scope.defaultNewSnapshotTable = function(){
-    $scope.newSnapshot.select.global = true;
-    $scope.cubeMetaFrame.snapshot_table_desc_list = [];
-    $scope.cubeLookups.forEach(a => $scope.cubeMetaFrame.snapshot_table_desc_list.push({global: true, storage_type: "metaStore", table_name: a}))
-}
+    if ($scope.state.mode == 'edit' && $rootScope.newCubeState == 'true') {
+      $scope.newSnapshot.select.global = true;
+      $scope.cubeMetaFrame.snapshot_table_desc_list = [];
+      $scope.cubeLookups.forEach(a => $scope.cubeMetaFrame.snapshot_table_desc_list.push({global: true, storage_type: "metaStore", table_name: a}))
+      $rootScope.newCubeState = 'false';
+    }
+  }
 
   $scope.cancelEditSnapshot = function() {
     $scope.newSnapshot.select = {};

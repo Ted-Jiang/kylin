@@ -110,9 +110,9 @@ KylinApp.service('kylinConfig', function (AdminService, $log) {
   this.getCubeEng = function () {
     this.CubeEng = this.getProperty("kylin.engine.default").trim();
     if (!this.CubeEng) {
-      return 4;
+      return 2;
     }
-      return Number(this.CubeEng);
+      return this.CubeEng;
   }
   //fill config info for Config from backend
   this.initWebConfigInfo = function () {

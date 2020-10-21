@@ -387,6 +387,7 @@
                       ng-model="cubeMetaFrame.engine_type"
                       ng-if="state.mode=='edit'"
                       ng-options="et.value as et.name for et in cubeConfig.engineType | filter: isAvailableEngine">
+                <option value="">--Select Engine Type--</option>
               </select>
               <span ng-if="state.mode=='view'&&cubeMetaFrame.engine_type==2">MapReduce</span>
               <span ng-if="state.mode=='view'&&cubeMetaFrame.engine_type==4">Spark</span>
@@ -541,7 +542,7 @@
            </div>
          </div>
          <!-- Advanced Lookup Table-->
-         <div class="form-group large-popover" style="margin-bottom:30px;" ng-init="defaultNewSnapshotTable()">
+         <div class="form-group large-popover" style="margin-bottom:30px;">
            <h3 style="margin-left:42px;margin-bottom:30px;">Advanced Snapshot Table  <i kylinpopover placement="right" title="Advanced Snapshot Table" template="AdvanceSnapshotTableTip.html" class="fa fa-info-circle"></i></h3>
            <div style="margin-left:42px">
              <div class="box-body">
@@ -618,7 +619,7 @@
                      </div>
                    </div>
                    <!--Builder-->
-                   <div class="form-group">
+                   <div class="form-group" ng-if="!isReuse" >
                      <div class="row">
                        <label class="col-xs-12 col-sm-3 control-label no-padding-right font-color-default"><b>Global</b></label>
                        <div class="col-xs-12 col-sm-6">

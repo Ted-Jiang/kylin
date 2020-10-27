@@ -188,8 +188,12 @@ public class SnapshotManager {
     }
 
     public SnapshotTable trySaveNewSnapshot(SnapshotTable snapshotTable) throws IOException {
+        return trySaveNewSnapshot(snapshotTable, true);
+    }
 
-        String dupTable = checkDupByContent(snapshotTable);
+    public SnapshotTable trySaveNewSnapshot(SnapshotTable snapshotTable, boolean checkDup) throws IOException {
+
+        String dupTable = checkDup ? checkDupByContent(snapshotTable) : null;
         if (dupTable != null) {
             logger.info("Identical snapshot content {}, reuse existing snapshot at {}", snapshotTable, dupTable);
             return updateDictLastModifiedTime(dupTable);

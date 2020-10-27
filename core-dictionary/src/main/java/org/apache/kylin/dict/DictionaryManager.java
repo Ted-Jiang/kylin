@@ -127,6 +127,10 @@ public class DictionaryManager {
      * @throws IOException
      */
     public DictionaryInfo trySaveNewDict(Dictionary<String> newDict, DictionaryInfo newDictInfo) throws IOException {
+        return trySaveNewDict(newDict, newDictInfo, true);
+    }
+
+    public DictionaryInfo trySaveNewDict(Dictionary<String> newDict, DictionaryInfo newDictInfo, boolean checkDup) throws IOException {
 
         initDictInfo(newDict, newDictInfo);
 
@@ -152,7 +156,7 @@ public class DictionaryManager {
                 return saveNewDict(newDictInfo);
             }
         } else {
-            DictionaryInfo dupDict = checkDupByContent(newDictInfo, newDict);
+            DictionaryInfo dupDict = checkDup ? checkDupByContent(newDictInfo, newDict) : null;
             if (dupDict != null) {
                 logger.info("Identical dictionary content, reuse existing dictionary at {}", dupDict.getResourcePath());
                 dupDict = updateExistingDictLastModifiedTime(dupDict.getResourcePath());

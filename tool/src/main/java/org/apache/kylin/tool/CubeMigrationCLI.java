@@ -99,6 +99,7 @@ public class CubeMigrationCLI extends AbstractApplication {
     protected boolean doAclCopy = false;
     protected boolean doOverwrite = false;
     protected boolean doMigrateSegment = true;
+    protected boolean doCheckDupMeta = true;
     protected String dstProject;
 
     private static final String ACL_PREFIX = "/acl/";
@@ -106,7 +107,7 @@ public class CubeMigrationCLI extends AbstractApplication {
     public static void main(String[] args) throws IOException, InterruptedException {
 
         CubeMigrationCLI cli = new CubeMigrationCLI();
-        if (args.length != 8 && args.length != 9) {
+        if (args.length != 8 && args.length != 9 && args.length != 10) {
             cli.usage();
             System.exit(1);
         }
@@ -114,6 +115,8 @@ public class CubeMigrationCLI extends AbstractApplication {
             cli.moveCube(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]);
         } else if (args.length == 9) {
             cli.moveCube(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
+        } else {
+            cli.moveCube(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9]);
         }
     }
 
@@ -128,12 +131,13 @@ public class CubeMigrationCLI extends AbstractApplication {
                 + "purgeOrNot: true or false: whether purge the cube from src server after the migration. \n"
                 + "overwriteIfExists: overwrite cube if it already exists in the target environment. \n"
                 + "realExecute: if false, just print the operations to take, if true, do the real migration. \n"
-                + "migrateSegmentOrNot:(optional) true or false: whether copy segment data to target environment. \n");
+                + "migrateSegmentOrNot:(optional) true or false: whether copy segment data to target environment. \n"
+                + "doCheckDupMeta:(optional) true or false: whether to check duplicate dictionaries and snapshots. \n");
 
     }
 
     public void moveCube(String srcCfgUri, String dstCfgUri, String cubeName, String projectName, String copyAcl,
-            String purgeAndDisable, String overwriteIfExists, String realExecute)
+                         String purgeAndDisable, String overwriteIfExists, String realExecute)
             throws IOException, InterruptedException {
 
         moveCube(KylinConfig.createInstanceFromUri(srcCfgUri), KylinConfig.createInstanceFromUri(dstCfgUri), cubeName,
@@ -141,30 +145,41 @@ public class CubeMigrationCLI extends AbstractApplication {
     }
 
     public void moveCube(KylinConfig srcCfg, KylinConfig dstCfg, String cubeName, String projectName, String copyAcl,
-            String purgeAndDisable, String overwriteIfExists, String realExecute)
+                         String purgeAndDisable, String overwriteIfExists, String realExecute)
             throws IOException, InterruptedException {
 
         moveCube(srcCfg, dstCfg, cubeName, projectName, Boolean.parseBoolean(copyAcl),
                 Boolean.parseBoolean(purgeAndDisable), Boolean.parseBoolean(overwriteIfExists),
-                Boolean.parseBoolean(realExecute), true);
+                Boolean.parseBoolean(realExecute), true, true);
     }
 
     public void moveCube(String srcCfgUri, String dstCfgUri, String cubeName, String projectName, String copyAcl,
-            String purgeAndDisable, String overwriteIfExists, String realExecute, String migrateSegment)
+                         String purgeAndDisable, String overwriteIfExists, String realExecute, String migrateSegment)
             throws IOException, InterruptedException {
 
         moveCube(KylinConfig.createInstanceFromUri(srcCfgUri), KylinConfig.createInstanceFromUri(dstCfgUri), cubeName,
                 projectName, Boolean.parseBoolean(copyAcl), Boolean.parseBoolean(purgeAndDisable),
                 Boolean.parseBoolean(overwriteIfExists), Boolean.parseBoolean(realExecute),
-                Boolean.parseBoolean(migrateSegment));
+                Boolean.parseBoolean(migrateSegment), true);
+    }
+
+    public void moveCube(String srcCfgUri, String dstCfgUri, String cubeName, String projectName, String copyAcl,
+                         String purgeAndDisable, String overwriteIfExists, String realExecute, String migrateSegment, String checkDupMeta)
+            throws IOException, InterruptedException {
+
+        moveCube(KylinConfig.createInstanceFromUri(srcCfgUri), KylinConfig.createInstanceFromUri(dstCfgUri), cubeName,
+                projectName, Boolean.parseBoolean(copyAcl), Boolean.parseBoolean(purgeAndDisable),
+                Boolean.parseBoolean(overwriteIfExists), Boolean.parseBoolean(realExecute),
+                Boolean.parseBoolean(migrateSegment), Boolean.parseBoolean(checkDupMeta));
     }
 
     public void moveCube(KylinConfig srcCfg, KylinConfig dstCfg, String cubeName, String projectName, boolean copyAcl,
-            boolean purgeAndDisable, boolean overwriteIfExists, boolean realExecute, boolean migrateSegment)
+            boolean purgeAndDisable, boolean overwriteIfExists, boolean realExecute, boolean migrateSegment, boolean checkDupMeta)
             throws IOException, InterruptedException {
         doAclCopy = copyAcl;
         doOverwrite = overwriteIfExists;
         doMigrateSegment = migrateSegment;
+        doCheckDupMeta = checkDupMeta;
         srcConfig = srcCfg;
         srcStore = ResourceStore.getStore(srcConfig);
         dstConfig = dstCfg;
@@ -495,7 +510,7 @@ public class CubeMigrationCLI extends AbstractApplication {
                 long ts = dictSrc.getLastModified();
                 dictSrc.setLastModified(0);//to avoid resource store write conflict
                 Dictionary dictObj = dictSrc.getDictionaryObject().copyToAnotherMeta(srcConfig, dstConfig);
-                DictionaryInfo dictSaved = dstDictMgr.trySaveNewDict(dictObj, dictSrc);
+                DictionaryInfo dictSaved = dstDictMgr.trySaveNewDict(dictObj, dictSrc, doCheckDupMeta);
                 dictSrc.setLastModified(ts);
 
                 if (dictSaved == dictSrc) {
@@ -526,7 +541,7 @@ public class CubeMigrationCLI extends AbstractApplication {
 
                 long ts = snapSrc.getLastModified();
                 snapSrc.setLastModified(0);
-                SnapshotTable snapSaved = dstSnapMgr.trySaveNewSnapshot(snapSrc);
+                SnapshotTable snapSaved = dstSnapMgr.trySaveNewSnapshot(snapSrc, doCheckDupMeta);
                 snapSrc.setLastModified(ts);
 
                 if (snapSaved == snapSrc) {

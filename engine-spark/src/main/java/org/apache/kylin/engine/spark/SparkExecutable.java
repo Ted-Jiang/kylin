@@ -76,6 +76,8 @@ public class SparkExecutable extends AbstractExecutable {
     private static final String COUNTER_SAVE_AS = "CounterSaveAs";
     private static final String CONFIG_NAME = "configName";
 
+    private static final String YARN_ACCESS_FS = "spark.yarn.access.hadoopFileSystems";
+
     public void setClassName(String className) {
         this.setParam(CLASS_NAME, className);
     }
@@ -276,15 +278,16 @@ public class SparkExecutable extends AbstractExecutable {
                 sparkConfs.putAll(sparkSpecificConfs);
             }
 
-            // Add hbase fs to spark conf: spark.yarn.access.hadoopFileSystems
-            if (StringUtils.isNotEmpty(config.getHBaseClusterFs())) {
-                String fileSystems = sparkConfs.get("spark.yarn.access.hadoopFileSystems");
-                if (StringUtils.isNotEmpty(fileSystems)) {
-                    sparkConfs.put("spark.yarn.access.hadoopFileSystems",
-                            fileSystems + "," + config.getHBaseClusterFs());
-                } else {
-                    sparkConfs.put("spark.yarn.access.hadoopFileSystems", config.getHBaseClusterFs());
+            // Add additional fs to spark conf: spark.yarn.access.hadoopFileSystems
+            String additionalFs = isCreateFlatTable() ? config.getSourceAdditionalClusterFs() : config.getHBaseClusterFs();
+            if (StringUtils.isNotEmpty(additionalFs)) {
+                StringBuilder sb = new StringBuilder();
+                sb.append(additionalFs);
+                if (StringUtils.isNotEmpty(sparkConfs.get(YARN_ACCESS_FS))) {
+                    sb.append(",");
+                    sb.append(sparkConfs.get(YARN_ACCESS_FS));
                 }
+                sparkConfs.put(YARN_ACCESS_FS, sb.toString());
             }
 
             for (Map.Entry<String, String> entry : sparkConfs.entrySet()) {

@@ -1064,6 +1064,14 @@ public abstract class KylinConfigBase implements Serializable {
     }
 
     // ============================================================================
+    // SOURCE
+    // ============================================================================
+
+    public String getSourceAdditionalClusterFs() {
+        return getOptional("kylin.source.additional-cluster-fs", "");
+    }
+
+    // ============================================================================
     // SOURCE.HIVE
     // ============================================================================
 

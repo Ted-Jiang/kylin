@@ -20,6 +20,7 @@ package org.apache.kylin.measure.topn;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.RandomStringUtils;
+import org.apache.kylin.common.util.LocalFileMetadataTestCase;
 import org.apache.kylin.common.util.Pair;
 import org.apache.kylin.shaded.com.google.common.collect.Lists;
 import org.apache.kylin.util.FastZipfGenerator;
@@ -40,7 +41,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Ignore("For collecting accuracy statistics, not for functional test")
-public class TopNCounterTest {
+public class TopNCounterTest extends LocalFileMetadataTestCase {
 
     protected static int BATCH_SIZE;
 
@@ -69,11 +70,15 @@ public class TopNCounterTest {
 
     @Before
     public void setup() throws IOException {
+        createTestMetadata();
+
         dataFilePath = prepareTestDate();
     }
 
     @After
     public void cleanup() throws IOException {
+        cleanupTestMetadata();
+
         FileUtils.forceDelete(new File(dataFilePath));
     }
 

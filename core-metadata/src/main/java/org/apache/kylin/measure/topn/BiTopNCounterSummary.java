@@ -18,9 +18,15 @@
 
 package org.apache.kylin.measure.topn;
 
+import org.apache.kylin.common.KylinConfig;
+import org.apache.kylin.common.util.MathUtil;
+import org.apache.kylin.shaded.com.google.common.collect.Lists;
+
 import java.util.Iterator;
 
 public abstract class BiTopNCounterSummary<T> extends TopNCounterSummaryBase<T> {
+
+    private Counter<T> hint;
 
     public BiTopNCounterSummary(int capacity) {
         super(capacity, true);
@@ -42,7 +48,7 @@ public abstract class BiTopNCounterSummary<T> extends TopNCounterSummaryBase<T> 
 
     @Override
     protected int getRetainThresholdForMerge() {
-        return getBiCapacity();
+        return KylinConfig.getInstanceFromEnv().getTopNRetainRowCountForMerge();
     }
 
     @Override
@@ -61,13 +67,11 @@ public abstract class BiTopNCounterSummary<T> extends TopNCounterSummaryBase<T> 
         if (this.size() > getBiCapacity()) {
             //Remove the middle values
             Iterator<Counter<T>> iterator = counterSortedList.listIterator(capacity);
-            int index = this.size() - getBiCapacity();
-            Counter<T> toRemoved;
-            while (index > 0) {
-                toRemoved = iterator.next();
+            int len = this.size() - getBiCapacity();
+            for (int i = 0; i < len; i++) {
+                Counter<T> toRemoved = iterator.next();
                 iterator.remove();
                 this.counterMap.remove(toRemoved.item);
-                index--;
             }
         }
     }
@@ -76,10 +80,25 @@ public abstract class BiTopNCounterSummary<T> extends TopNCounterSummaryBase<T> 
         if (!isFull()) {
             return 0.0;
         }
-        sortUnsorted(capacity);
+        double medianValue;
+        if (ordered()) {
+            medianValue = getMedianValueFromOrdered();
+        } else {
+            KylinConfig kylinConfig = KylinConfig.getInstanceFromEnv();
+            if (kylinConfig.getTopNFindKthElementAlgorithm() == 1) {
+                hint = MathUtil.findMedianElement(comparator, Lists.newArrayList(counterMap.values()), hint);
+                medianValue = hint.count;
+            } else {
+                sortUnsorted(capacity);
+                medianValue = getMedianValueFromOrdered();
+            }
+        }
+        return medianValue;
+    }
+
+    private double getMedianValueFromOrdered() {
         Counter<T> highMinCounter = counterSortedList.get(capacity - 1);
         Counter<T> lowMaxCounter = counterSortedList.get(counterSortedList.size() - capacity);
-
         return (highMinCounter.count + lowMaxCounter.count) / 2;
     }
 }

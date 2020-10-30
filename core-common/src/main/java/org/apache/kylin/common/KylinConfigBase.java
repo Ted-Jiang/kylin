@@ -525,6 +525,15 @@ public abstract class KylinConfigBase implements Serializable {
         return Boolean.parseBoolean(getOptional("kylin.metadata.able-change-string-to-datetime", "false"));
     }
 
+    // MEASURE
+    public int getTopNRetainRowCountForMerge() {
+        return Integer.parseInt(getOptional("kylin.measure.topn-retain-row-count-merge", "0"));
+    }
+
+    public int getTopNFindKthElementAlgorithm() {
+        return Integer.parseInt(getOptional("kylin.measure.topn-find-kth-element-algorithm", "0"));
+    }
+
     // ============================================================================
     // DICTIONARY & SNAPSHOT
     // ============================================================================

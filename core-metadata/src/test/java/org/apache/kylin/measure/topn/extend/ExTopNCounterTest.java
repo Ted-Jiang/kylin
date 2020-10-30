@@ -19,6 +19,7 @@
 package org.apache.kylin.measure.topn.extend;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.kylin.common.util.LocalFileMetadataTestCase;
 import org.apache.kylin.common.util.Pair;
 import org.apache.kylin.measure.topn.BiTopNCounter;
 import org.apache.kylin.measure.topn.Counter;
@@ -44,7 +45,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Random;
 
-public class ExTopNCounterTest {
+public class ExTopNCounterTest extends LocalFileMetadataTestCase {
     private static final int nElems = 1;
 
     protected static int BATCH_SIZE;
@@ -61,25 +62,29 @@ public class ExTopNCounterTest {
 
     protected static boolean verbose = false;
 
-    protected static double precision = 5;
+    protected static double precision = 100;
 
 
     protected String dataFilePath;
 
     public ExTopNCounterTest() {
         TOP_K = 100;
-        KEY_SPACE = 100 * TOP_K;
+        KEY_SPACE = 500 * TOP_K;
         TOTAL_RECORDS = 100 * KEY_SPACE;
         SPACE_SAVING_ROOM = ExTopNCounter.EXTRA_SPACE_RATE;
     }
 
     @Before
     public void setup() throws IOException {
+        createTestMetadata();
+
         dataFilePath = prepareTestDate();
     }
 
     @After
     public void cleanup() throws IOException {
+        cleanupTestMetadata();
+
         FileUtils.forceDelete(new File(dataFilePath));
     }
 

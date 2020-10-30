@@ -224,6 +224,8 @@ public class CubeHBaseEndpointRPC extends CubeHBaseRPC {
 
         KylinConfig kylinConfig = cubeSeg.getConfig();
         boolean compressionResult = kylinConfig.getCompressionResult();
+        int topNRetainRowCountForMerge = kylinConfig.getTopNRetainRowCountForMerge();
+        int topNFindKthElementAlgorithm = kylinConfig.getTopNFindKthElementAlgorithm();
 
         { // Extract kylin properties which will be used by HBase
             Properties kylinProperties = new Properties();
@@ -231,6 +233,8 @@ public class CubeHBaseEndpointRPC extends CubeHBaseRPC {
                     String.valueOf(compressionResult));
             kylinProperties.setProperty("kylin.query.need-server-side-post-aggregation",
                     String.valueOf(scanRequest.isNeedServerSidePostAggregation()));
+            kylinProperties.setProperty("kylin.measure.topn-retain-row-count-merge", String.valueOf(topNRetainRowCountForMerge));
+            kylinProperties.setProperty("kylin.measure.topn-find-kth-element-algorithm", String.valueOf(topNFindKthElementAlgorithm));
             kylinConfig = KylinConfig.createKylinConfig(kylinProperties);
         }
 

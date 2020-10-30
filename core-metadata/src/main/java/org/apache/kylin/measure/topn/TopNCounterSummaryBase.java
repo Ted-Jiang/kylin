@@ -24,6 +24,7 @@ import org.apache.kylin.shaded.com.google.common.collect.Maps;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -42,6 +43,7 @@ import java.util.Map;
 public abstract class TopNCounterSummaryBase<T> implements ITopNCounterSummary<T> {
 
     protected final boolean descending;
+    protected final Comparator<Counter> comparator;
     protected int capacity;
     protected Map<T, Counter<T>> counterMap;
     protected LinkedList<Counter<T>> counterSortedList; //a linked list, first the is the toppest element
@@ -52,6 +54,7 @@ public abstract class TopNCounterSummaryBase<T> implements ITopNCounterSummary<T
     public TopNCounterSummaryBase(int capacity, boolean descending) {
         this.capacity = capacity;
         this.descending = descending;
+        this.comparator = descending ? DESC_COMPARATOR : ASC_COMPARATOR;
         this.counterMap = Maps.newHashMap();
         this.counterSortedList = Lists.newLinkedList();
     }
@@ -99,7 +102,7 @@ public abstract class TopNCounterSummaryBase<T> implements ITopNCounterSummary<T
             return;
         }
         counterSortedList = Lists.newLinkedList(counterMap.values());
-        Collections.sort(counterSortedList, this.descending ? DESC_COMPARATOR : ASC_COMPARATOR);
+        Collections.sort(counterSortedList, comparator);
     }
 
     /**
@@ -135,8 +138,9 @@ public abstract class TopNCounterSummaryBase<T> implements ITopNCounterSummary<T
         } else {
             counterNode.setCount(counterNode.getCount() + incrementCount);
         }
-        if (size() >= getRetainThresholdForOffer()) {
+        if (size() > getRetainThresholdForOffer()) {
             retain(capacity);
+            toUnordered();
         }
     }
 
@@ -189,7 +193,7 @@ public abstract class TopNCounterSummaryBase<T> implements ITopNCounterSummary<T
             }
         }
 
-        if (counterMap.size() >= getRetainThresholdForMerge()) {
+        if (counterMap.size() > getRetainThresholdForMerge()) {
             retainUnsorted(capacity);
         }
         return this;

@@ -18,6 +18,7 @@
 
 package org.apache.kylin.measure.topn;
 
+import com.google.common.base.Stopwatch;
 import org.apache.kylin.common.util.ByteArray;
 import org.apache.kylin.common.util.Bytes;
 import org.apache.kylin.common.util.LocalFileMetadataTestCase;
@@ -29,6 +30,7 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 public class BiTopNCounterSerializerTest extends LocalFileMetadataTestCase {
 
@@ -50,19 +52,30 @@ public class BiTopNCounterSerializerTest extends LocalFileMetadataTestCase {
     @Test
     public void testSerialization() {
         Random rand = new Random();
-        BiTopNCounter<ByteArray> vs = new BiTopNCounter<ByteArray>(50);
-        Integer[] stream = {1, 1, 2, 9, 1, 2, 3, 7, 7, 1, 3, 1, 3, 4, 1, 2, 9, 1, 2, 3, 7, 5, 7, 3, 1, 1};
-        for (Integer i : stream) {
-            vs.offer(new ByteArray(Bytes.toBytes(i)), rand.nextBoolean() ? 1.0 : -1.0);
+        Stopwatch sw = new Stopwatch();
+        long timeCost;
+
+        int size = 50000;
+        BiTopNCounter<ByteArray> vs = new BiTopNCounter<ByteArray>(size);
+        for (int i = 0; i < size; i++) {
+            vs.offer(new ByteArray(Bytes.toBytes(rand.nextInt(2500))), rand.nextBoolean() ? 1.0 : -1.0);
         }
-        ByteBuffer out = ByteBuffer.allocate(1024);
+        ByteBuffer out = ByteBuffer.allocate(20480);
+        sw.start();
         serializer.serialize(vs, out);
+        timeCost = sw.elapsed(TimeUnit.MILLISECONDS);
+        System.out.println("TimeCost " + timeCost + "ms for serialization");
 
         byte[] copyBytes = new byte[out.position()];
         System.arraycopy(out.array(), 0, copyBytes, 0, out.position());
 
         ByteBuffer in = ByteBuffer.wrap(copyBytes);
+        sw.reset();
+        sw.start();
         BiTopNCounter<ByteArray> vsNew = serializer.deserialize(in);
+        timeCost = sw.elapsed(TimeUnit.MILLISECONDS);
+        System.out.println("TimeCost " + timeCost + "ms for deserialization");
+        sw.stop();
 
         Assert.assertEquals(vs.toString(), vsNew.toString());
 

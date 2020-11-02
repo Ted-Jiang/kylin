@@ -29,6 +29,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.kylin.measure.topn.Counter.ASC_COMPARATOR;
+import static org.apache.kylin.measure.topn.Counter.DESC_COMPARATOR;
+
 public class TopNPreciseCounter<T> implements ITopNCounter<T> {
     protected Map<T, Counter<T>> counterMap;
     protected LinkedList<Counter<T>> counterSortedList; //a linked list, first the is the toppest element

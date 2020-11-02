@@ -118,6 +118,8 @@ public class KylinKryoRegistrator implements KryoRegistrator {
         addClassQuitely(kyroClasses, "org.apache.spark.sql.catalyst.expressions.GenericInternalRow");
         addClassQuitely(kyroClasses, "org.apache.spark.unsafe.types.UTF8String");
 
+        addClassQuitely(kyroClasses, "org.apache.kylin.measure.topn.Counter$2");
+        addClassQuitely(kyroClasses, "org.apache.kylin.measure.topn.Counter$3");
         addClassQuitely(kyroClasses, "org.apache.kylin.measure.topn.extend.ExItem$ExByteArrayItem");
         addClassQuitely(kyroClasses, "org.apache.spark.internal.io.FileCommitProtocol$TaskCommitMessage");
         addClassQuitely(kyroClasses, "scala.collection.immutable.Set$EmptySet$");

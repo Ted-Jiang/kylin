@@ -30,6 +30,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.kylin.measure.topn.Counter.ASC_COMPARATOR;
+import static org.apache.kylin.measure.topn.Counter.DESC_COMPARATOR;
+
 /**
  * Modified from the StreamSummary.java in https://github.com/addthis/stream-lib
  * <p>

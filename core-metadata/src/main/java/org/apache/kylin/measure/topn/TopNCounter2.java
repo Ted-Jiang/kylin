@@ -22,6 +22,9 @@ import org.apache.kylin.shaded.com.google.common.collect.Maps;
 
 import java.util.PriorityQueue;
 
+import static org.apache.kylin.measure.topn.Counter.ASC_COMPARATOR;
+import static org.apache.kylin.measure.topn.Counter.DESC_COMPARATOR;
+
 /**
  * Use PriorityQueue & LinkedList for element pruning
  *

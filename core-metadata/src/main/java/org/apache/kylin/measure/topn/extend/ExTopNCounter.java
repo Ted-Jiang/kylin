@@ -27,6 +27,9 @@ import org.apache.kylin.shaded.com.google.common.collect.Maps;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import static org.apache.kylin.measure.topn.Counter.ASC_COMPARATOR;
+import static org.apache.kylin.measure.topn.Counter.DESC_COMPARATOR;
+
 public class ExTopNCounter<T> extends TopNCounterSummary<ExItem<T>> {
 
     public static final int EXTRA_SPACE_RATE = 40;

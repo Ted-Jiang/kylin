@@ -6,26 +6,45 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package org.apache.kylin.measure.topn;
 
 import java.io.Serializable;
+import java.util.Comparator;
 
 /**
  * Modified from Counter.java in https://github.com/addthis/stream-lib
- * 
+ *
  * @param <T>
  */
-public class Counter<T> implements Serializable{
+public class Counter<T> implements Serializable {
+
+    // Don't change to lambda due to spark kryo serialization
+    public static final Comparator ASC_COMPARATOR = new Comparator<Counter>() {
+        @Override
+        public int compare(Counter o1, Counter o2) {
+            return Double.compare(o1.getCount(), o2.getCount());
+        }
+
+    };
+
+    // Don't change to lambda due to spark kryo serialization
+    public static final Comparator DESC_COMPARATOR = new Comparator<Counter>() {
+        @Override
+        public int compare(Counter o1, Counter o2) {
+            return Double.compare(o2.getCount(), o1.getCount());
+        }
+
+    };
 
     protected T item;
     protected double count;
@@ -58,6 +77,7 @@ public class Counter<T> implements Serializable{
     public void setCount(double count) {
         this.count = count;
     }
+
     @Override
     public String toString() {
         return item + ":" + count;

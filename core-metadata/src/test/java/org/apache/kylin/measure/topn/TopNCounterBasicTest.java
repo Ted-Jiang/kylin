@@ -18,6 +18,8 @@
 
 package org.apache.kylin.measure.topn;
 
+import static org.apache.kylin.measure.topn.Counter.ASC_COMPARATOR;
+import static org.apache.kylin.measure.topn.Counter.DESC_COMPARATOR;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -157,7 +159,7 @@ public class TopNCounterBasicTest {
                 new Counter<>("item", 0d), new Counter<>("item", 0d), new Counter<>("item", 0d),
                 new Counter<>("item", 2d), new Counter<>("item", 4d), new Counter<>("item", 0d),
                 new Counter<>("item", 3d));
-        counters.sort(TopNCounter.ASC_COMPARATOR);
+        counters.sort(ASC_COMPARATOR);
         List<Double> expectedCounts = Lists.newArrayList(0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d,
                 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d,
                 0d, 0d, 0d, 0d, 0d, 0d, 1d, 1d, 1d, 1d, 1d, 1d, 1d, 2d, 2d, 3d, 3d, 4d);
@@ -167,7 +169,7 @@ public class TopNCounterBasicTest {
         });
         Assert.assertArrayEquals(expectedCounts.toArray(), originCounts.toArray());
 
-        counters.sort(TopNCounter.DESC_COMPARATOR);
+        counters.sort(DESC_COMPARATOR);
         List<Double> expectedDescCounts = Lists.newArrayList(4d, 3d, 3d, 2d, 2d, 1d, 1d, 1d, 1d, 1d, 1d, 1d, 0d, 0d, 0d,
                 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d,
                 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d);

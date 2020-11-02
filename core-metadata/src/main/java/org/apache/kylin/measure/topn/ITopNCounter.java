@@ -18,14 +18,9 @@
 
 package org.apache.kylin.measure.topn;
 
-import java.util.Comparator;
 import java.util.List;
 
 public interface ITopNCounter<T> extends Iterable<Counter<T>>, java.io.Serializable {
-
-    Comparator<Counter> ASC_COMPARATOR = Comparator.comparingDouble(Counter::getCount);
-
-    Comparator<Counter> DESC_COMPARATOR = (Counter o1, Counter o2) -> Double.compare(o2.getCount(), o1.getCount());
 
     void offer(T item);
 

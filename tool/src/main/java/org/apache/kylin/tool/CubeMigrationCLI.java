@@ -44,6 +44,7 @@ import org.apache.kylin.common.restclient.RestClient;
 import org.apache.kylin.common.util.AbstractApplication;
 import org.apache.kylin.common.util.Dictionary;
 import org.apache.kylin.common.util.HadoopUtil;
+import org.apache.kylin.common.util.JsonUtil;
 import org.apache.kylin.common.util.OptionsHelper;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
@@ -61,6 +62,7 @@ import org.apache.kylin.dict.lookup.SnapshotTable;
 import org.apache.kylin.engine.mr.JobBuilderSupport;
 import org.apache.kylin.metadata.MetadataConstants;
 import org.apache.kylin.metadata.model.DataModelDesc;
+import org.apache.kylin.metadata.model.DataModelManager;
 import org.apache.kylin.metadata.model.IStorageAware;
 import org.apache.kylin.metadata.model.SegmentStatusEnum;
 import org.apache.kylin.metadata.model.TableDesc;
@@ -470,7 +472,14 @@ public class CubeMigrationCLI extends AbstractApplication {
                 logger.info("Item: {} doesn't exist, ignore it.", item);
                 break;
             }
-            dstStore.putResource(renameTableWithinProject(item), res.content(), res.lastModified());
+            //For migrate to dif project, change projectName in model_desc
+            if (item.startsWith(ResourceStore.DATA_MODEL_DESC_RESOURCE_ROOT)) {
+                DataModelDesc dataModelDesc = JsonUtil.readValue(res.content(), DataModelDesc.class);
+                dataModelDesc.setProjectName(dstProject);
+                dstStore.putResource(item, dataModelDesc, res.lastModified(), DataModelManager.MODELDESC_SERIALIZER);
+            } else {
+                dstStore.putResource(renameTableWithinProject(item), res.content(), res.lastModified());
+            }
             res.content().close();
             logger.info("Item " + item + " is copied");
             break;

@@ -23,7 +23,7 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.kylin.engine.mr.common.BatchConstants;
 
 public class SparkCreatingFlatTable extends SparkSqlBatch {
-    public static final int SQL_COUNT = 5;
+    public static final int SQL_COUNT = 6;
 
     public SparkCreatingFlatTable() {
         super();

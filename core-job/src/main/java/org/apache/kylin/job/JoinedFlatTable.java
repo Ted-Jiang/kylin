@@ -128,6 +128,10 @@ public class JoinedFlatTable {
                 + ";\n";
     }
 
+    public static String generateExitStatements() {
+        return "Exit;";
+    }
+
     public static String generateSelectDataStatement(IJoinedFlatTableDesc flatDesc) {
         return generateSelectDataStatement(flatDesc, false, null, null);
     }

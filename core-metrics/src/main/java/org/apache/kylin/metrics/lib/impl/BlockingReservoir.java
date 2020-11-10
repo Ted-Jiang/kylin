@@ -21,6 +21,7 @@ package org.apache.kylin.metrics.lib.impl;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.kylin.metrics.lib.ActiveReservoirListener;
 import org.apache.kylin.metrics.lib.Record;
@@ -49,8 +50,11 @@ public class BlockingReservoir extends AbstractActiveReservoir {
     private final Thread scheduledReporter;
     private final int minReportSize;
     private final int maxReportSize;
+    private final int maxQueueSize;
     private final long maxReportTime;
     private List<Record> records;
+
+    private AtomicLong nDiscardRecords;
 
     public BlockingReservoir() {
         this(100, 500);
@@ -72,12 +76,16 @@ public class BlockingReservoir extends AbstractActiveReservoir {
         this.minReportSize = minReportSize;
         this.maxReportSize = maxReportSize;
         this.maxReportTime = maxReportTime * 60 * 1000L;
+        this.maxQueueSize = maxQueueSize;
 
         this.recordsQueue = maxQueueSize <= 0 ? new LinkedBlockingQueue<>() : new LinkedBlockingQueue<>(maxQueueSize);
         this.listeners = Lists.newArrayList();
 
         this.records = Lists.newArrayListWithExpectedSize(this.maxReportSize);
-        scheduledReporter = new ThreadFactoryBuilder().setNameFormat("metrics-blocking-reservoir-scheduler-%d").build()
+
+        this.nDiscardRecords = new AtomicLong(0);
+
+        this.scheduledReporter = new ThreadFactoryBuilder().setNameFormat("metrics-blocking-reservoir-scheduler-%d").build()
                 .newThread(new ReporterRunnable());
     }
 
@@ -87,6 +95,13 @@ public class BlockingReservoir extends AbstractActiveReservoir {
     public void update(Record record) {
         if (!isReady) {
             logger.info("Current reservoir is not ready for update record");
+            return;
+        }
+        if (maxQueueSize <= 0 && size() > MAX_QUEUE_SIZE) {
+            long nDiscard = nDiscardRecords.incrementAndGet();
+            if (nDiscard % 10000 == 1) {
+                logger.warn("The queue size {} exceeds the maximum queue size {}. Record will be discarded", size(), MAX_QUEUE_SIZE);
+            }
             return;
         }
         try {

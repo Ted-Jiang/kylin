@@ -36,6 +36,8 @@ public class SubThreadPoolExecutor extends AbstractExecutorService {
 
     private final static Logger logger = LoggerFactory.getLogger(SubThreadPoolExecutor.class);
 
+    private static final int MAX_WAITING_TIME = 60;
+
     private final Semaphore semaphore;
 
     private final ExecutorService impl;
@@ -51,8 +53,12 @@ public class SubThreadPoolExecutor extends AbstractExecutorService {
     // Obtain a thread resource. If no resources, block it
     private void obtainThread() {
         try {
-            semaphore.acquire();
-            logger.debug("Obtain thread for {}", subject);
+            if (semaphore.tryAcquire(MAX_WAITING_TIME, TimeUnit.SECONDS)) {
+                logger.debug("Obtain thread for {}", subject);
+            } else {
+                logger.error("Fail to acquire permit after {} seconds", MAX_WAITING_TIME);
+                throw new RuntimeException("Fail to acquire permit after " + MAX_WAITING_TIME + " seconds");
+            }
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

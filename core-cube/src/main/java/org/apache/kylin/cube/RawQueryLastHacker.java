@@ -33,9 +33,9 @@ public class RawQueryLastHacker {
 
     private static final Logger logger = LoggerFactory.getLogger(RawQueryLastHacker.class);
 
-    public static void hackNoAggregations(SQLDigest sqlDigest, CubeDesc cubeDesc, TupleInfo tupleInfo) {
+    public static boolean hackNoAggregations(SQLDigest sqlDigest, CubeDesc cubeDesc, TupleInfo tupleInfo) {
         if (!sqlDigest.isRawQuery || BackdoorToggles.getDisabledRawQueryLastHacker()) {
-            return;
+            return false;
         }
 
         // If no group by and metric found, then it's simple query like select ... from ... where ...,
@@ -77,5 +77,7 @@ public class RawQueryLastHacker {
                 sqlDigest.metricColumns.add(col);
             }
         }
+
+        return true;
     }
 }

@@ -1979,6 +1979,12 @@ public abstract class KylinConfigBase implements Serializable {
         return value > 0 ? value : Long.MAX_VALUE;
     }
 
+    public long getRawQueryMaxReturnRowCount() {
+        Long value = Long
+                .parseLong(this.getOptional("kylin.query.max-return-row-count-for-raw-hacker", String.valueOf(100000)));
+        return value > 0 ? value : Long.MAX_VALUE;
+    }
+
     public int getTranslatedInClauseMaxSize() {
         return Integer.parseInt(getOptional("kylin.query.translated-in-clause-max-size", String.valueOf(1024 * 1024)));
     }

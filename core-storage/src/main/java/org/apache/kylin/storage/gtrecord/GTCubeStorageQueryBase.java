@@ -121,7 +121,7 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
         context.setStorageQuery(this);
 
         //cope with queries with no aggregations
-        RawQueryLastHacker.hackNoAggregations(sqlDigest, cubeDesc, returnTupleInfo);
+        boolean hackNoAggregations = RawQueryLastHacker.hackNoAggregations(sqlDigest, cubeDesc, returnTupleInfo);
 
         // Customized measure taking effect: e.g. allow custom measures to help raw queries
         notifyBeforeStorageQuery(sqlDigest);
@@ -212,6 +212,14 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
                 cubeInstance.getName(), cuboid.getId(), groupsD, filterColumnD, context.getFinalPushDownLimit(),
                 context.getStorageLimitLevel(), context.isNeedStorageAggregation());
 
+        if (hackNoAggregations && context.getStorageLimitLevel() == StorageLimitLevel.NO_LIMIT) {
+            Long baseCuboidRowCount = cubeInstance.getBaseCuboidRowCount();
+            long rawQueryMaxReturnRowCount = cubeInstance.getConfig().getRawQueryMaxReturnRowCount();
+            if (baseCuboidRowCount == null || baseCuboidRowCount > rawQueryMaxReturnRowCount) {
+                logger.error("Fail fast to no aggregation query due to scanning {} row count exceeding the threshold {}", baseCuboidRowCount, rawQueryMaxReturnRowCount);
+                throw new RuntimeException("Fail fast to no aggregation query due to scanning " + baseCuboidRowCount + " row count exceeding the threshold " + rawQueryMaxReturnRowCount);
+            }
+        }
         return new GTCubeStorageQueryRequest(cuboid, dimensionsD, groupsD, dynGroups, dynGroupExprs, filterColumnD,
                 metrics, dynFuncs, filterD, havingFilter, context);
     }

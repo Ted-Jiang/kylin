@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.kylin.cube.cuboid.Cuboid;
 import org.apache.kylin.shaded.com.google.common.collect.Maps;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.KylinConfigExt;
@@ -509,6 +510,16 @@ public class CubeInstance extends RootPersistentEntity implements IRealization, 
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public Long getBaseCuboidRowCount() {
+        Map<Long, Long> cuboidWithStats = getCuboids();
+        if (cuboidWithStats == null) {
+            return null;
+        }
+
+        long baseCuboidId = Cuboid.getBaseCuboidId(getDescriptor());
+        return cuboidWithStats.get(baseCuboidId);
     }
 
     public void setCuboids(Map<Long, Long> cuboids) {

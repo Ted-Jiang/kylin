@@ -239,7 +239,7 @@ public class CubeService extends BasicService implements InitializingBean {
             }
         }
     }
-    
+
     public CubeInstance createCubeAndDesc(ProjectInstance project, CubeDesc desc) throws IOException {
         if (!aclEvaluate.checkProjectWritePermissionInProd()) {
             aclEvaluate.checkProjectWritePermission(project.getName());
@@ -631,6 +631,32 @@ public class CubeService extends BasicService implements InitializingBean {
         getCubeManager().buildSnapshotTable(seg, lookupTable, null);
 
         return getCubeManager().getCube(cube.getName());
+    }
+
+    public CubeInstance deleteSegmentById(CubeInstance cube, String uuid) throws IOException {
+        aclEvaluate.checkProjectWritePermission(cube);
+        Message msg = MsgPicker.getMsg();
+
+        CubeSegment toDelete = null;
+
+        toDelete = cube.getSegmentById(uuid);
+
+        if (toDelete == null) {
+            throw new BadRequestException(String.format(Locale.ROOT, msg.getSEG_NOT_FOUND(), uuid));
+        }
+
+        if (cube.getStatus() == RealizationStatusEnum.DISABLED
+                || (cube.getStatus() == RealizationStatusEnum.READY && toDelete.getStatus() != SegmentStatusEnum.READY)) {
+
+            CubeInstance cubeInstance = CubeManager.getInstance(getConfig()).updateCubeDropSegments(cube, toDelete);
+
+            cleanSegmentStorage(Collections.singletonList(toDelete));
+
+            return cubeInstance;
+        } else {
+            throw new BadRequestException(
+                    String.format(Locale.ROOT, msg.getDELETE_READY_SEG_BY_UUID(), uuid, cube.getName()));
+        }
     }
 
     public CubeInstance deleteSegment(CubeInstance cube, String segmentName) throws IOException {

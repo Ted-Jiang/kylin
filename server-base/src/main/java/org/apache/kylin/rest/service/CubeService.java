@@ -630,7 +630,7 @@ public class CubeService extends BasicService implements InitializingBean {
         CubeSegment seg = cube.getSegment(segmentName, SegmentStatusEnum.READY);
         getCubeManager().buildSnapshotTable(seg, lookupTable, null);
 
-        return cube;
+        return getCubeManager().getCube(cube.getName());
     }
 
     public CubeInstance deleteSegment(CubeInstance cube, String segmentName) throws IOException {

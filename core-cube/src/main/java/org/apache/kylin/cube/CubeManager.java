@@ -657,7 +657,7 @@ public class CubeManager implements IRealizationProvider {
             snapshotResPath = cubeSegment.getCubeInstance().getSnapshotResPath(tableName);
         }
         if (snapshotResPath == null) {
-            throw new IllegalStateException("No snapshot for table '" + tableName + "' found on cube segment"
+            throw new IllegalStateException("No snapshot for table '" + tableName + "' found on cube segment "
                     + cubeSegment.getCubeInstance().getName() + "/" + cubeSegment);
         }
         return snapshotResPath;
@@ -1318,7 +1318,7 @@ public class CubeManager implements IRealizationProvider {
         public SnapshotTable buildSnapshotTable(CubeSegment cubeSeg, String lookupTable, String uuid)
                 throws IOException {
             // work on copy instead of cached objects
-            CubeInstance cubeCopy = cubeSeg.getCubeInstance().latestCopyForWrite(); // get a latest copy
+            CubeInstance cubeCopy = getCube(cubeSeg.getCubeInstance().getName()).latestCopyForWrite(); // get a latest copy
             CubeSegment segCopy = cubeCopy.getSegmentById(cubeSeg.getUuid());
 
             TableMetadataManager metaMgr = getTableManager();
@@ -1334,17 +1334,12 @@ public class CubeManager implements IRealizationProvider {
                 CubeUpdate update = new CubeUpdate(cubeCopy);
                 update.setToUpdateSegs(segCopy);
                 updateCube(update);
-
-                // Update the input cubeSeg after the resource store updated
-                cubeSeg.putSnapshotResPath(lookupTable, segCopy.getSnapshotResPath(lookupTable));
             } else {
                 CubeUpdate cubeUpdate = new CubeUpdate(cubeCopy);
                 Map<String, String> map = Maps.newHashMap();
                 map.put(lookupTable, snapshot.getResourcePath());
                 cubeUpdate.setUpdateTableSnapshotPath(map);
                 updateCube(cubeUpdate);
-
-                cubeSeg.getCubeInstance().putSnapshotResPath(lookupTable, snapshot.getResourcePath());
             }
             return snapshot;
         }

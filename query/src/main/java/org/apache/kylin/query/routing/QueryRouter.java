@@ -21,6 +21,7 @@ package org.apache.kylin.query.routing;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
@@ -56,7 +57,7 @@ public class QueryRouter {
         String forceHitCubeName = BackdoorToggles.getForceHitCube();
         Set<String> forceHitCubeNameSet = new HashSet<String>();
         if (!StringUtil.isEmpty(forceHitCubeName)) {
-            String forceHitCubeNameLower = forceHitCubeName.toLowerCase();
+            String forceHitCubeNameLower = forceHitCubeName.toLowerCase(Locale.ROOT);
             String[] forceHitCubeNames = forceHitCubeNameLower.split(",");
             forceHitCubeNameSet = new HashSet<String>(Arrays.asList(forceHitCubeNames));
         }
@@ -64,7 +65,7 @@ public class QueryRouter {
         List<Candidate> candidates = Lists.newArrayList();
         for (IRealization real : realizations) {
             if (!forceHitCubeNameSet.isEmpty()) {
-                if (!forceHitCubeNameSet.contains(real.getName().toLowerCase())) {
+                if (!forceHitCubeNameSet.contains(real.getName().toLowerCase(Locale.ROOT))) {
                     continue;
                 }
                 if (!real.isReady()) {

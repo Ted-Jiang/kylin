@@ -23,7 +23,9 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.calcite.linq4j.Enumerator;
 import org.apache.kylin.common.debug.BackdoorToggles;
@@ -68,12 +70,12 @@ public class LookupTableEnumerator implements Enumerator<Object[]> {
             // Make force hit cube in lookup table
             String forceHitCubeName = BackdoorToggles.getForceHitCube();
             if (!StringUtil.isEmpty(forceHitCubeName)) {
-                String forceHitCubeNameLower = forceHitCubeName.toLowerCase();
+                String forceHitCubeNameLower = forceHitCubeName.toLowerCase(Locale.ROOT);
                 String[] forceHitCubeNames = forceHitCubeNameLower.split(",");
                 final Set<String> forceHitCubeNameSet = new HashSet<String>(Arrays.asList(forceHitCubeNames));
                 cube = cubeMgr.findLatestSnapshot(
-                        (List<RealizationEntry>) realizationEntries.stream()
-                                .filter(x -> forceHitCubeNameSet.contains(x.getRealization().toLowerCase())),
+                        realizationEntries.stream()
+                                .filter(x -> forceHitCubeNameSet.contains(x.getRealization().toLowerCase(Locale.ROOT))).collect(Collectors.toList()),
                         lookupTableName, cube);
                 olapContext.realization = cube;
             } else {

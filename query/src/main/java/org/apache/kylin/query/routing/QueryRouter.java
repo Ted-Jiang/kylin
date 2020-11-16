@@ -18,11 +18,14 @@
 
 package org.apache.kylin.query.routing;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kylin.common.debug.BackdoorToggles;
+import org.apache.kylin.common.util.StringUtil;
 import org.apache.kylin.metadata.model.FunctionDesc;
 import org.apache.kylin.metadata.realization.CapabilityResult;
 import org.apache.kylin.metadata.realization.CapabilityResult.CapabilityInfluence;
@@ -51,10 +54,17 @@ public class QueryRouter {
         SQLDigest sqlDigest = olapContext.getSQLDigest();
 
         String forceHitCubeName = BackdoorToggles.getForceHitCube();
+        Set<String> forceHitCubeNameSet = new HashSet<String>();
+        if (!StringUtil.isEmpty(forceHitCubeName)) {
+            String forceHitCubeNameLower = forceHitCubeName.toLowerCase();
+            String[] forceHitCubeNames = forceHitCubeNameLower.split(",");
+            forceHitCubeNameSet = new HashSet<String>(Arrays.asList(forceHitCubeNames));
+        }
+
         List<Candidate> candidates = Lists.newArrayList();
         for (IRealization real : realizations) {
-            if (forceHitCubeName != null) {
-                if (!forceHitCubeName.equalsIgnoreCase(real.getName())) {
+            if (!forceHitCubeNameSet.isEmpty()) {
+                if (!forceHitCubeNameSet.contains(real.getName().toLowerCase())) {
                     continue;
                 }
                 if (!real.isReady()) {

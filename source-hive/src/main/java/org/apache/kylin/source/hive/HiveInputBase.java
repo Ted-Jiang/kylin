@@ -437,7 +437,6 @@ public class HiveInputBase {
         final String createTableHql = JoinedFlatTable.generateCreateTableStatement(flatDesc,
                 jobWorkingDir);
         String insertDataHqls = JoinedFlatTable.generateInsertDataStatement(flatDesc);
-        String gracefulExit = JoinedFlatTable.generateExitStatements();
 
         KylinConfig config = flatDesc.getSegment().getConfig();
         final SparkExecutable sparkExecutable = SparkExecutableFactory.instance(config);
@@ -470,9 +469,6 @@ public class HiveInputBase {
 
         sparkExecutable.setParam(SparkCreatingFlatTable.getSqlOption(4).getOpt(),
                 base64EncodeStr(insertDataHqls));
-
-        sparkExecutable.setParam(SparkCreatingFlatTable.getSqlOption(5).getOpt(),
-                base64EncodeStr(gracefulExit));
 
         StringBuilder jars = new StringBuilder();
         StringUtil.appendWithSeparator(jars, config.getSparkAdditionalJars());

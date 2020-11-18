@@ -113,6 +113,8 @@ public class SparkSqlBatch extends AbstractApplication implements Serializable {
                 sparkSession.sql(sqlText);
             }
         }
+
+        sparkSession.close();
     }
 
     private SparkSession getSparkSession(String appName) {

@@ -400,7 +400,7 @@ public class CubeManager implements IRealizationProvider {
 
     public CubeInstance updateCubeSegStatus(CubeSegment seg, SegmentStatusEnum status) throws IOException {
         try (AutoLock lock = cubeMapLock.lockForWrite()) {
-            CubeInstance cube = seg.getCubeInstance().latestCopyForWrite();
+            CubeInstance cube = getCube(seg.getCubeInstance().getName()).latestCopyForWrite();
             seg = cube.getSegmentById(seg.getUuid());
 
             CubeUpdate update = new CubeUpdate(cube);
@@ -1269,7 +1269,7 @@ public class CubeManager implements IRealizationProvider {
                 return;
 
             // work on copy instead of cached objects
-            CubeInstance cubeCopy = cubeSeg.getCubeInstance().latestCopyForWrite(); // get a latest copy
+            CubeInstance cubeCopy = getCube(cubeSeg.getCubeInstance().getName()).latestCopyForWrite(); // get a latest copy
             CubeSegment segCopy = cubeCopy.getSegmentById(cubeSeg.getUuid());
 
             Dictionary<?> dict = dictInfo.getDictionaryObject();

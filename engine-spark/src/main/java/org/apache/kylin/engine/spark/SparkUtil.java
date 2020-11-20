@@ -56,6 +56,10 @@ import org.apache.spark.sql.hive.HiveUtils;
 
 public class SparkUtil {
 
+    public static int getNormalRecordLogThreshold() {
+        return 1000;
+    }
+
     public static ISparkBatchCubingInputSide getBatchCubingInputSide(CubeSegment seg) {
         IJoinedFlatTableDesc flatDesc = EngineFactory.getJoinedFlatTableDesc(seg);
         return (ISparkBatchCubingInputSide)SourceManager.createEngineAdapter(seg, ISparkInput.class).getBatchCubingInputSide(flatDesc);

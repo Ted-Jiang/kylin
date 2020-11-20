@@ -150,20 +150,14 @@ public class SparkCubingMerge extends AbstractApplication implements Serializabl
                 public Tuple2<org.apache.hadoop.io.Text, org.apache.hadoop.io.Text> call(Tuple2<Text, Object[]> tuple2)
                         throws Exception {
 
-                    if (initialized == false) {
+                    if (!initialized) {
                         synchronized (SparkCubingMerge.class) {
-                            if (initialized == false) {
-                                synchronized (SparkCubingMerge.class) {
-                                    if (initialized == false) {
-                                        KylinConfig kylinConfig = AbstractHadoopJob.loadKylinConfigFromHdfs(sConf, metaUrl);
-                                        try (KylinConfig.SetAndUnsetThreadLocalConfig autoUnset = KylinConfig
-                                                .setAndUnsetThreadLocalConfig(kylinConfig)) {
-                                            CubeDesc desc = CubeDescManager.getInstance(kylinConfig).getCubeDesc(cubeName);
-                                            codec = new BufferedMeasureCodec(desc.getMeasures());
-                                            initialized = true;
-                                        }
-                                    }
-                                }
+                            if (!initialized) {
+                                KylinConfig kylinConfig = AbstractHadoopJob.loadKylinConfigFromHdfs(sConf, metaUrl);
+                                KylinConfig.setThreadLocalConfig(kylinConfig);
+                                CubeDesc desc = CubeDescManager.getInstance(kylinConfig).getCubeDesc(cubeName);
+                                codec = new BufferedMeasureCodec(desc.getMeasures());
+                                initialized = true;
                             }
                         }
                     }
@@ -256,6 +250,7 @@ public class SparkCubingMerge extends AbstractApplication implements Serializabl
 
         private void init() {
             this.kylinConfig = AbstractHadoopJob.loadKylinConfigFromHdfs(conf, metaUrl);
+            KylinConfig.setThreadLocalConfig(kylinConfig);
             final CubeInstance cube = CubeManager.getInstance(kylinConfig).getCube(cubeName);
             final CubeDesc cubeDesc = CubeDescManager.getInstance(kylinConfig).getCubeDesc(cube.getDescName());
             final CubeSegment sourceSeg = cube.getSegmentById(sourceSegmentId);

@@ -294,6 +294,11 @@ public class KylinConfig extends KylinConfigBase {
         setKylinConfigInEnvIfMissing(props);
     }
 
+
+    public static void setThreadLocalConfig(KylinConfig config) {
+        THREAD_ENV_INSTANCE.set(config);
+    }
+
     // auto-closeable API to remind that a thread local config must always be removed
     public static SetAndUnsetThreadLocalConfig setAndUnsetThreadLocalConfig(KylinConfig config) {
         return new SetAndUnsetThreadLocalConfig(config);

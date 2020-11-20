@@ -57,6 +57,21 @@
                             Last Query Date
                         </h4>
                     </td>
+                    <td width="20%" style="padding: 10px; background-color: #337ab7; border: 1px solid #245580; white-space:nowrap; overflow:scroll;">
+                        <h4 style="margin-top: 0; margin-bottom: 0; font-size: 12px; color: inherit; color: #fff; font-family: 'Trebuchet MS ', Arial, Helvetica, sans-serif;">
+                            Cube Region Count
+                        </h4>
+                    </td>
+                    <td width="20%" style="padding: 10px; background-color: #337ab7; border: 1px solid #245580; white-space:nowrap; overflow:scroll;">
+                        <h4 style="margin-top: 0; margin-bottom: 0; font-size: 12px; color: inherit; color: #fff; font-family: 'Trebuchet MS ', Arial, Helvetica, sans-serif;">
+                            Cube Size(GB)
+                        </h4>
+                    </td>
+                    <td width="20%" style="padding: 10px; background-color: #337ab7; border: 1px solid #245580; white-space:nowrap; overflow:scroll;">
+                        <h4 style="margin-top: 0; margin-bottom: 0; font-size: 12px; color: inherit; color: #fff; font-family: 'Trebuchet MS ', Arial, Helvetica, sans-serif;">
+                            Cube Owner
+                        </h4>
+                    </td>
                 </tr>
                 <#list cubes as cube>
                     <tr>
@@ -80,6 +95,21 @@
                                 ${cube.last_query_date}
                             </h4>
                         </td>
+                        <td width="20%" style="padding: 10px; border: 1px solid #ddd; white-space:nowrap; overflow:scroll;">
+                          <h4 style="margin-top: 0; margin-bottom: 0; font-size: 10px; color: inherit; font-family: 'Trebuchet MS ', Arial, Helvetica, sans-serif;">
+                              ${cube.region_count}
+                          </h4>
+                      </td>
+                      <td width="20%" style="padding: 10px; border: 1px solid #ddd; white-space:nowrap; overflow:scroll;">
+                        <h4 style="margin-top: 0; margin-bottom: 0; font-size: 10px; color: inherit; font-family: 'Trebuchet MS ', Arial, Helvetica, sans-serif;">
+                            ${cube.cube_sizeGB}
+                        </h4>
+                      </td>
+                    <td width="20%" style="padding: 10px; border: 1px solid #ddd; white-space:nowrap; overflow:scroll;">
+                      <h4 style="margin-top: 0; margin-bottom: 0; font-size: 10px; color: inherit; font-family: 'Trebuchet MS ', Arial, Helvetica, sans-serif;">
+                          ${cube.cube_owner}
+                      </h4>
+                    </td>
                     </tr>
                 </#list>
             </table>

@@ -35,16 +35,20 @@ import org.apache.kylin.common.util.MailService;
 import org.apache.kylin.common.util.OptionsHelper;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
+import org.apache.kylin.cube.CubeSegment;
+import org.apache.kylin.metadata.model.IStorageAware;
 import org.apache.kylin.metadata.project.ProjectInstance;
 import org.apache.kylin.metadata.project.ProjectManager;
 import org.apache.kylin.metadata.project.RealizationEntry;
 import org.apache.kylin.metadata.realization.RealizationType;
 import org.apache.kylin.metrics.MetricsManager;
 import org.apache.kylin.metrics.lib.impl.hive.HiveSink;
+import org.apache.kylin.rest.response.HBaseResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
@@ -64,6 +68,7 @@ public class CubeRetireDetection {
     private static final String PROJECT_NAME = MetricsManager.SYSTEM_PROJECT;
     private static final String NO_BUILD = "Never Build";
     private static final String NO_QUERY = "Never Query";
+    private static final String NO_OWNER = "N/A";
 
     @SuppressWarnings("static-access")
     private static final Option OPTION_KYLIN_URI_BASE = OptionBuilder.withArgName("kylinURIBase").hasArg()
@@ -153,7 +158,8 @@ public class CubeRetireDetection {
 
         JDBCDriverCLI jdbcDriverCLI = new JDBCDriverCLI();
 
-        KylinConfig kylinConfig = KylinConfig.createInstanceFromUri(baseURI);
+        KylinConfig kylinConfig = KylinConfig.
+                createInstanceFromUri(baseURI);
         Map<String, Set<CubeInstance>> allCubes = getAllCubesByKylinConfig(kylinConfig);
 
         Set<String> additionalCubes = Sets.newHashSet();
@@ -251,20 +257,56 @@ public class CubeRetireDetection {
             users = receivers;
         }
         boolean needClean = retiredCubes.isEmpty() ? false : true;
-        List<Map> cubes = Lists.newArrayList();
-        for(String project: retiredCubes.keySet()) {
+        List<Map<String, String>> cubes = Lists.newArrayList();
+        for (String project : retiredCubes.keySet()) {
             Set<CubeInstance> cubesSet = retiredCubes.get(project);
             for (CubeInstance cube : cubesSet) {
-                String lastBuildDate = cube.getLatestBuiltSegment() == null ? NO_BUILD : getDate(cube.getLatestBuiltSegment().getLastBuildTime(), Integer.MIN_VALUE);
+                String lastBuildDate = cube.getLatestBuiltSegment() == null ? NO_BUILD
+                        : getDate(cube.getLatestBuiltSegment().getLastBuildTime(), Integer.MIN_VALUE);
                 String lastQueryDate = cubeQueryInfo.get(cube.getName());
+                String cubeOwner = cube.getOwner();
+                String cubeSizeGB = String.format(Locale.ROOT, "%.2f", (cube.getSizeKB() / 1024.0 / 1024));
+                int regionCount = 0;
+                for (CubeSegment segment : cube.getSegments()) {
+                    String tableName = segment.getStorageLocationIdentifier();
+                    HBaseResponse hr = null;
+                    try {
+                        if (cube.getStorageType() == IStorageAware.ID_HBASE
+                                || cube.getStorageType() == IStorageAware.ID_SHARDED_HBASE
+                                || cube.getStorageType() == IStorageAware.ID_REALTIME_AND_HBASE) {
+                            try {
+                                logger.debug("Loading HTable info " + cube.getName() + ", " + tableName);
+
+                                hr = (HBaseResponse) Class.forName("org.apache.kylin.rest.service.HBaseInfoUtil")
+                                        .getMethod("getHBaseInfo", new Class[] { String.class, KylinConfig.class })
+                                        .invoke(null, tableName, kylinConfig);
+                                regionCount += hr.getRegionCount();
+                            } catch (Throwable e) {
+                                throw new IOException(e);
+                            }
+                        }
+
+                    } catch (IOException e) {
+                        logger.error("Failed to calcuate size of HTable \"" + tableName + "\".", e);
+                    }
+                }
+                String cubeRegionCount = String.valueOf(regionCount);
+
                 Map<String, String> cubeInfo = Maps.newHashMap();
                 cubeInfo.put("name", cube.getName());
                 cubeInfo.put("project", project);
                 cubeInfo.put("last_build_date", lastBuildDate);
                 cubeInfo.put("last_query_date", lastQueryDate == null ? NO_QUERY : lastQueryDate);
+                cubeInfo.put("cube_owner", cubeOwner == null ? NO_OWNER : cubeOwner);
+                cubeInfo.put("cube_sizeGB", cubeSizeGB);
+                cubeInfo.put("region_count", cubeRegionCount);
                 cubes.add(cubeInfo);
             }
         }
+        cubes.sort((a, b) -> Double.compare(Double.parseDouble(b.get("cube_sizeGB")), Double.parseDouble(a.get("cube_sizeGB"))));
+        cubes.sort((a, b) -> Integer.compare(Integer.parseInt(b.get("region_count")),
+                Integer.parseInt(a.get("region_count"))));
+        cubes.sort((a, b) -> b.get("project").compareTo(a.get("project")));
         Map<String, Object> dataMap = Maps.newHashMap();
         dataMap.put("cube_num", cubes.size());
         dataMap.put("need_clean", needClean);

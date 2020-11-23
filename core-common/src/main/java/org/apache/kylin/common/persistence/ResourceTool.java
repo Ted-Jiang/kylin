@@ -95,7 +95,7 @@ public class ResourceTool {
                 }
                 break;
             case "fetch":
-                tool.copy(KylinConfig.getInstanceFromEnv(), KylinConfig.createInstanceFromUri(args[1]), args[2], true);
+                tool.copy(KylinConfig.getInstanceFromEnv(), KylinConfig.createInstanceFromUri(args[1]), args[2], true, false);
                 break;
             case "upload":
                 if (args.length == 2) {
@@ -210,58 +210,60 @@ public class ResourceTool {
     }
 
     public void copy(KylinConfig srcConfig, KylinConfig dstConfig, String path) throws IOException {
-        copy(srcConfig, dstConfig, path, false);
+        copy(srcConfig, dstConfig, path, false, true);
     }
 
     //Do NOT invoke this method directly, unless you want to copy and possibly overwrite immutable resources such as UUID.
-    public void copy(KylinConfig srcConfig, KylinConfig dstConfig, String path, boolean copyImmutableResource)
+    public void copy(KylinConfig srcConfig, KylinConfig dstConfig, String path, boolean copyImmutableResource, boolean checkSkip)
             throws IOException {
         ResourceStore src = ResourceStore.getStore(srcConfig);
         ResourceStore dst = ResourceStore.getStore(dstConfig);
 
         logger.info("Copy from {} to {}", src, dst);
 
-        copyR(src, dst, path, copyImmutableResource);
+        copyR(src, dst, path, copyImmutableResource, checkSkip);
     }
 
     public void copy(KylinConfig srcConfig, KylinConfig dstConfig, List<String> paths) throws IOException {
-        copy(srcConfig, dstConfig, paths, false);
+        copy(srcConfig, dstConfig, paths, false, true);
     }
 
     //Do NOT invoke this method directly, unless you want to copy and possibly overwrite immutable resources such as UUID.
     public void copy(KylinConfig srcConfig, KylinConfig dstConfig, List<String> paths,
-                     boolean copyImmutableResource) throws IOException {
+                     boolean copyImmutableResource, boolean checkSkip) throws IOException {
         ResourceStore src = ResourceStore.getStore(srcConfig);
         ResourceStore dst = ResourceStore.getStore(dstConfig);
 
         logger.info("Copy from {} to {}", src, dst);
 
         for (String path : paths) {
-            copyR(src, dst, path, copyImmutableResource);
+            copyR(src, dst, path, copyImmutableResource, checkSkip);
         }
     }
 
     public void copy(KylinConfig srcConfig, KylinConfig dstConfig) throws IOException {
-        copy(srcConfig, dstConfig, false);
+        copy(srcConfig, dstConfig, false, true);
     }
 
     //Do NOT invoke this method directly, unless you want to copy and possibly overwrite immutable resources such as UUID.
-    public void copy(KylinConfig srcConfig, KylinConfig dstConfig, boolean copyImmutableResource)
+    public void copy(KylinConfig srcConfig, KylinConfig dstConfig, boolean copyImmutableResource, boolean checkSkip)
             throws IOException {
-        copy(srcConfig, dstConfig, "/", copyImmutableResource);
+        copy(srcConfig, dstConfig, "/", copyImmutableResource, checkSkip);
     }
 
-    private void copyR(ResourceStore src, ResourceStore dst, String path, boolean copyImmutableResource)
+    private void copyR(ResourceStore src, ResourceStore dst, String path, boolean copyImmutableResource, boolean checkSkip)
             throws IOException {
 
         if (!copyImmutableResource && IMMUTABLE_PREFIX.contains(path)) {
             return;
         }
 
-        boolean isSkip = SKIP_CHILDREN_CHECK_RESOURCE_ROOT.stream()
-                .anyMatch(prefixToSkip -> (path.startsWith(prefixToSkip)));
-        if (isSkip)
-            return;
+        if (checkSkip) {
+            boolean isSkip = SKIP_CHILDREN_CHECK_RESOURCE_ROOT.stream()
+                    .anyMatch(prefixToSkip -> (path.startsWith(prefixToSkip)));
+            if (isSkip)
+                return;
+        }
 
         NavigableSet<String> children = src.listResources(path);
 
@@ -288,7 +290,7 @@ public class ResourceTool {
         } else {
             // case of folder
             for (String child : children)
-                copyR(src, dst, child, copyImmutableResource);
+                copyR(src, dst, child, copyImmutableResource, checkSkip);
         }
 
     }

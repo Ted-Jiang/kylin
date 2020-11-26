@@ -44,6 +44,8 @@ import org.apache.kylin.engine.mr.common.BatchConstants;
 import org.apache.kylin.engine.mr.common.CubeStatsReader;
 import org.apache.kylin.engine.mr.common.SerializableConfiguration;
 import org.apache.kylin.engine.mr.steps.SegmentReEncoder;
+import org.apache.kylin.engine.spark.SparkFunction.Function2Base;
+import org.apache.kylin.engine.spark.SparkFunction.PairFunctionBase;
 import org.apache.kylin.measure.BufferedMeasureCodec;
 import org.apache.kylin.measure.MeasureAggregators;
 import org.apache.spark.SparkConf;
@@ -133,34 +135,35 @@ public class SparkCubingMerge extends AbstractApplication implements Serializabl
             SparkUtil.setHadoopConfForCuboid(job, cubeSegment, metaUrl);
 
             final MeasureAggregators aggregators = new MeasureAggregators(cubeDesc.getMeasures());
-            final Function2 reduceFunction = new Function2<Object[], Object[], Object[]>() {
+            final Function2 reduceFunction = new Function2Base<Object[], Object[], Object[]>() {
                 @Override
-                public Object[] call(Object[] input1, Object[] input2) throws Exception {
+                protected void doInit() {
+                    KylinConfig kConfig = AbstractHadoopJob.loadKylinConfigFromHdfs(sConf, metaUrl);
+                    KylinConfig.setThreadLocalConfig(kConfig);
+                }
+
+                @Override
+                public Object[] doCall(Object[] input1, Object[] input2) throws Exception {
                     Object[] measureObjs = new Object[input1.length];
                     aggregators.aggregate(input1, input2, measureObjs);
                     return measureObjs;
                 }
             };
 
-            final PairFunction convertTextFunction = new PairFunction<Tuple2<Text, Object[]>, org.apache.hadoop.io.Text, org.apache.hadoop.io.Text>() {
-                private transient volatile boolean initialized = false;
+            final PairFunction convertTextFunction = new PairFunctionBase<Tuple2<Text, Object[]>, org.apache.hadoop.io.Text, org.apache.hadoop.io.Text>() {
                 BufferedMeasureCodec codec;
 
                 @Override
-                public Tuple2<org.apache.hadoop.io.Text, org.apache.hadoop.io.Text> call(Tuple2<Text, Object[]> tuple2)
-                        throws Exception {
+                protected void doInit() {
+                    KylinConfig kylinConfig = AbstractHadoopJob.loadKylinConfigFromHdfs(sConf, metaUrl);
+                    KylinConfig.setThreadLocalConfig(kylinConfig);
+                    CubeDesc desc = CubeDescManager.getInstance(kylinConfig).getCubeDesc(cubeName);
+                    codec = new BufferedMeasureCodec(desc.getMeasures());
+                }
 
-                    if (!initialized) {
-                        synchronized (SparkCubingMerge.class) {
-                            if (!initialized) {
-                                KylinConfig kylinConfig = AbstractHadoopJob.loadKylinConfigFromHdfs(sConf, metaUrl);
-                                KylinConfig.setThreadLocalConfig(kylinConfig);
-                                CubeDesc desc = CubeDescManager.getInstance(kylinConfig).getCubeDesc(cubeName);
-                                codec = new BufferedMeasureCodec(desc.getMeasures());
-                                initialized = true;
-                            }
-                        }
-                    }
+                @Override
+                public Tuple2<org.apache.hadoop.io.Text, org.apache.hadoop.io.Text> doCall(Tuple2<Text, Object[]> tuple2)
+                        throws Exception {
                     ByteBuffer valueBuf = codec.encode(tuple2._2());
                     byte[] encodedBytes = new byte[valueBuf.position()];
                     System.arraycopy(valueBuf.array(), 0, encodedBytes, 0, valueBuf.position());
@@ -174,14 +177,14 @@ public class SparkCubingMerge extends AbstractApplication implements Serializabl
             boolean isLegacyMode = false;
             for (String inputFolder : inputFolders) {
                 Path baseCuboidPath = new Path(BatchCubingJobBuilder2.getCuboidOutputPathsByLevel(inputFolder, 0));
-                if (fs.exists(baseCuboidPath) == false) {
+                if (!fs.exists(baseCuboidPath)) {
                     // doesn't exist sub folder, that means the merged cuboid in one folder (not by layer)
                     isLegacyMode = true;
                     break;
                 }
             }
 
-            if (isLegacyMode == true) {
+            if (isLegacyMode) {
                 // merge all layer's cuboid at once, this might be hard for Spark
                 List<JavaPairRDD<Text, Object[]>> mergingSegs = Lists.newArrayListWithExpectedSize(inputFolders.length);
                 for (int i = 0; i < inputFolders.length; i++) {
@@ -229,8 +232,7 @@ public class SparkCubingMerge extends AbstractApplication implements Serializabl
         }
     }
 
-    static class ReEncodeCuboidFunction implements PairFunction<Tuple2<Text, Text>, Text, Object[]> {
-        private transient volatile boolean initialized = false;
+    static class ReEncodeCuboidFunction extends PairFunctionBase<Tuple2<Text, Text>, Text, Object[]> {
         private String cubeName;
         private String sourceSegmentId;
         private String mergedSegmentId;
@@ -248,7 +250,8 @@ public class SparkCubingMerge extends AbstractApplication implements Serializabl
             this.conf = conf;
         }
 
-        private void init() {
+        @Override
+        protected void doInit() {
             this.kylinConfig = AbstractHadoopJob.loadKylinConfigFromHdfs(conf, metaUrl);
             KylinConfig.setThreadLocalConfig(kylinConfig);
             final CubeInstance cube = CubeManager.getInstance(kylinConfig).getCube(cubeName);
@@ -259,17 +262,9 @@ public class SparkCubingMerge extends AbstractApplication implements Serializabl
         }
 
         @Override
-        public Tuple2<Text, Object[]> call(Tuple2<Text, Text> textTextTuple2) throws Exception {
-            if (initialized == false) {
-                synchronized (ReEncodeCuboidFunction.class) {
-                    if (initialized == false) {
-                        init();
-                        initialized = true;
-                    }
-                }
-            }
+        public Tuple2<Text, Object[]> doCall(Tuple2<Text, Text> textTextTuple2) throws Exception {
             Pair<Text, Object[]> encodedPair = segmentReEncoder.reEncode2(textTextTuple2._1, textTextTuple2._2);
-            return new Tuple2(encodedPair.getFirst(), encodedPair.getSecond());
+            return new Tuple2<>(encodedPair.getFirst(), encodedPair.getSecond());
         }
     }
 

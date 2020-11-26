@@ -33,7 +33,6 @@ import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.AbstractApplication;
 import org.apache.kylin.common.util.ByteArray;
 import org.apache.kylin.common.util.HadoopUtil;
-import org.apache.kylin.common.util.MemoryBudgetController;
 import org.apache.kylin.common.util.OptionsHelper;
 import org.apache.kylin.cube.CubeDescManager;
 import org.apache.kylin.cube.CubeInstance;
@@ -55,6 +54,9 @@ import org.apache.kylin.engine.mr.common.BatchConstants;
 import org.apache.kylin.engine.mr.common.CubeStatsReader;
 import org.apache.kylin.engine.mr.common.NDCuboidBuilder;
 import org.apache.kylin.engine.mr.common.SerializableConfiguration;
+import org.apache.kylin.engine.spark.SparkFunction.Function2Base;
+import org.apache.kylin.engine.spark.SparkFunction.PairFlatMapFunctionBase;
+import org.apache.kylin.engine.spark.SparkFunction.PairFunctionBase;
 import org.apache.kylin.job.JoinedFlatTable;
 import org.apache.kylin.measure.BufferedMeasureCodec;
 import org.apache.kylin.measure.MeasureAggregators;
@@ -66,7 +68,6 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
-import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.storage.StorageLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -422,62 +423,5 @@ public class SparkCubingByLayer extends AbstractApplication implements Serializa
             }
         })._2();
         return count;
-    }
-
-    private static abstract class FunctionBase implements Serializable {
-        private volatile transient boolean initialized = false;
-        private transient int recordCounter;
-
-        protected abstract void doInit();
-
-        protected void init() {
-            if (!initialized) {
-                synchronized (SparkCubingByLayer.class) {
-                    if (!initialized) {
-                        logger.info("Start to do init for {}", this);
-                        doInit();
-                        initialized = true;
-                        recordCounter = 0;
-                    }
-                }
-            }
-            if (recordCounter++ % SparkUtil.getNormalRecordLogThreshold() == 0) {
-                logger.info("Accepting record with ordinal: " + recordCounter);
-                logger.info("Do call, available memory: {}m", MemoryBudgetController.getSystemAvailMB());
-            }
-        }
-    }
-
-    private static abstract class PairFunctionBase<T, K, V> extends FunctionBase implements PairFunction<T, K, V> {
-
-        protected abstract Tuple2<K, V> doCall(T t) throws Exception;
-
-        @Override
-        public Tuple2<K, V> call(T t) throws Exception {
-            init();
-            return doCall(t);
-        }
-    }
-
-    private static abstract class Function2Base<T1, T2, R> extends FunctionBase implements Function2<T1, T2, R> {
-
-        protected abstract R doCall(T1 v1, T2 v2) throws Exception;
-
-        @Override
-        public R call(T1 v1, T2 v2) throws Exception {
-            init();
-            return doCall(v1, v2);
-        }
-    }
-
-    private static abstract class PairFlatMapFunctionBase<T, K, V> extends FunctionBase implements PairFlatMapFunction<T, K, V> {
-
-        protected abstract Iterator<Tuple2<K, V>> doCall(T t) throws Exception;
-
-        @Override
-        public Iterator<Tuple2<K, V>> call(T t) throws Exception {
-            init();
-            return doCall(t);
-        }
     }
 }

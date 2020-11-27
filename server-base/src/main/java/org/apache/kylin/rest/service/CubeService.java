@@ -78,6 +78,7 @@ import org.apache.kylin.metadata.realization.RealizationType;
 import org.apache.kylin.rest.exception.BadRequestException;
 import org.apache.kylin.rest.exception.ForbiddenException;
 import org.apache.kylin.rest.exception.InternalErrorException;
+import org.apache.kylin.rest.exception.NotFoundException;
 import org.apache.kylin.rest.msg.Message;
 import org.apache.kylin.rest.msg.MsgPicker;
 import org.apache.kylin.rest.request.MetricsRequest;
@@ -984,6 +985,52 @@ public class CubeService extends BasicService implements InitializingBean {
         }
 
         return desc;
+    }
+
+    public CubeInstance changeLookupSnapshotBeGlobal(CubeInstance cube, String lookupTable) throws BadRequestException {
+        aclEvaluate.checkProjectWritePermission(cube.getProject());
+        Message msg = MsgPicker.getMsg();
+        CubeDesc cubeDesc = cube.getDescriptor();
+
+        TableDesc tableDesc = getTableManager().getTableDesc(lookupTable, cube.getProject());
+
+        if (tableDesc == null) {
+            throw new BadRequestException(String.format(Locale.ROOT, msg.getTABLE_DESC_NOT_FOUND(), lookupTable));
+        }
+
+        Set<String> inMemLookupTables = cubeDesc.getInMemLookupTables();
+        if (!inMemLookupTables.contains(lookupTable)) {
+            throw new BadRequestException(String.format(Locale.ROOT, msg.getTABLE_DESC_NOT_FOUND(), lookupTable));
+        }
+
+        if (cubeDesc.isGlobalSnapshotTable(lookupTable)) {
+            throw new BadRequestException(String.format(Locale.ROOT, msg.getSNAPSHOT_GLOBAL(), tableDesc.getName()));
+        }
+
+        try {
+            RealizationStatusEnum ostatus = cube.getStatus();
+
+            if (null == ostatus || !cube.getStatus().equals(RealizationStatusEnum.DISABLED)) {
+                throw new BadRequestException(
+                        String.format(Locale.ROOT, msg.getENABLE_NOT_DISABLED_CUBE(), cube.getName(), ostatus));
+            }
+
+            int segmentsCount = cube.getSegments().size();
+            if (segmentsCount == 0) {
+                // change in persistence
+                getCubeDescManager().updateCubeDescToBeGlobal(cubeDesc, lookupTable, true);
+            } else if (cube.getSegments(SegmentStatusEnum.READY).size() == segmentsCount) {
+                // change in persistence
+                getCubeManager().updateCubeToBeGlobal(cube, lookupTable);
+                getCubeDescManager().updateCubeDescToBeGlobal(cubeDesc, lookupTable, true);
+            } else {
+                throw new BadRequestException(
+                        String.format(Locale.ROOT, msg.getCUBE_HAS_NOT_READY_SEGS(), cube.getName()));
+            }
+        } catch (IOException e) {
+            logger.error("Failed to auto update snapshot be global " + cube.getName() + "@" + lookupTable, e);
+        }
+        return cube;
     }
 
     public Draft getCubeDraft(String cubeName, String projectName) throws IOException {

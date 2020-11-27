@@ -259,6 +259,18 @@ public class CubeDescManager {
         }
     }
 
+    public CubeDesc updateCubeDescToBeGlobal(CubeDesc desc, String lookupTable, boolean global) throws IOException {
+        try (AutoLock lock = descMapLock.lockForWrite()) {
+            CubeDesc copy = desc.lastedCopyForWrite();
+            copy.createAndSetSnapshotTableGlobal(lookupTable, global);
+            return updateCubeDesc(copy);
+        }
+    }
+
+    public CubeDesc copyForWrite(CubeDesc desc) {
+        return crud.copyForWrite(desc);
+    }
+
     /**
      * if there is some change need be applied after getting a cubeDesc from front-end, do it here
      * @param cubeDesc

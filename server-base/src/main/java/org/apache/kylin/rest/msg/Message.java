@@ -177,6 +177,14 @@ public class Message {
         return "Rebuild snapshot of hive view '%s' is not supported, please refresh segment of the cube";
     }
 
+    public String getSNAPSHOT_GLOBAL() {
+        return "snapshot for lookup table '%s' is already global";
+    }
+
+    public String getCUBE_HAS_NOT_READY_SEGS() {
+        return "lookup table '%s' has not ready segment.";
+    }
+
     // Cube Planner
     public String getFAIL_RECOMMEND_CUBOID() {
         return "Cannot get recommend cuboid list for cube '%s'.";

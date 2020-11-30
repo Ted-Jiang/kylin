@@ -331,18 +331,12 @@ public class HiveInputBase {
             CubeInstance cubeInstance = CubeManager.getInstance(KylinConfig.getInstanceFromEnv()).getCube(cubeName);
             final KylinConfig kylinConfig = cubeInstance.getConfig();
 
-            if (cubeInstance.getEngineType() == IEngineAware.ID_SPARK) {
-                if (kylinConfig.isLivyEnabled()) {
-                    jobFlow.addTask(createFlatHiveTableByLivyStep(hiveInitStatements,
-                            jobWorkingDir, cubeName, flatDesc));
-                } else {
-                    if (kylinConfig.isSparCreateHiveTableViaSparkEnable()) {
-                        jobFlow.addTask(createFlatHiveTableBySparkSql(hiveInitStatements,
-                                jobWorkingDir, cubeName, flatDesc));
-                    } else {
-                        jobFlow.addTask(createFlatHiveTableStep(hiveInitStatements, jobWorkingDir, cubeName, flatDesc));
-                    }
-                }
+            if (kylinConfig.isLivyEnabled()) {
+                jobFlow.addTask(createFlatHiveTableByLivyStep(hiveInitStatements,
+                        jobWorkingDir, cubeName, flatDesc));
+            } else if (kylinConfig.isSparCreateHiveTableViaSparkEnable()) {
+                jobFlow.addTask(createFlatHiveTableBySparkSql(hiveInitStatements,
+                        jobWorkingDir, cubeName, flatDesc));
             } else {
                 jobFlow.addTask(createFlatHiveTableStep(hiveInitStatements, jobWorkingDir, cubeName, flatDesc));
             }

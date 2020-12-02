@@ -71,6 +71,10 @@ public class BackdoorToggles {
         return map.get(key);
     }
 
+    public static String getClientInfo() {
+        return getString(DEBUG_TOGGLE_CLIENT_INFO);
+    }
+
     public static String getForceHitCube(){
         return getString(DEBUG_TOGGLE_HIT_CUBE);
     }
@@ -202,6 +206,18 @@ public class BackdoorToggles {
         }
         return props;
     }
+
+    /**
+     * set DEBUG_TOGGLE_CLIENT_INFO="app_id;host_info;trace_id..." to indicate query client info for better upstreaming tracing
+     *
+     *
+     *
+     example:(put it into request body)
+     "backdoorToggles": {
+     "DEBUG_TOGGLE_CLIENT_INFO": "app_id;host_info;trace_id..."
+     }
+     */
+    public final static String DEBUG_TOGGLE_CLIENT_INFO = "DEBUG_TOGGLE_CLIENT_INFO";
 
     /**
      * set DEBUG_TOGGLE_DISABLE_FUZZY_KEY=true to disable fuzzy key for debug/profile usage

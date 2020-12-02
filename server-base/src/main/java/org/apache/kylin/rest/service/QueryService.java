@@ -439,6 +439,10 @@ public class QueryService extends BasicService {
             boolean isQueryCacheEnabled = isQueryCacheEnabled(kylinConfig);
             logger.info("Using project: " + project);
             logger.info("The original query:  " + sql);
+            String clientInfo = BackdoorToggles.getClientInfo();
+            if (!StringUtil.isEmpty(clientInfo)) {
+                logger.info("from client: " + clientInfo);
+            }
 
             sql = QueryUtil.removeCommentInSql(sql);
 

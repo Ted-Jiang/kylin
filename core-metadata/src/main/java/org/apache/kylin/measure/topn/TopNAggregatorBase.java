@@ -18,6 +18,7 @@
 
 package org.apache.kylin.measure.topn;
 
+import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.measure.MeasureAggregator;
 
 public abstract class TopNAggregatorBase<K, T extends ITopNCounterSummary<K>> extends MeasureAggregator<T> {
@@ -35,7 +36,8 @@ public abstract class TopNAggregatorBase<K, T extends ITopNCounterSummary<K>> ex
     public void aggregate(T value) {
         if (sum == null) {
             capacity = value.getCapacity();
-            sum = getEmptyCounter(value, capacity * 10);
+            KylinConfig kylinConfig = KylinConfig.getInstanceFromEnv();
+            sum = getEmptyCounter(value, capacity * kylinConfig.getTopNCapacityFactorForQuerySum());
         }
         sum.merge(value);
     }

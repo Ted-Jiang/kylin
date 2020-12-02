@@ -526,6 +526,10 @@ public abstract class KylinConfigBase implements Serializable {
     }
 
     // MEASURE
+    public int getTopNCapacityFactorForQuerySum() {
+        return Integer.parseInt(getOptional("kylin.measure.topn-capacity-factor-query-sum", "10"));
+    }
+
     public int getTopNRetainRowCountForMerge() {
         return Integer.parseInt(getOptional("kylin.measure.topn-retain-row-count-merge", "0"));
     }

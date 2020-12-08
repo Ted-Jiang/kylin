@@ -18,6 +18,26 @@
 
 package org.apache.kylin.stream.source.kafka;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.type.MapType;
+import com.fasterxml.jackson.databind.type.SimpleType;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kylin.cube.model.CubeDesc;
+import org.apache.kylin.cube.model.CubeJoinedFlatTableDesc;
+import org.apache.kylin.dimension.TimeDerivedColumnType;
+import org.apache.kylin.metadata.model.TblColRef;
+import org.apache.kylin.shaded.com.google.common.collect.Lists;
+import org.apache.kylin.stream.core.exception.StreamingException;
+import org.apache.kylin.stream.core.model.StreamingMessage;
+import org.apache.kylin.stream.core.source.IStreamingMessageParser;
+import org.apache.kylin.stream.core.source.MessageParserInfo;
+import org.apache.kylin.stream.source.kafka.KafkaPosition.KafkaPartitionPosition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Constructor;
@@ -30,27 +50,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.TreeMap;
-
-import org.apache.commons.lang3.StringUtils;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kylin.cube.model.CubeDesc;
-import org.apache.kylin.cube.model.CubeJoinedFlatTableDesc;
-import org.apache.kylin.dimension.TimeDerivedColumnType;
-import org.apache.kylin.metadata.model.TblColRef;
-import org.apache.kylin.stream.core.exception.StreamingException;
-import org.apache.kylin.stream.core.model.StreamingMessage;
-import org.apache.kylin.stream.core.source.IStreamingMessageParser;
-import org.apache.kylin.stream.core.source.MessageParserInfo;
-import org.apache.kylin.stream.source.kafka.KafkaPosition.KafkaPartitionPosition;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.MapType;
-import com.fasterxml.jackson.databind.type.SimpleType;
-import org.apache.kylin.shaded.com.google.common.collect.Lists;
 
 /**
  * each json message with a "timestamp" field
@@ -79,7 +78,7 @@ public final class TimedJsonStreamParser implements IStreamingMessageParser<Cons
     public TimedJsonStreamParser(CubeDesc cubeDesc, MessageParserInfo parserInfo) {
         this(new CubeJoinedFlatTableDesc(cubeDesc).getAllColumns(), parserInfo);
         String timeZone = cubeDesc.getConfig().getStreamingDerivedTimeTimezone();
-        if(timeZone.length() > 0)
+        if (timeZone.length() > 0)
             timeZoneOffset = TimeZone.getTimeZone(timeZone).getRawOffset();
     }
 
@@ -109,7 +108,7 @@ public final class TimedJsonStreamParser implements IStreamingMessageParser<Cons
                             + parserInfo.getTsPattern() + ".", e);
                 }
             } else {
-                parserInfo.setTsParser("org.apache.kylin.stream.source.kafka.LongTimeParser");
+                parserInfo.setTsParser(LongTimeParser.class.getName());
                 parserInfo.setTsPattern("MS");
                 streamTimeParser = new LongTimeParser(parserInfo);
             }
@@ -170,7 +169,7 @@ public final class TimedJsonStreamParser implements IStreamingMessageParser<Cons
             }
 
             return new StreamingMessage(result, new KafkaPartitionPosition(record.partition(), record.offset()), t,
-                    Collections.<String, Object> emptyMap());
+                    Collections.<String, Object>emptyMap());
         } catch (IOException e) {
             logger.error("error", e);
             throw new RuntimeException(e);

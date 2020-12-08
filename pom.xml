@@ -449,6 +449,11 @@
       </dependency>
       <dependency>
         <groupId>org.apache.kylin</groupId>
+        <artifactId>kylin-stream-source-rheos</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.kylin</groupId>
         <artifactId>kylin-storage-stream</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -1404,6 +1409,7 @@
     <module>stream-coordinator</module>
     <module>stream-core</module>
     <module>stream-source-kafka</module>
+    <module>stream-source-rheos</module>
     <module>engine-flink</module>
   </modules>
 

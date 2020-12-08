@@ -69,6 +69,8 @@ public abstract class KylinConfigBase implements Serializable {
     private static final String MAPRFS_SCHEME = "maprfs:";
     private static final Integer DEFAULT_MR_HIVE_GLOBAL_DICT_REDUCE_NUM_PER_COLUMN = 2;
 
+    public static final String SOURCE_RHEOS_CONFIG_PREFIX = "kylin.source.rheos.";
+
     /*
      * DON'T DEFINE CONSTANTS FOR PROPERTY KEYS!
      *
@@ -253,6 +255,18 @@ public abstract class KylinConfigBase implements Serializable {
 
     public String toString() {
         return getMetadataUrl().toString();
+    }
+
+    // ============================================================================
+    // EBay specified properties
+    // ============================================================================
+
+    public String getEBaySupportKeyStoneApiKey() {
+        return getRequired("kylin.ebay.support-keystone-api-key");
+    }
+
+    public String getEBaySupportKeyStoneApiSecret() {
+        return getRequired("kylin.ebay.support-keystone-api-secret");
     }
 
     // ============================================================================
@@ -1279,6 +1293,14 @@ public abstract class KylinConfigBase implements Serializable {
 
     public Map<String, String> getKafkaConfigOverride() {
         return getPropertiesByPrefix("kylin.source.kafka.config-override.");
+    }
+
+    // ============================================================================
+    // SOURCE.RHEOS
+    // ============================================================================
+
+    public Map<String, String> getRheosConfigs() {
+        return getPropertiesByPrefix(SOURCE_RHEOS_CONFIG_PREFIX);
     }
 
     // ============================================================================

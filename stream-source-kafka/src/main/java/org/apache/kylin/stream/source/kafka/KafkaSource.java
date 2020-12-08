@@ -14,17 +14,9 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package org.apache.kylin.stream.source.kafka;
-
-import java.lang.reflect.Constructor;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import javax.annotation.Nullable;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -32,11 +24,18 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
 import org.apache.kylin.cube.CubeSegment;
 import org.apache.kylin.cube.model.CubeDesc;
+import org.apache.kylin.shaded.com.google.common.base.Function;
+import org.apache.kylin.shaded.com.google.common.collect.FluentIterable;
+import org.apache.kylin.shaded.com.google.common.collect.Lists;
+import org.apache.kylin.shaded.com.google.common.collect.MapDifference;
+import org.apache.kylin.shaded.com.google.common.collect.Maps;
+import org.apache.kylin.shaded.com.google.common.collect.Sets;
 import org.apache.kylin.stream.core.consumer.ConsumerStartMode;
 import org.apache.kylin.stream.core.consumer.ConsumerStartProtocol;
 import org.apache.kylin.stream.core.consumer.IStreamingConnector;
@@ -56,19 +55,20 @@ import org.apache.kylin.stream.source.kafka.consumer.KafkaConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.kylin.shaded.com.google.common.base.Function;
-import org.apache.kylin.shaded.com.google.common.collect.FluentIterable;
-import org.apache.kylin.shaded.com.google.common.collect.Lists;
-import org.apache.kylin.shaded.com.google.common.collect.MapDifference;
-import org.apache.kylin.shaded.com.google.common.collect.Maps;
-import org.apache.kylin.shaded.com.google.common.collect.Sets;
+import javax.annotation.Nullable;
+import java.lang.reflect.Constructor;
+import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class KafkaSource implements IStreamingSource {
-    public static final String PROP_TOPIC = "topic";
+    public static final String PROP_TOPIC = "topicName";
     public static final String PROP_BOOTSTRAP_SERVERS = "bootstrap.servers";
     public static final String PROP_MESSAGE_PARSER = "message.parser";
     private static final Logger logger = LoggerFactory.getLogger(KafkaSource.class);
-    private static final String DEF_MSSAGE_PARSER_CLAZZ = "org.apache.kylin.stream.source.kafka.TimedJsonStreamParser";
+    private static final String DEF_MSSAGE_PARSER_CLAZZ = TimedJsonStreamParser.class.getName();
 
 
     @Override
@@ -124,7 +124,7 @@ public class KafkaSource implements IStreamingSource {
                 return null;
             }
             ConsumerRecord<byte[], byte[]> record = iterator.next();
-            template = new String(record.value(), "UTF8");
+            template = new String(record.value(), StandardCharsets.UTF_8);
         } catch (Exception e) {
             logger.error("error when fetch one record from kafka, stream:" + streamingSourceConfig.getName(), e);
         } finally {
@@ -137,7 +137,7 @@ public class KafkaSource implements IStreamingSource {
 
     @Override
     public IStreamingConnector createStreamingConnector(String cubeName, List<Partition> assignedPartitions,
-            ConsumerStartProtocol startProtocol, StreamingSegmentManager streamingSegmentManager) {
+                                                        ConsumerStartProtocol startProtocol, StreamingSegmentManager streamingSegmentManager) {
         logger.info("Create StreamingConnector for Cube {}, assignedPartitions {}, startProtocol {}", cubeName,
                 assignedPartitions, startProtocol);
         try {
@@ -219,7 +219,7 @@ public class KafkaSource implements IStreamingSource {
         if (isEmptyPosition(localCPPosition) && !isEmptyPosition(remoteCPPosition)) {
             consumerStartPos = remoteCPPosition;
         } else if (isEmptyPosition(remoteCPPosition) && !isEmptyPosition(localCPPosition)) {
-            consumerStartPos = (KafkaPosition)localCPPosition.advance();
+            consumerStartPos = (KafkaPosition) localCPPosition.advance();
         } else {
             Map<Integer, Long> mergedStartOffsets = Maps.newHashMap();
             MapDifference<Integer, Long> statsDiff = Maps.difference(localCPPosition.getPartitionOffsets(), remoteCPPosition.getPartitionOffsets());
@@ -244,26 +244,23 @@ public class KafkaSource implements IStreamingSource {
         return kafkaPosition == null || kafkaPosition.getPartitionOffsets().isEmpty();
     }
 
-    public static Map<String, Object> getKafkaConf(Map<String, String> sourceProperties, KylinConfig kylinConfig) {
+    protected Map<String, Object> getKafkaConf(Map<String, String> sourceProperties, KylinConfig kylinConfig) {
         Map<String, String> kafkaConfigOverride = kylinConfig.getKafkaConfigOverride();
         Map<String, Object> kafkaConf = getKafkaConf(sourceProperties);
         kafkaConf.putAll(kafkaConfigOverride);
 
         return kafkaConf;
-        //return getKafkaConf(sourceProperties);
     }
 
-    public static Map<String, Object> getKafkaConf(Map<String, String> sourceProperties) {
+    protected Map<String, Object> getKafkaConf(Map<String, String> sourceProperties) {
         Map<String, Object> conf = Maps.newHashMap();
         String bootstrapServersString = getBootstrapServers(sourceProperties);
         conf.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServersString);
         conf.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
         conf.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, String.valueOf(20000));
         conf.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, String.valueOf(30000));
-        conf.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-                "org.apache.kafka.common.serialization.ByteArrayDeserializer");
-        conf.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                "org.apache.kafka.common.serialization.ByteArrayDeserializer");
+        conf.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+        conf.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
 
         return conf;
     }

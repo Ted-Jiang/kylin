@@ -19,15 +19,18 @@
 package org.apache.kylin.dict.lookup;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.persistence.ResourceStore;
 import org.apache.kylin.common.persistence.WriteConflictException;
+import org.apache.kylin.dict.TrieDictionary;
 import org.apache.kylin.metadata.TableMetadataManager;
 import org.apache.kylin.metadata.model.TableDesc;
 import org.apache.kylin.source.IReadableTable;
@@ -283,5 +286,27 @@ public class SnapshotManager {
 
     private ResourceStore getStore() {
         return ResourceStore.getStore(this.config);
+    }
+
+    public long getDictCacheSizeMB() {
+        HashMap<String, SnapshotTable> copyMap = new HashMap<>(snapshotCache.asMap());
+        long cacheSize = 0L;
+        for (SnapshotTable info : copyMap.values()) {
+            if (info.getDict() instanceof TrieDictionary) {
+                TrieDictionary<String> dict = (TrieDictionary<String>) info.getDict();
+                cacheSize += dict.getStorageSizeInBytes();
+            }
+        }
+        long cacheSizeMB = cacheSize >> 20;
+        return cacheSizeMB;
+    }
+
+    public long getDictCacheNum() {
+        ConcurrentMap<String, SnapshotTable> concurrentMap = snapshotCache.asMap();
+        return Long.valueOf(concurrentMap.size());
+    }
+
+    public long getEvictNumber() {
+        return snapshotCache.stats().evictionCount();
     }
 }

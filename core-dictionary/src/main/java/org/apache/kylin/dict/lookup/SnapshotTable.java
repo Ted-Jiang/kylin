@@ -74,6 +74,10 @@ public class SnapshotTable extends RootPersistentEntity implements IReadableTabl
         this.useDictionary = true;
     }
 
+    public Dictionary<String> getDict(){
+        return this.dict;
+    }
+
     public long getLastBuildTime() {
         return lastBuildTime;
     }

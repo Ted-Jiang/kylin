@@ -97,4 +97,8 @@
         </property>
     </bean>
 
+    <bean id="initPushGateWay" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetClass" value="org.apache.kylin.metrics.lib.impl.prometheus.pushGateway.PushGatewayServiceSink"/>
+        <property name="targetMethod" value="initPushGateWay"/>
+    </bean>
 </beans>

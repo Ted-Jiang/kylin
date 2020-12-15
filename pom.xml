@@ -79,7 +79,7 @@
     <kafka.version>2.1.1</kafka.version>
 
     <!-- Prometheus versions -->
-    <prometheus.version>0.0.21</prometheus.version>
+    <prometheus.version>0.6.0</prometheus.version>
 
     <!-- Spark versions -->
     <spark.version>2.4.5</spark.version>

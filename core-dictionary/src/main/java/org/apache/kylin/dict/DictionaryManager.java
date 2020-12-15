@@ -19,8 +19,10 @@
 package org.apache.kylin.dict;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.NavigableSet;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -64,6 +66,28 @@ public class DictionaryManager {
 
     private KylinConfig config;
     private LoadingCache<String, DictionaryInfo> dictCache; // resource
+
+    public long getDictCacheSizeMB() {
+        HashMap<String, DictionaryInfo> copyMap = new HashMap<>(dictCache.asMap());
+        long cacheSize = 0L;
+        for (DictionaryInfo info : copyMap.values()) {
+            if (info.dictionaryObject instanceof TrieDictionary) {
+                TrieDictionary<String> dict = (TrieDictionary<String>) info.dictionaryObject;
+                cacheSize += dict.getStorageSizeInBytes();
+            }
+        }
+        long cacheSizeMB = cacheSize >> 20;
+        return cacheSizeMB;
+    }
+
+    public long getDictCacheNum() {
+        ConcurrentMap<String, DictionaryInfo> concurrentMap = dictCache.asMap();
+        return Long.valueOf(concurrentMap.size());
+    }
+
+    public long getEvictNumber() {
+        return dictCache.stats().evictionCount();
+    }
 
     private DictionaryManager(KylinConfig config) {
         this.config = config;

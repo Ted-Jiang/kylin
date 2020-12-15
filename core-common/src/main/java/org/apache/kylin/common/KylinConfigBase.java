@@ -2510,6 +2510,27 @@ public abstract class KylinConfigBase implements Serializable {
         return Integer.parseInt(val);
     }
 
+    public boolean isKylinMetricsPushGatewayEnabled() {
+        return Boolean.parseBoolean(getOptional("kylin.metrics.pushgateway-enable", "false"));
+    }
+
+    public String getKylinMetricsPushGatewayEndpoint() {
+        return getOptional("kylin.metrics.pushgateway-endpoint", null);
+    }
+
+    public int getKylinMetricsPushGatewayPeriod() {
+        String val = getOptional("kylin.metrics.pushgateway-period", "60000");
+        return Integer.parseInt(val);
+    }
+
+    public String getKylinMetricsPushGatewayJobName() {
+        return getOptional("kylin.metrics.pushgateway-job-name", "kylin-gateway");
+    }
+
+    public boolean isFailEmailInKylinMetricsPushGatewayEnable() {
+        return Boolean.parseBoolean(getOptional("kylin.metrics.pushgateway-email-enable", "false"));
+    }
+
     // ============================================================================
     // CUBE MIGRATION
     // ============================================================================

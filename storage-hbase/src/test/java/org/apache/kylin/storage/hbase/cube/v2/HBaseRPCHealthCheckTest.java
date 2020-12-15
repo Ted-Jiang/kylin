@@ -45,17 +45,19 @@ public class HBaseRPCHealthCheckTest extends LocalFileMetadataTestCase {
     public void testFormatEmail() {
         QueryContext queryContext = QueryContextFacade.startQuery("testProject", "select count(*) from testTable",
                 "unittest");
-        Span epRangeSpan = queryContext.startEPRangeQuerySpan("testRange", "testCube", "testSegment", "testHTable", 111,
-                11111, "no");
-        Span regionRPCSpan = queryContext.startRegionRPCSpan("testRegionServer", epRangeSpan);
+        Span epRangeSpan = queryContext.startEPRangeSpan("testRange", "testCube", "testSegment");
+        Span epRangeRequestSpan = queryContext.startEPRangeQuerySpan("testRange", "testCube", "testSegment", "testHTable", 111,
+                11111, "no", epRangeSpan);
+        Span regionRPCSpan = queryContext.startRegionRPCSpan("testRegionServer", epRangeRequestSpan);
         try {
             Thread.sleep(5000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
         regionRPCSpan.finish();
+        epRangeRequestSpan.finish();
         epRangeSpan.finish();
-        Pair<String, String> result = HBaseRPCHealthCheck.formatNotifications(queryContext, epRangeSpan, regionRPCSpan,
+        Pair<String, String> result = HBaseRPCHealthCheck.formatNotifications(queryContext, epRangeRequestSpan, regionRPCSpan,
                 "slow region detected.", "WARN");
         Assert.assertEquals(result.getFirst(), "[QUERY ALERT]-[WARN]-[DEV]-[testProject]-[testCube]");
         System.out.println(result.getSecond());

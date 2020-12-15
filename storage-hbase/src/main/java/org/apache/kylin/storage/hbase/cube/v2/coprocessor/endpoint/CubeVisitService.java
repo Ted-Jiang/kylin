@@ -149,16 +149,18 @@ public class CubeVisitService extends CubeVisitProtos.CubeVisitService implement
         private final long rowCountLimit;
         private final long bytesLimit;
         private final long deadline;
+        private final long maxCpuTime;
 
         private long rowCount;
         private long rowBytes;
 
         ResourceTrackingCellListIterator(Iterator<List<Cell>> delegate, long rowCountLimit, long bytesLimit,
-                long deadline) {
+                long deadline, long maxCpuTime) {
             this.delegate = delegate;
             this.rowCountLimit = rowCountLimit;
             this.bytesLimit = bytesLimit;
             this.deadline = deadline;
+            this.maxCpuTime = maxCpuTime;
         }
 
         @Override
@@ -172,6 +174,12 @@ public class CubeVisitService extends CubeVisitProtos.CubeVisitService implement
             }
             if ((rowCount % GTScanRequest.terminateCheckInterval == 0) && System.currentTimeMillis() > deadline) {
                 throw new KylinTimeoutException("coprocessor timeout after scanning " + rowCount + " rows");
+            }
+            ThreadMXBean tdMXBean = ManagementFactory.getThreadMXBean();
+            if (rowCount % 1000000L == 0) {
+                if (tdMXBean.getCurrentThreadCpuTime() > maxCpuTime) {
+                    throw new ResourceLimitExceededException("Thread cpu time exceeds threshold after scanning " + rowCount + " rows");
+                }
             }
             return delegate.hasNext();
         }
@@ -265,7 +273,8 @@ public class CubeVisitService extends CubeVisitProtos.CubeVisitService implement
             final GTScanRequest scanReq = GTScanRequest.serializer
                     .deserialize(ByteBuffer.wrap(HBaseZeroCopyByteString.zeroCopyGetBytes(request.getGtScanRequest())));
             scanReq.setNeedServerSidePostAggregation(kylinConfig.needServerSidePostAggregation());
-            final long deadline = scanReq.getStartTime() + scanReq.getTimeout();
+            // It's timeout for coprocessor processing
+            final long deadline = System.currentTimeMillis() + scanReq.getTimeout();
             checkDeadline(deadline);
 
             List<List<Integer>> hbaseColumnsToGT = Lists.newArrayList();
@@ -279,6 +288,8 @@ public class CubeVisitService extends CubeVisitProtos.CubeVisitService implement
             appendProfileInfo(sb, "start latency: " + (serviceStartTime - scanReq.getStartTime()), serviceStartTime);
 
             final long serviceStartCpuTime = tdMXBean.getCurrentThreadCpuTime();
+            final long serviceMaxCpuTime = serviceStartCpuTime + kylinConfig.getPartitionMaxCostCpuTimeMs() * 1000000L;
+
             final List<InnerScannerAsIterator> cellListsForeachRawScan = Lists.newArrayList();
 
             for (RawScan hbaseRawScan : hbaseRawScans) {
@@ -319,7 +330,7 @@ public class CubeVisitService extends CubeVisitProtos.CubeVisitService implement
             ResourceTrackingCellListIterator cellListIterator = new ResourceTrackingCellListIterator(allCellLists,
                     scanReq.getStorageScanRowNumThreshold(), // for old client (scan threshold)
                     !request.hasMaxScanBytes() ? Long.MAX_VALUE : request.getMaxScanBytes(), // for new client
-                    deadline);
+                    deadline, serviceMaxCpuTime);
 
             IGTStore store = new HBaseReadonlyStore(cellListIterator, scanReq, hbaseRawScans.get(0).hbaseColumns,
                     hbaseColumnsToGT, request.getRowkeyPreambleSize(), behavior.delayToggledOn(),
@@ -337,6 +348,12 @@ public class CubeVisitService extends CubeVisitProtos.CubeVisitService implement
             try {
                 long maxReturnBytes = request.hasMaxReturnBytes() ? request.getMaxReturnBytes() : Long.MAX_VALUE;
                 for (GTRecord oneRecord : finalScanner) {
+                    if (finalRowCount % 100000L == 0) {
+                        if (tdMXBean.getCurrentThreadCpuTime() > serviceMaxCpuTime) {
+                            throw new ResourceLimitExceededException("Thread cpu time exceeds threshold after retrieving " + finalRowCount + " rows");
+                        }
+                    }
+
                     int outputSize = outputStream.size();
                     if (outputSize > maxReturnBytes) {
                         throw new ResourceLimitExceededException("return row size exceeds threshold " + outputSize);
@@ -418,8 +435,7 @@ public class CubeVisitService extends CubeVisitProtos.CubeVisitService implement
             appendProfileInfo(sb, "compress done", serviceStartTime);
             logger.info("Size of final result = {} ({} before compressing)", compressedAllRows.length, allRows.length);
 
-            OperatingSystemMXBean operatingSystemMXBean = (OperatingSystemMXBean) ManagementFactory
-                    .getOperatingSystemMXBean();
+            OperatingSystemMXBean operatingSystemMXBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
             double systemCpuLoad = operatingSystemMXBean.getSystemCpuLoad();
             double freePhysicalMemorySize = operatingSystemMXBean.getFreePhysicalMemorySize();
             double freeSwapSpaceSize = operatingSystemMXBean.getFreeSwapSpaceSize();
@@ -439,7 +455,7 @@ public class CubeVisitService extends CubeVisitProtos.CubeVisitService implement
                             .setScannedBytes(cellListIterator.getTotalScannedRowBytes())
                             .setServiceStartTime(serviceStartTime).setServiceEndTime(System.currentTimeMillis())
                             .setSystemCpuLoad(systemCpuLoad).setFreePhysicalMemorySize(freePhysicalMemorySize)
-                            .setFreeSwapSpaceSize(freeSwapSpaceSize)
+                            .setFreeSwapSpaceSize(freeSwapSpaceSize).setCostCpuTime(cpuTime)
                             .setHostname(InetAddress.getLocalHost().getHostName()).setEtcMsg(sb.toString())
                             .setNormalComplete(errorInfo == null ? 1 : 0).build())
                     .build());

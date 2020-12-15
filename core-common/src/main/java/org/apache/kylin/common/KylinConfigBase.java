@@ -1466,6 +1466,14 @@ public abstract class KylinConfigBase implements Serializable {
                 this.getOptional("kylin.storage.partition.max-return-bytes", String.valueOf(3L * 1024 * 1024 * 1024)));
         return value > 0 ? value : Long.MAX_VALUE;
     }
+
+    public long getPartitionMaxCostCpuTimeMs() {
+        return Long.parseLong(this.getOptional("kylin.storage.partition.max-cost-cpu-time", "300000"));
+    }
+
+    public long getQueryCoprocessorMaxCostCpuTimeMs() {
+        return Long.parseLong(this.getOptional("kylin.storage.hbase.coprocessor-max-cost-cpu-time", "30000000"));
+    }
     
     public int getQueryCoprocessorTimeoutSeconds() {
         return Integer.parseInt(this.getOptional("kylin.storage.hbase.coprocessor-timeout-seconds", "0"));

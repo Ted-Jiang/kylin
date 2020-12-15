@@ -18,6 +18,11 @@
 
 package org.apache.kylin.common;
 
+import com.google.common.util.concurrent.ListenableFutureTask;
+import com.google.common.util.concurrent.MoreExecutors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.Callable;
@@ -25,12 +30,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.util.concurrent.ListenableFutureTask;
-import com.google.common.util.concurrent.MoreExecutors;
 
 public class SubThreadPoolExecutor extends AbstractExecutorService {
 
@@ -48,6 +47,10 @@ public class SubThreadPoolExecutor extends AbstractExecutorService {
         this.impl = impl;
         this.subject = subject;
         this.semaphore = new Semaphore(maxThreads);
+    }
+
+    public boolean hasQueuedThreads() {
+        return semaphore.hasQueuedThreads();
     }
 
     // Obtain a thread resource. If no resources, block it

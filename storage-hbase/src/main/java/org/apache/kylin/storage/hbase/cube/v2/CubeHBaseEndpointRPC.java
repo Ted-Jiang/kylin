@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.DataFormatException;
@@ -232,6 +233,8 @@ public class CubeHBaseEndpointRPC extends CubeHBaseRPC {
             Properties kylinProperties = new Properties();
             kylinProperties.setProperty("kylin.storage.hbase.endpoint-compress-result",
                     String.valueOf(compressionResult));
+            kylinProperties.setProperty("kylin.storage.partition.max-cost-cpu-time",
+                    String.valueOf(kylinConfig.getPartitionMaxCostCpuTimeMs()));
             kylinProperties.setProperty("kylin.query.need-server-side-post-aggregation",
                     String.valueOf(scanRequest.isNeedServerSidePostAggregation()));
             kylinProperties.setProperty("kylin.measure.topn-capacity-factor-query-sum", String.valueOf(topNCapacityFactorForQuerySum));
@@ -303,28 +306,65 @@ public class CubeHBaseEndpointRPC extends CubeHBaseRPC {
 
         final String logHeader = String.format(Locale.ROOT, "<sub-thread for Query %s GTScanRequest %s>",
                 queryContext.getQueryId(), Integer.toHexString(System.identityHashCode(scanRequest)));
+        ExecutorService projThreadPool;
+        try {
+            projThreadPool = projectThreadPoolMap.get(queryContext.getProject().toUpperCase(Locale.ROOT));
+        } catch (ExecutionException e) {
+            throw new RuntimeException("Fail to get ExecutorService for project " + queryContext.getProject() + " due to ", e);
+        }
+        SubThreadPoolExecutor queryThreadPool = queryContext.getConnectionPool(projThreadPool);
         for (final Pair<byte[], byte[]> epRange : getEPKeyRanges(cuboidBaseShard, shardNum, totalShards)) {
+            String range = BytesUtil.toHex(epRange.getFirst()) + "-" + BytesUtil.toHex(epRange.getSecond());
+            final Span epRangeSpan = queryContext.startEPRangeSpan(range, cubeSeg.getCubeInstance().getName(), cubeSeg.getName());
+            final Span epRangeWaitSpan = queryContext.startEPRangeWaitSpan(epRangeSpan);
+            try {
+                long sleepTime = 100L;
+                boolean ifLogged = false;
+                while (!queryContext.isStopped() && queryThreadPool.hasQueuedThreads()) {
+                    if (!ifLogged) {
+                        logger.info("The rpc thread pool for query is full. Will sleep {}ms", sleepTime);
+                        ifLogged = true;
+                    }
+                    try {
+                        Thread.sleep(sleepTime);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    sleepTime += 100L;
+                    if (sleepTime > 1000L) {
+                        sleepTime = 1000L;
+                    }
+                }
+            } finally {
+                epRangeWaitSpan.finish();
+            }
+            if (queryContext.isStopped()) {
+                epRangeSpan.finish();
+                throw new RuntimeException("Query has been stopped");
+            }
             executorService.submit(new Runnable() {
                 @Override
                 public void run() {
                     runEPRange(queryContext, logHeader, compressionResult, builder.build(), epRange.getFirst(),
                             epRange.getSecond(), epResultItr, fuzzyKeySizeStr, querySegmentCacheEnabled,
-                            segmentQueryResultBuilder, segmentQueryCacheKey);
+                            segmentQueryResultBuilder, segmentQueryCacheKey, epRangeSpan);
                 }
             });
         }
+
 
         return new StorageResponseGTScatter(scanRequest, new DummyPartitionStreamer(epResultItr), storageContext);
     }
 
     private void runEPRange(final QueryContext queryContext, final String logHeader, final boolean compressionResult,
-            final CubeVisitProtos.CubeVisitRequest request, byte[] startKey, byte[] endKey,
-            final ExpectedSizeIterator epResultItr, String fuzzyKeySizeStr, final boolean querySegmentCacheEnabled,
-            final SegmentQueryResult.Builder segmentQueryResultBuilder, final String segmentQueryCacheKey) {
+                            final CubeVisitProtos.CubeVisitRequest request, byte[] startKey, byte[] endKey,
+                            final ExpectedSizeIterator epResultItr, String fuzzyKeySizeStr, final boolean querySegmentCacheEnabled,
+                            final SegmentQueryResult.Builder segmentQueryResultBuilder, final String segmentQueryCacheKey,
+                            final Span epRangeSpan) {
         String range = BytesUtil.toHex(startKey) + "-" + BytesUtil.toHex(endKey);
-        final Span epRangeSpan = queryContext.startEPRangeQuerySpan(range, cubeSeg.getCubeInstance().getName(),
+        final Span epRangeRequestSpan = queryContext.startEPRangeQuerySpan(range, cubeSeg.getCubeInstance().getName(),
                 cubeSeg.getName(), cubeSeg.getStorageLocationIdentifier(), cuboid.getInputID(), cuboid.getId(),
-                fuzzyKeySizeStr);
+                fuzzyKeySizeStr, epRangeSpan);
 
         final String queryId = queryContext.getQueryId();
 
@@ -370,7 +410,7 @@ public class CubeHBaseEndpointRPC extends CubeHBaseRPC {
                             ServerRpcController controller = new ServerRpcController();
                             BlockingRpcCallback<CubeVisitResponse> rpcCallback = new BlockingRpcCallback<>();
 
-                            final Span regionRPCSpan = queryContext.startRegionRPCSpan(regionServerName, epRangeSpan);
+                            final Span regionRPCSpan = queryContext.startRegionRPCSpan(regionServerName, epRangeRequestSpan);
                             CubeVisitResponse response = null;
                             try {
                                 rowsService.visitCube(controller, request, rpcCallback);
@@ -422,6 +462,11 @@ public class CubeHBaseEndpointRPC extends CubeHBaseRPC {
                             return null;
                         }
                     }, new Batch.Callback<CubeVisitResponse>() {
+                        private void failOnRpcException(Span regionRPCSpan, RuntimeException rpcException) {
+                            queryContext.stop(rpcException);
+                            alertException(epRangeRequestSpan, regionRPCSpan, rpcException);
+                        }
+
                         @Override
                         public void update(byte[] region, byte[] row, CubeVisitResponse result) {
                             if (result == null) {
@@ -444,11 +489,14 @@ public class CubeHBaseEndpointRPC extends CubeHBaseRPC {
 
                             logger.debug(logHeader + getStatsString(region, result));
 
+                            Span regionRPCSpan = regionRPCSpanMap.get(result);
+
                             Stats stats = result.getStats();
                             queryContext.addAndGetScannedRows(stats.getScannedRowCount());
                             queryContext.addAndGetScannedBytes(stats.getScannedBytes());
                             queryContext.addAndGetReturnedRows(stats.getScannedRowCount()
                                     - stats.getAggregatedRowCount() - stats.getFilteredRowCount());
+                            queryContext.addAndGetCostCpuTime(stats.getCostCpuTime());
 
                             RuntimeException rpcException = null;
                             if (result.getStats().getNormalComplete() != 1) {
@@ -464,35 +512,46 @@ public class CubeHBaseEndpointRPC extends CubeHBaseRPC {
                                             - stats.getFilteredRowCount(),
                                     stats.getAggregatedRowCount(), stats.getScannedBytes());
 
-                            byte[] rawData = HBaseZeroCopyByteString.zeroCopyGetBytes(result.getCompressedRows());
-                            byte[] queueData = rawData;
-                            if (queryContext.getScannedBytes() > cubeSeg.getConfig().getQueryMaxScanBytes()) {
+                            if (rpcException != null) {
+                                failOnRpcException(regionRPCSpan, rpcException);
+                                return;
+                            }
+
+                            // Check the overall threshold
+                            if (queryContext.getCostCpuTime() > cubeSeg.getConfig().getQueryCoprocessorMaxCostCpuTimeMs()) {
+                                rpcException = new ResourceLimitExceededException(
+                                        "Query cost cpu time " + queryContext.getCostCpuTime() + "ms exceeds threshold "
+                                                + cubeSeg.getConfig().getQueryCoprocessorMaxCostCpuTimeMs());
+                                failOnRpcException(regionRPCSpan, rpcException);
+                                return;
+                            } else if (queryContext.getScannedBytes() > cubeSeg.getConfig().getQueryMaxScanBytes()) {
                                 rpcException = new ResourceLimitExceededException(
                                         "Query scanned " + queryContext.getScannedBytes() + " bytes exceeds threshold "
                                                 + cubeSeg.getConfig().getQueryMaxScanBytes());
-                            } else {
-                                try {
-                                    if (compressionResult) {
-                                        queueData = CompressionUtils.decompress(rawData);
-                                    }
-                                } catch (IOException | DataFormatException e) {
-                                    throw new RuntimeException(logHeader + "Error when decompressing", e);
-                                }
-                                if (queryContext.addAndGetReturnedBytes(queueData.length) > cubeSeg.getConfig()
-                                        .getQueryMaxReturnBytes()) {
-                                    rpcException = new ResourceLimitExceededException("Query returned "
-                                            + queryContext.getReturnedBytes() + " bytes exceeds threshold "
-                                            + cubeSeg.getConfig().getQueryMaxReturnBytes());
-                                }
-                            }
-
-                            Span regionRPCSpan = regionRPCSpanMap.get(result);
-                            if (rpcException != null) {
-                                queryContext.stop(rpcException);
-                                alertException(epRangeSpan, regionRPCSpan, rpcException);
+                                failOnRpcException(regionRPCSpan, rpcException);
                                 return;
                             }
-                            alertSlowRegion(epRangeSpan, regionRPCSpan, stats, rpcRequestSubmitTime, fastest);
+
+                            byte[] rawData = HBaseZeroCopyByteString.zeroCopyGetBytes(result.getCompressedRows());
+                            byte[] queueData = rawData;
+                            try {
+                                if (compressionResult) {
+                                    queueData = CompressionUtils.decompress(rawData);
+                                }
+                            } catch (IOException | DataFormatException e) {
+                                throw new RuntimeException(logHeader + "Error when decompressing", e);
+                            }
+                            if (queryContext.addAndGetReturnedBytes(queueData.length) > cubeSeg.getConfig()
+                                    .getQueryMaxReturnBytes()) {
+                                rpcException = new ResourceLimitExceededException("Query returned "
+                                        + queryContext.getReturnedBytes() + " bytes exceeds threshold "
+                                        + cubeSeg.getConfig().getQueryMaxReturnBytes());
+
+                                failOnRpcException(regionRPCSpan, rpcException);
+                                return;
+                            }
+
+                            alertSlowRegion(epRangeRequestSpan, regionRPCSpan, stats, rpcRequestSubmitTime, fastest);
 
                             epResultItr.append(queueData);
                             // put segment query result to cache if cache is enabled
@@ -526,6 +585,7 @@ public class CubeHBaseEndpointRPC extends CubeHBaseRPC {
         } catch (Throwable ex) {
             queryContext.stop(ex);
         } finally {
+            epRangeRequestSpan.finish();
             epRangeSpan.finish();
         }
 

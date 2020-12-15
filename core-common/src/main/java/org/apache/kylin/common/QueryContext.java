@@ -72,6 +72,7 @@ public class QueryContext {
     private AtomicLong returnedRows = new AtomicLong();
     private AtomicLong scannedBytes = new AtomicLong();
     private AtomicLong returnedBytes = new AtomicLong();
+    private AtomicLong costCpuTime = new AtomicLong();
     private Object calcitePlan;
 
     private AtomicBoolean isRunning = new AtomicBoolean(true);
@@ -84,7 +85,7 @@ public class QueryContext {
 
     private ConcurrentMap<String, Boolean> isAlreadyAlert = Maps.newConcurrentMap();
 
-    private ExecutorService connPool;
+    private SubThreadPoolExecutor connPool;
 
     QueryContext(String projectName, String sql, String user, int maxConnThreads) {
         this(projectName, sql, user, maxConnThreads, System.currentTimeMillis());
@@ -106,7 +107,7 @@ public class QueryContext {
         rootSpan.setTag(TagEnum.SUBMITTER.toString(), user);
     }
 
-    public ExecutorService getConnectionPool(ExecutorService sharedConnPool) {
+    public SubThreadPoolExecutor getConnectionPool(ExecutorService sharedConnPool) {
         if (connPool != null) {
             return connPool;
         }
@@ -201,6 +202,14 @@ public class QueryContext {
         return returnedBytes.addAndGet(deltaBytes);
     }
 
+    public long getCostCpuTime() {
+        return costCpuTime.get();
+    }
+
+    public long addAndGetCostCpuTime(long deltaCostCpuTime) {
+        return costCpuTime.addAndGet(deltaCostCpuTime);
+    }
+
     public void addQueryStopListener(QueryStopListener listener) {
         this.stopListeners.add(listener);
     }
@@ -277,9 +286,22 @@ public class QueryContext {
         return span;
     }
 
+    public Span startEPRangeSpan(String range, String cubeName, String segmentName) {
+        Span span = tracer.startSpan(OperationEum.ENDPOINT_RANGE_STEP, rootSpan);
+        span.setTag(TagEnum.EPRANGE.toString(), range);
+        span.setTag(TagEnum.CUBE.toString(), cubeName);
+        span.setTag(TagEnum.SEGMENT.toString(), segmentName);
+        return span;
+    }
+
+    public Span startEPRangeWaitSpan(Span epRangeSpan) {
+        Span span = tracer.startSpan(OperationEum.ENDPOINT_RANGE_WAIT, epRangeSpan);
+        return span;
+    }
+
     public Span startEPRangeQuerySpan(String range, String cubeName, String segmentName, String table, long sourceId,
-            long targetId, String fuzzyKeySizeStr) {
-        Span span = tracer.startSpan(OperationEum.ENDPOINT_RANGE_REQUEST, rootSpan);
+                                      long targetId, String fuzzyKeySizeStr, Span epRangeSpan) {
+        Span span = tracer.startSpan(OperationEum.ENDPOINT_RANGE_REQUEST, epRangeSpan);
         span.setTag(TagEnum.EPRANGE.toString(), range);
         span.setTag(TagEnum.CUBE.toString(), cubeName);
         span.setTag(TagEnum.SEGMENT.toString(), segmentName);

@@ -30,6 +30,8 @@ public class TracerConstants {
         SQL_PARSE_STEP("parse_sql"), //
         QUERY_PLAN_STEP("query_plan"), //
         FETCH_SEGMENT_CACHE_STEP("fetch_segment_cache"), //
+        ENDPOINT_RANGE_STEP("endpoint_range"), //
+        ENDPOINT_RANGE_WAIT("endpoint_range_wait"), //
         ENDPOINT_RANGE_REQUEST("endpoint_range_request"), //
         REGION_SERVER_RPC("region_server_rpc"), //
         STREAMING_RECEIVER_REQUEST("streaming_receiver_request") //

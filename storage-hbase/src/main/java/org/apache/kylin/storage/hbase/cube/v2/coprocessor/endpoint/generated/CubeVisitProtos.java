@@ -642,6 +642,8 @@ public final class CubeVisitProtos {
           maybeForceBuilderInitialization();
         }
         private void maybeForceBuilderInitialization() {
+          if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+          }
         }
         private static Builder create() {
           return new Builder();
@@ -2729,6 +2731,16 @@ public final class CubeVisitProtos {
        * <code>optional int64 filteredRowCount = 12;</code>
        */
       long getFilteredRowCount();
+
+      // optional int64 costCpuTime = 13;
+      /**
+       * <code>optional int64 costCpuTime = 13;</code>
+       */
+      boolean hasCostCpuTime();
+      /**
+       * <code>optional int64 costCpuTime = 13;</code>
+       */
+      long getCostCpuTime();
     }
     /**
      * Protobuf type {@code CubeVisitResponse.Stats}
@@ -2839,6 +2851,11 @@ public final class CubeVisitProtos {
               case 96: {
                 bitField0_ |= 0x00000800;
                 filteredRowCount_ = input.readInt64();
+                break;
+              }
+              case 104: {
+                bitField0_ |= 0x00001000;
+                costCpuTime_ = input.readInt64();
                 break;
               }
             }
@@ -3127,6 +3144,22 @@ public final class CubeVisitProtos {
         return filteredRowCount_;
       }
 
+      // optional int64 costCpuTime = 13;
+      public static final int COSTCPUTIME_FIELD_NUMBER = 13;
+      private long costCpuTime_;
+      /**
+       * <code>optional int64 costCpuTime = 13;</code>
+       */
+      public boolean hasCostCpuTime() {
+        return ((bitField0_ & 0x00001000) == 0x00001000);
+      }
+      /**
+       * <code>optional int64 costCpuTime = 13;</code>
+       */
+      public long getCostCpuTime() {
+        return costCpuTime_;
+      }
+
       private void initFields() {
         serviceStartTime_ = 0L;
         serviceEndTime_ = 0L;
@@ -3140,6 +3173,7 @@ public final class CubeVisitProtos {
         normalComplete_ = 0;
         scannedBytes_ = 0L;
         filteredRowCount_ = 0L;
+        costCpuTime_ = 0L;
       }
       private byte memoizedIsInitialized = -1;
       public final boolean isInitialized() {
@@ -3188,6 +3222,9 @@ public final class CubeVisitProtos {
         }
         if (((bitField0_ & 0x00000800) == 0x00000800)) {
           output.writeInt64(12, filteredRowCount_);
+        }
+        if (((bitField0_ & 0x00001000) == 0x00001000)) {
+          output.writeInt64(13, costCpuTime_);
         }
         getUnknownFields().writeTo(output);
       }
@@ -3245,6 +3282,10 @@ public final class CubeVisitProtos {
         if (((bitField0_ & 0x00000800) == 0x00000800)) {
           size += com.google.protobuf.CodedOutputStream
             .computeInt64Size(12, filteredRowCount_);
+        }
+        if (((bitField0_ & 0x00001000) == 0x00001000)) {
+          size += com.google.protobuf.CodedOutputStream
+            .computeInt64Size(13, costCpuTime_);
         }
         size += getUnknownFields().getSerializedSize();
         memoizedSerializedSize = size;
@@ -3326,6 +3367,11 @@ public final class CubeVisitProtos {
           result = result && (getFilteredRowCount()
               == other.getFilteredRowCount());
         }
+        result = result && (hasCostCpuTime() == other.hasCostCpuTime());
+        if (hasCostCpuTime()) {
+          result = result && (getCostCpuTime()
+              == other.getCostCpuTime());
+        }
         result = result &&
             getUnknownFields().equals(other.getUnknownFields());
         return result;
@@ -3389,6 +3435,10 @@ public final class CubeVisitProtos {
         if (hasFilteredRowCount()) {
           hash = (37 * hash) + FILTEREDROWCOUNT_FIELD_NUMBER;
           hash = (53 * hash) + hashLong(getFilteredRowCount());
+        }
+        if (hasCostCpuTime()) {
+          hash = (37 * hash) + COSTCPUTIME_FIELD_NUMBER;
+          hash = (53 * hash) + hashLong(getCostCpuTime());
         }
         hash = (29 * hash) + getUnknownFields().hashCode();
         memoizedHashCode = hash;
@@ -3523,6 +3573,8 @@ public final class CubeVisitProtos {
           bitField0_ = (bitField0_ & ~0x00000400);
           filteredRowCount_ = 0L;
           bitField0_ = (bitField0_ & ~0x00000800);
+          costCpuTime_ = 0L;
+          bitField0_ = (bitField0_ & ~0x00001000);
           return this;
         }
 
@@ -3599,6 +3651,10 @@ public final class CubeVisitProtos {
             to_bitField0_ |= 0x00000800;
           }
           result.filteredRowCount_ = filteredRowCount_;
+          if (((from_bitField0_ & 0x00001000) == 0x00001000)) {
+            to_bitField0_ |= 0x00001000;
+          }
+          result.costCpuTime_ = costCpuTime_;
           result.bitField0_ = to_bitField0_;
           onBuilt();
           return result;
@@ -3654,6 +3710,9 @@ public final class CubeVisitProtos {
           }
           if (other.hasFilteredRowCount()) {
             setFilteredRowCount(other.getFilteredRowCount());
+          }
+          if (other.hasCostCpuTime()) {
+            setCostCpuTime(other.getCostCpuTime());
           }
           this.mergeUnknownFields(other.getUnknownFields());
           return this;
@@ -4156,6 +4215,39 @@ public final class CubeVisitProtos {
         public Builder clearFilteredRowCount() {
           bitField0_ = (bitField0_ & ~0x00000800);
           filteredRowCount_ = 0L;
+          onChanged();
+          return this;
+        }
+
+        // optional int64 costCpuTime = 13;
+        private long costCpuTime_ ;
+        /**
+         * <code>optional int64 costCpuTime = 13;</code>
+         */
+        public boolean hasCostCpuTime() {
+          return ((bitField0_ & 0x00001000) == 0x00001000);
+        }
+        /**
+         * <code>optional int64 costCpuTime = 13;</code>
+         */
+        public long getCostCpuTime() {
+          return costCpuTime_;
+        }
+        /**
+         * <code>optional int64 costCpuTime = 13;</code>
+         */
+        public Builder setCostCpuTime(long value) {
+          bitField0_ |= 0x00001000;
+          costCpuTime_ = value;
+          onChanged();
+          return this;
+        }
+        /**
+         * <code>optional int64 costCpuTime = 13;</code>
+         */
+        public Builder clearCostCpuTime() {
+          bitField0_ = (bitField0_ & ~0x00001000);
+          costCpuTime_ = 0L;
           onChanged();
           return this;
         }
@@ -5824,26 +5916,27 @@ public final class CubeVisitProtos {
       "\030\005 \002(\t\022\017\n\007queryId\030\006 \001(\t\022\032\n\014spillEnabled\030" +
       "\007 \001(\010:\004true\022\024\n\014maxScanBytes\030\010 \001(\003\022\026\n\016max" +
       "ReturnBytes\030\t \001(\003\022\037\n\020isExactAggregate\030\n ",
-      "\001(\010:\005false\032\027\n\007IntList\022\014\n\004ints\030\001 \003(\005\"\305\004\n\021" +
+      "\001(\010:\005false\032\027\n\007IntList\022\014\n\004ints\030\001 \003(\005\"\332\004\n\021" +
       "CubeVisitResponse\022\026\n\016compressedRows\030\001 \002(" +
       "\014\022\'\n\005stats\030\002 \002(\0132\030.CubeVisitResponse.Sta" +
       "ts\022/\n\terrorInfo\030\003 \001(\0132\034.CubeVisitRespons" +
-      "e.ErrorInfo\032\252\002\n\005Stats\022\030\n\020serviceStartTim" +
+      "e.ErrorInfo\032\277\002\n\005Stats\022\030\n\020serviceStartTim" +
       "e\030\001 \001(\003\022\026\n\016serviceEndTime\030\002 \001(\003\022\027\n\017scann" +
       "edRowCount\030\003 \001(\003\022\032\n\022aggregatedRowCount\030\004" +
       " \001(\003\022\025\n\rsystemCpuLoad\030\005 \001(\001\022\036\n\026freePhysi" +
       "calMemorySize\030\006 \001(\001\022\031\n\021freeSwapSpaceSize" +
       "\030\007 \001(\001\022\020\n\010hostname\030\010 \001(\t\022\016\n\006etcMsg\030\t \001(\t",
       "\022\026\n\016normalComplete\030\n \001(\005\022\024\n\014scannedBytes" +
-      "\030\013 \001(\003\022\030\n\020filteredRowCount\030\014 \001(\003\032H\n\tErro" +
-      "rInfo\022*\n\004type\030\001 \002(\0162\034.CubeVisitResponse." +
-      "ErrorType\022\017\n\007message\030\002 \002(\t\"G\n\tErrorType\022" +
-      "\020\n\014UNKNOWN_TYPE\020\000\022\013\n\007TIMEOUT\020\001\022\033\n\027RESOUR" +
-      "CE_LIMIT_EXCEEDED\020\0022F\n\020CubeVisitService\022" +
-      "2\n\tvisitCube\022\021.CubeVisitRequest\032\022.CubeVi" +
-      "sitResponseB`\nEorg.apache.kylin.storage." +
-      "hbase.cube.v2.coprocessor.endpoint.gener" +
-      "atedB\017CubeVisitProtosH\001\210\001\001\240\001\001"
+      "\030\013 \001(\003\022\030\n\020filteredRowCount\030\014 \001(\003\022\023\n\013cost" +
+      "CpuTime\030\r \001(\003\032H\n\tErrorInfo\022*\n\004type\030\001 \002(\016" +
+      "2\034.CubeVisitResponse.ErrorType\022\017\n\007messag" +
+      "e\030\002 \002(\t\"G\n\tErrorType\022\020\n\014UNKNOWN_TYPE\020\000\022\013" +
+      "\n\007TIMEOUT\020\001\022\033\n\027RESOURCE_LIMIT_EXCEEDED\020\002" +
+      "2F\n\020CubeVisitService\0222\n\tvisitCube\022\021.Cube" +
+      "VisitRequest\032\022.CubeVisitResponseB`\nEorg." +
+      "apache.kylin.storage.hbase.cube.v2.copro" +
+      "cessor.endpoint.generatedB\017CubeVisitProt",
+      "osH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -5873,7 +5966,7 @@ public final class CubeVisitProtos {
           internal_static_CubeVisitResponse_Stats_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_CubeVisitResponse_Stats_descriptor,
-              new java.lang.String[] { "ServiceStartTime", "ServiceEndTime", "ScannedRowCount", "AggregatedRowCount", "SystemCpuLoad", "FreePhysicalMemorySize", "FreeSwapSpaceSize", "Hostname", "EtcMsg", "NormalComplete", "ScannedBytes", "FilteredRowCount", });
+              new java.lang.String[] { "ServiceStartTime", "ServiceEndTime", "ScannedRowCount", "AggregatedRowCount", "SystemCpuLoad", "FreePhysicalMemorySize", "FreeSwapSpaceSize", "Hostname", "EtcMsg", "NormalComplete", "ScannedBytes", "FilteredRowCount", "CostCpuTime", });
           internal_static_CubeVisitResponse_ErrorInfo_descriptor =
             internal_static_CubeVisitResponse_descriptor.getNestedTypes().get(1);
           internal_static_CubeVisitResponse_ErrorInfo_fieldAccessorTable = new

@@ -69,6 +69,7 @@
                                 </property>
                             </bean>
                             -->
+                            <!--
                             <bean class="org.apache.kylin.common.util.Pair">
                                 <property name="first"
                                           value="org.apache.kylin.metrics.lib.impl.prometheus.PrometheusReservoirReporter"/>
@@ -77,6 +78,7 @@
                                     </props>
                                 </property>
                             </bean>
+                            -->
                         </list>
                     </entry>
                     <entry key-ref="blockingReservoir">

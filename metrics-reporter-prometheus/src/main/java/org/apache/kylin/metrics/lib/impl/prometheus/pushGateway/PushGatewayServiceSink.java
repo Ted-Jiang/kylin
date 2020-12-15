@@ -22,6 +22,7 @@ import io.prometheus.client.CollectorRegistry;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.MailService;
 import org.apache.kylin.common.util.StringUtil;
+import org.apache.kylin.common.util.ToolUtil;
 import org.apache.kylin.dict.DictionaryManager;
 import org.apache.kylin.dict.lookup.SnapshotManager;
 import org.slf4j.Logger;
@@ -83,7 +84,8 @@ public class PushGatewayServiceSink {
             return;
         }
         Map<String, String> groupingKey = new HashMap<>();
-        groupingKey.put("instance", "kylin-gateway-" + config.getDeployEnv());
+        groupingKey.put("env", "kylin-gateway-" + config.getDeployEnv());
+        groupingKey.put("instance", ToolUtil.getHostName());
         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
             try {
                 log.info("Start produce pushGateWay metric");

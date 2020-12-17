@@ -34,6 +34,8 @@ import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.StringUtil;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
+import org.apache.kylin.shaded.com.google.common.annotations.VisibleForTesting;
+import org.apache.kylin.shaded.com.google.common.base.Preconditions;
 import org.apache.kylin.stream.core.consumer.ConsumerStartProtocol;
 import org.apache.kylin.stream.core.consumer.IStreamingConnector;
 import org.apache.kylin.stream.core.exception.StreamingException;
@@ -59,8 +61,6 @@ public class RheosSource extends KafkaSource {
 
     public static final String PROP_TOPIC_NAMESPACE = "topicNamespace";
     public static final String PROP_TOPIC_STREAM = "topicStream";
-    public static final String PROP_TOPIC_ID = "topicId";
-    public static final String PROP_TOPIC_SECURITY_MODE = "topicSecurityMode";
     public static final String PROP_TOPIC_CONSUMER_NAME = "topicConsumerName";
     public static final String PROP_TOPIC_DC = "topicDC";
     public static final String PROP_TOPIC_EVENT_TYPE = "topicEventType";
@@ -126,8 +126,8 @@ public class RheosSource extends KafkaSource {
     @Override
     protected Map<String, Object> getKafkaConf(Map<String, String> sourceProperties, KylinConfig kylinConfig) {
         RheosConfig realRheosConfig = new RheosConfig(kylinConfig);
-        String consumerName = getRheosTopicConsumerName(realRheosConfig, sourceProperties);
-        String bootstrapServers = getRheosTopicBootstrapServers(realRheosConfig, sourceProperties);
+        String consumerName = mustGetRheosTopicConsumerName(realRheosConfig, sourceProperties);
+        String bootstrapServers = mustGetRheosTopicBootstrapServers(realRheosConfig, sourceProperties);
 
         // To avoid side effect
         Map<String, String> copiedSourceProperties = Maps.newHashMap(sourceProperties);
@@ -150,7 +150,7 @@ public class RheosSource extends KafkaSource {
         }
         {// Rheos specified configuration
             String saslJaasConfig = getSaslJaasConfig();
-            String securityMode = getRheosSecurityMode(sourceProperties);
+            String securityMode = getRheosSecurityModeByRest(sourceProperties);
 
             conf.put(ConsumerConfig.GROUP_ID_CONFIG, sourceProperties.get(ConsumerConfig.GROUP_ID_CONFIG));
             conf.put(SaslConfigs.SASL_MECHANISM, "IAF");
@@ -179,16 +179,17 @@ public class RheosSource extends KafkaSource {
     }
 
     public String getRheosTopicId(Map<String, String> sourceProperties) {
-        String topicId = getTopicId(sourceProperties);
-        if (Strings.isNullOrEmpty(topicId)) {
-            topicId = getRheosTopicIdByRest(sourceProperties);
-        }
+        String topicId = getRheosTopicIdByRest(sourceProperties);
         return topicId;
     }
 
     private String getRheosTopicIdByRest(Map<String, String> sourceProperties) {
-        String streamName = getTopicStream(sourceProperties);
+        String streamName = mustGetTopicStream(sourceProperties);
+        // must get the topic name
         String topicName = getTopicName(sourceProperties);
+        Preconditions.checkNotNull(topicName, "topic name should not be null");
+        Preconditions.checkArgument(topicName.length() != 0, "topic name should not be empty");
+
         String url = String.format(Locale.ROOT, "%s/streams/%s/topics/%s", rheosConfig.getRheosManagementURL(), streamName, topicName);
         try {
             String authValue = getKeyStoneToken(sourceProperties);
@@ -199,16 +200,8 @@ public class RheosSource extends KafkaSource {
         }
     }
 
-    public String getRheosSecurityMode(Map<String, String> sourceProperties) {
-        String securityMode = getTopicSecurityMode(sourceProperties);
-        if (Strings.isNullOrEmpty(securityMode)) {
-            securityMode = getRheosSecurityModeByRest(sourceProperties);
-        }
-        return securityMode;
-    }
-
     private String getRheosSecurityModeByRest(Map<String, String> sourceProperties) {
-        String streamName = getTopicStream(sourceProperties);
+        String streamName = mustGetTopicStream(sourceProperties);
         String url = String.format(Locale.ROOT, "%s/streams/%s", rheosConfig.getRheosManagementURL(), streamName);
         try {
             String authValue = getKeyStoneToken(sourceProperties);
@@ -224,32 +217,32 @@ public class RheosSource extends KafkaSource {
      * if not exist, check by rest call
      * if not exist, check in sourceProperties
      */
-    public String getRheosTopicBootstrapServers(RheosConfig realRheosConfig, Map<String, String> sourceProperties) {
+    public String mustGetRheosTopicBootstrapServers(RheosConfig realRheosConfig, Map<String, String> sourceProperties) {
         // User can manually specify the bootstrap servers for each cube
         String bootstrapServers = realRheosConfig.getRheosBootstrapServers();
         if (!Strings.isNullOrEmpty(bootstrapServers)) {
             logger.info("Get by cube level config of {}", PROP_BOOTSTRAP_SERVERS);
             return bootstrapServers;
         }
-        // User can manually specify the consumer name + dc name for each cube to get bootstrap servers by restful API
-        String consumerName = getRheosTopicConsumerName(realRheosConfig, sourceProperties);
-        String dcName = getRheosTopicDC(realRheosConfig, sourceProperties);
-        if (!StringUtil.isEmpty(consumerName) && !StringUtil.isEmpty(dcName)) {
-            logger.info("Get by cube level config of consumer name {} and dc name {}", consumerName, dcName);
-            bootstrapServers = getRheosTopicBootstrapServersByRest(consumerName, dcName);
-            return bootstrapServers;
-        }
-        // Only used to consume events to fetch schema template
+        // User can manually set the bootstrap servers.
         bootstrapServers = getBootstrapServers(sourceProperties);
         if (!Strings.isNullOrEmpty(bootstrapServers)) {
             logger.info("Get by table level config of {}", PROP_BOOTSTRAP_SERVERS);
+            return bootstrapServers;
+        }
+        // User can manually specify the consumer name + dc name for each cube to get bootstrap servers by restful API
+        String consumerName = mustGetRheosTopicConsumerName(realRheosConfig, sourceProperties);
+        String dcName = mustGetRheosTopicDC(realRheosConfig, sourceProperties);
+        if (!StringUtil.isEmpty(consumerName) && !StringUtil.isEmpty(dcName)) {
+            logger.info("Get by cube level config of consumer name {} and dc name {}", consumerName, dcName);
+            bootstrapServers = getRheosTopicBootstrapServersByRest(consumerName, dcName);
             return bootstrapServers;
         }
         throw new IllegalArgumentException("Fail to get bootstrap servers. Please set property of (" + PROP_BOOTSTRAP_SERVERS + ") or (consumer name, dc name)");
     }
 
     public String getRheosTopicBootstrapServersByRest(String consumerName, String dcName) {
-        return null;
+        throw new StreamingException("Not support getting bootstrap servers from consumer and dcName");
     }
 
 
@@ -285,14 +278,13 @@ public class RheosSource extends KafkaSource {
 
     private String getKeyStoneToken(Map<String, String> sourceProperties) throws IOException {
         String url = String.format(Locale.ROOT, "%s/auth", rheosConfig.getRheosManagementURL());
-
         String userAndPwd = rheosConfig.getSupportKeyStoneApiKey() + ":" + rheosConfig.getSupportKeyStoneApiSecret();
         String base64Auth = "Basic " + Base64.getEncoder().encodeToString(userAndPwd.getBytes(StandardCharsets.UTF_8));
 
         RheosHttpClient httpClient = getRheosHttpClient();
         Map<String, String> headers = Maps.newHashMap();
         headers.put("Content-Type", "application/json");
-        headers.put("x-rheos-namespace", getTopicNamespace(sourceProperties));
+        headers.put("x-rheos-namespace", mustGetTopicNamespace(sourceProperties));
         headers.put("x-rheos-tokentype", "api_key");
         headers.put("Authorization", base64Auth);
 
@@ -310,47 +302,50 @@ public class RheosSource extends KafkaSource {
         }
     }
 
-    private static String getRheosTopicConsumerName(RheosConfig rheosConfig, Map<String, String> sourceProperties) {
+    private String mustGetRheosTopicConsumerName(RheosConfig rheosConfig, Map<String, String> sourceProperties) {
         String consumerName = rheosConfig.getRheosConsumerName();
         if (StringUtil.isEmpty(consumerName)) {
             consumerName = getTopicConsumerName(sourceProperties);
         }
+        Preconditions.checkNotNull(consumerName, "The consumer name should not be null");
+        Preconditions.checkArgument(!consumerName.isEmpty(), "The consumer name should be empty");
         return consumerName;
     }
 
-    private static String getRheosTopicDC(RheosConfig rheosConfig, Map<String, String> sourceProperties) {
+    private String getTopicConsumerName(Map<String, String> sourceProperties) {
+        return sourceProperties.get(PROP_TOPIC_CONSUMER_NAME);
+    }
+
+
+    private String mustGetRheosTopicDC(RheosConfig rheosConfig, Map<String, String> sourceProperties) {
         String dcName = rheosConfig.getRheosDC();
         if (StringUtil.isEmpty(dcName)) {
             dcName = getTopicDC(sourceProperties);
         }
+        Preconditions.checkNotNull(dcName, "dcName should not be null");
+        Preconditions.checkArgument(!dcName.isEmpty(), "dcName should not be empty");
         return dcName;
     }
 
-    private static String getTopicNamespace(Map<String, String> sourceProperties) {
-        return sourceProperties.get(PROP_TOPIC_NAMESPACE);
-    }
-
-    private static String getTopicStream(Map<String, String> sourceProperties) {
-        return sourceProperties.get(PROP_TOPIC_STREAM);
-    }
-
-    private static String getTopicId(Map<String, String> sourceProperties) {
-        return sourceProperties.get(PROP_TOPIC_ID);
-    }
-
-    private static String getTopicSecurityMode(Map<String, String> sourceProperties) {
-        return sourceProperties.get(PROP_TOPIC_SECURITY_MODE);
-    }
-
-    private static String getTopicConsumerName(Map<String, String> sourceProperties) {
-        return sourceProperties.get(PROP_TOPIC_CONSUMER_NAME);
-    }
-
-    private static String getTopicDC(Map<String, String> sourceProperties) {
+    private String getTopicDC(Map<String, String> sourceProperties) {
         return sourceProperties.get(PROP_TOPIC_DC);
     }
 
-    static String parseAndGetKeyStoneToken(String tokenDetails) throws IOException {
+    private String mustGetTopicNamespace(Map<String, String> sourceProperties) {
+        String namespace = sourceProperties.get(PROP_TOPIC_NAMESPACE);
+        Preconditions.checkNotNull(namespace, "namespace should not be null");
+        Preconditions.checkArgument(!namespace.isEmpty(), "namespace should not be empty");
+        return namespace;
+    }
+
+    private String mustGetTopicStream(Map<String, String> sourceProperties) {
+        String stream = sourceProperties.get(PROP_TOPIC_STREAM);
+        Preconditions.checkNotNull(stream, "topicId should not be null");
+        Preconditions.checkArgument(!stream.isEmpty(), "stream should not be empty");
+        return stream;
+    }
+
+    private String parseAndGetKeyStoneToken(String tokenDetails) throws IOException {
         logger.debug("Token details: {}", tokenDetails);
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode rootNode = objectMapper.readTree(tokenDetails);
@@ -360,7 +355,7 @@ public class RheosSource extends KafkaSource {
         return tokenType + " " + accessToken;
     }
 
-    static String parseAndGetRheosSecurityMode(String streamDetails) throws IOException {
+    private String parseAndGetRheosSecurityMode(String streamDetails) throws IOException {
         logger.debug("Stream details: {}", streamDetails);
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode rootNode = objectMapper.readTree(streamDetails);
@@ -368,7 +363,7 @@ public class RheosSource extends KafkaSource {
         return schema.asText();
     }
 
-    static String parseAndGetRheosTopicId(String topicDetails) throws IOException {
+    private String parseAndGetRheosTopicId(String topicDetails) throws IOException {
         logger.debug("Topic details: {}", topicDetails);
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode rootNode = objectMapper.readTree(topicDetails);
@@ -376,7 +371,8 @@ public class RheosSource extends KafkaSource {
         return schema.asText();
     }
 
-    static String parseAndGetRheosTopicSubject(String topicSubjectInfo) throws IOException {
+    @VisibleForTesting
+    String parseAndGetRheosTopicSubject(String topicSubjectInfo) throws IOException {
         logger.debug("Topic subject info details: {}", topicSubjectInfo);
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode rootNode = objectMapper.readTree(topicSubjectInfo);
@@ -388,17 +384,12 @@ public class RheosSource extends KafkaSource {
         return subjectNode.asText();
     }
 
-    static String parseAndGetRheosTopicSchemaContent(String topicSchemaDetails) throws IOException {
+    private String parseAndGetRheosTopicSchemaContent(String topicSchemaDetails) throws IOException {
         logger.debug("Stream content details: {}", topicSchemaDetails);
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode rootNode = objectMapper.readTree(topicSchemaDetails);
         JsonNode schemaNode = rootNode.get("data").get("body");
         return schemaNode.asText();
-    }
-
-    static String constructSampleMessageForRheosSchema(String topicSchema) {
-        // construct one sample message according to rheos topic schema
-        return null;
     }
 
     private enum EventType {

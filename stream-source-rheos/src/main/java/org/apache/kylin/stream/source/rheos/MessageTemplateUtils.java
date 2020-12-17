@@ -24,8 +24,8 @@ import com.google.common.collect.Maps;
 import org.apache.avro.Schema;
 import org.apache.kylin.stream.core.exception.StreamingException;
 
-import java.sql.Timestamp;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -39,9 +39,8 @@ public class MessageTemplateUtils {
     public final static String SCHEMA_ID = "schemaId";
     public final static String EVENT_ID = "eventId";
     public final static String PRODUCER_ID = "producerId";
-    public final static char LINK_CHAR = '.';
-    private final static Timestamp timestamp = new Timestamp(2000, 1, 1, 1, 1, 1, 1);
-    public final static long TIMESTAMP = timestamp.getTime();
+    public final static char LINK_CHAR = '_';
+    public final static long TIMESTAMP = 1608026193615L;
     private final static byte[] bytes = { 0, 0 };
 
     public static Map<Schema.Type, Object> DEFAULT_SAMPLE_VALUES = Maps.newHashMap();
@@ -104,7 +103,7 @@ public class MessageTemplateUtils {
                     if (RHEOS_HEADER.equals(field.name()) && field.schema().getType().equals(Schema.Type.RECORD)) {
                         convertRheosHeaderSchema(field.schema(), root);
                     } else {
-                        throw new StreamingException(String.format(
+                        throw new StreamingException(String.format(Locale.ROOT,
                                 "The name of filed is not \"rheosHeader\" or the schema type is not RECORD, "
                                         + "which field name is %s, schema type is %s",
                                 field.name(), field.schema().getType()));

@@ -194,7 +194,8 @@ public class StreamingV2Controller extends BasicController {
         }
 
         // validate the compatibility for input table schema and the underline hive table schema
-        if (tableDesc.getSourceType() == ISourceAware.ID_KAFKA_HIVE) {
+        if (tableDesc.getSourceType() == ISourceAware.ID_KAFKA_HIVE ||
+                tableDesc.getSourceType() == ISourceAware.ID_RHEOS_HIVE) {
             List<FieldSchema> fields;
             String db = tableDesc.getDatabase();
             try {

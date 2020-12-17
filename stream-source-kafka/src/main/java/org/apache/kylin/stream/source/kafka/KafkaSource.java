@@ -64,7 +64,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class KafkaSource implements IStreamingSource {
-    public static final String PROP_TOPIC = "topicName";
+    public static final String PROP_TOPIC = "topic";
     public static final String PROP_BOOTSTRAP_SERVERS = "bootstrap.servers";
     public static final String PROP_MESSAGE_PARSER = "message.parser";
     private static final Logger logger = LoggerFactory.getLogger(KafkaSource.class);

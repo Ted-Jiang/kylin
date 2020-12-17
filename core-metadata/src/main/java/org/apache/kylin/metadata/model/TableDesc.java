@@ -454,7 +454,9 @@ public class TableDesc extends RootPersistentEntity implements ISourceAware {
 
     public boolean isStreamingTable() {
         if (sourceType == ISourceAware.ID_KAFKA
-                || sourceType == ISourceAware.ID_KAFKA_HIVE) {
+                || sourceType == ISourceAware.ID_KAFKA_HIVE
+                || sourceType == ISourceAware.ID_RHEOS
+                || sourceType == ISourceAware.ID_RHEOS_HIVE) {
             return true;
         }
         return false;

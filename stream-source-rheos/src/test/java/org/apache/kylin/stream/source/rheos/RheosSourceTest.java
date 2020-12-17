@@ -37,7 +37,8 @@ public class RheosSourceTest {
                 "  }\n" +
                 "]";
 
-        String subject = RheosSource.parseAndGetRheosTopicSubject(topicSubjectInfo);
+        RheosSource source = new RheosSource();
+        String subject = source.parseAndGetRheosTopicSubject(topicSubjectInfo);
         Assert.assertEquals("TransPageKylin", subject);
     }
 }

@@ -1126,6 +1126,8 @@ public abstract class KylinConfigBase implements Serializable {
         r.put(16, "org.apache.kylin.source.jdbc.extensible.JdbcSource");
         r.put(20, "org.apache.kylin.stream.source.kafka.KafkaBatchSourceAdaptor");
         r.put(21, "org.apache.kylin.stream.source.kafka.KafkaBatchSourceAdaptor");
+        r.put(30, "org.apache.kylin.stream.source.rheos.RheosBatchSourceAdaptor");
+        r.put(31, "org.apache.kylin.stream.source.rheos.RheosBatchSourceAdaptor");
         r.putAll(convertKeyToInteger(getPropertiesByPrefix("kylin.source.provider.")));
         return r;
     }

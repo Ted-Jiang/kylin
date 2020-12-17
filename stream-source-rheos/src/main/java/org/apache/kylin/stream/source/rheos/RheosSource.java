@@ -18,30 +18,41 @@
 
 package org.apache.kylin.stream.source.rheos;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.Maps;
-import io.ebay.rheos.http.RheosHttpClient;
-import io.ebay.rheos.http.StringResponseHandler;
-import io.ebay.rheos.kafka.security.iaf.IAFLoginModule;
-import joptsimple.internal.Strings;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+import org.apache.avro.Schema;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.StringUtil;
+import org.apache.kylin.cube.CubeInstance;
+import org.apache.kylin.cube.CubeManager;
+import org.apache.kylin.stream.core.consumer.ConsumerStartProtocol;
+import org.apache.kylin.stream.core.consumer.IStreamingConnector;
 import org.apache.kylin.stream.core.exception.StreamingException;
+import org.apache.kylin.stream.core.source.Partition;
 import org.apache.kylin.stream.core.source.StreamingSourceConfig;
+import org.apache.kylin.stream.core.source.StreamingSourceConfigManager;
+import org.apache.kylin.stream.core.storage.StreamingSegmentManager;
 import org.apache.kylin.stream.source.kafka.KafkaSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.Locale;
-import java.util.Map;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Maps;
+
+import io.ebay.rheos.http.RheosHttpClient;
+import io.ebay.rheos.http.StringResponseHandler;
+import io.ebay.rheos.kafka.security.iaf.IAFLoginModule;
+import joptsimple.internal.Strings;
 
 public class RheosSource extends KafkaSource {
     private static final Logger logger = LoggerFactory.getLogger(RheosSource.class);
@@ -52,6 +63,8 @@ public class RheosSource extends KafkaSource {
     public static final String PROP_TOPIC_SECURITY_MODE = "topicSecurityMode";
     public static final String PROP_TOPIC_CONSUMER_NAME = "topicConsumerName";
     public static final String PROP_TOPIC_DC = "topicDC";
+    public static final String PROP_TOPIC_EVENT_TYPE = "topicEventType";
+    private static final String RHEOS_EVENT_MESSAGE_PARSE_CLASS = RheosStreamParser.class.getName();
 
     private final RheosConfig rheosConfig;
 
@@ -66,10 +79,48 @@ public class RheosSource extends KafkaSource {
     @Override
     public String getMessageTemplate(StreamingSourceConfig streamingSourceConfig) throws StreamingException {
         try {
-            return getRheosTopicSchemaByRest(streamingSourceConfig);
+            String rheosEventSchema = getRheosTopicSchemaByRest(streamingSourceConfig);
+            Schema avroSchema = new Schema.Parser().parse(rheosEventSchema);
+            return MessageTemplateUtils.convertAvroSchemaToJson(avroSchema);
         } catch (IOException e) {
             throw new StreamingException(e);
         }
+    }
+
+    @Override
+    public IStreamingConnector createStreamingConnector(String cubeName, List<Partition> assignedPartitions,
+            ConsumerStartProtocol startProtocol, StreamingSegmentManager streamingSegmentManager) {
+        // update the property of PROP_MESSAGE_PARSER according to the PROP_TOPIC_EVENT_TYPE
+        logger.info("Create RheosStreamingConnector for Cube {}, assignedPartitions {}, startProtocol {}", cubeName,
+                assignedPartitions, startProtocol);
+        KylinConfig kylinConf = KylinConfig.getInstanceFromEnv();
+        CubeInstance cubeInstance = CubeManager.getInstance(kylinConf).getCube(cubeName);
+        String streamingName = cubeInstance.getRootFactTable();
+        StreamingSourceConfig streamingSourceConfig = StreamingSourceConfigManager.getInstance(kylinConf)
+                .getConfig(streamingName);
+        Map<String, String> properties = streamingSourceConfig.getProperties();
+        if (properties.get(PROP_TOPIC_EVENT_TYPE) == null) {
+            throw new StreamingException(
+                    "event type missing for creating rheos streaming connector, properties of source:" + properties);
+        } else {
+            EventType eventType;
+            eventType = EventType.valueOf(properties.get(PROP_TOPIC_EVENT_TYPE));
+            switch (eventType) {
+            case RHEOS_EVENT:
+                properties.put(PROP_MESSAGE_PARSER, RHEOS_EVENT_MESSAGE_PARSE_CLASS);
+                break;
+            // TODO: add other event type
+            default:
+                throw new StreamingException("unknown event type: " + eventType);
+            }
+        }
+        // update stream source config
+        try {
+            StreamingSourceConfigManager.getInstance(kylinConf).updateStreamingConfig(streamingSourceConfig);
+        } catch (IOException e) {
+            throw new StreamingException(e);
+        }
+        return super.createStreamingConnector(cubeName, assignedPartitions, startProtocol, streamingSegmentManager);
     }
 
     @Override
@@ -343,5 +394,14 @@ public class RheosSource extends KafkaSource {
         JsonNode rootNode = objectMapper.readTree(topicSchemaDetails);
         JsonNode schemaNode = rootNode.get("data").get("body");
         return schemaNode.asText();
+    }
+
+    static String constructSampleMessageForRheosSchema(String topicSchema) {
+        // construct one sample message according to rheos topic schema
+        return null;
+    }
+
+    private enum EventType {
+        RHEOS_EVENT;
     }
 }

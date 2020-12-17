@@ -77,6 +77,12 @@
   <div ng-show="steps.curStep==1" ng-include="'partials/tables/loadStreamingSourceConfig.html'"></div>
   <div ng-show="steps.curStep==2" ng-include="'partials/tables/loadStreamingTableConfig.html'"></div>
 </script>
+
+<script type="text/ng-template" id="addRheosStreamingSource.html">
+  <div ng-show="steps.curStep==1" ng-include="'partials/tables/loadRheosStreamingSourceConfig.html'"></div>
+  <div ng-show="steps.curStep==2" ng-include="'partials/tables/loadRheosStreamingTableConfig.html'"></div>
+</script>
+
 <script type="text/ng-template" id="editStreamingTableV2.html">
   <div ng-include="'partials/tables/streamingv2_config_edit.html'"></div>
 </script>

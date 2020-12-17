@@ -20,6 +20,8 @@ package org.apache.kylin.stream.core.source;
 
 import static org.apache.kylin.metadata.model.ISourceAware.ID_KAFKA;
 import static org.apache.kylin.metadata.model.ISourceAware.ID_KAFKA_HIVE;
+import static org.apache.kylin.metadata.model.ISourceAware.ID_RHEOS;
+import static org.apache.kylin.metadata.model.ISourceAware.ID_RHEOS_HIVE;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,12 +31,17 @@ import org.apache.kylin.metadata.model.ISourceAware;
 
 public class StreamingSourceFactory {
     private static String KAFKA_SOURCE_CLAZZ = "org.apache.kylin.stream.source.kafka.KafkaSource";
+    private static String RHEOS_SOURCE_CLASS = "org.apache.kylin.stream.source.rheos.RheosSource";
 
     private static ImplementationSwitch<IStreamingSource> sources;
     static {
         Map<Integer, String> impls = new HashMap<>();
+        // kafka
         impls.put(ID_KAFKA, KAFKA_SOURCE_CLAZZ);
         impls.put(ID_KAFKA_HIVE, KAFKA_SOURCE_CLAZZ);
+        // rheos
+        impls.put(ID_RHEOS, RHEOS_SOURCE_CLASS);
+        impls.put(ID_RHEOS_HIVE, RHEOS_SOURCE_CLASS);
         sources = new ImplementationSwitch<>(impls, IStreamingSource.class);
     }
 

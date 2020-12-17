@@ -30,6 +30,8 @@ public interface ISourceAware {
     public static final int ID_EXTENSIBLE_JDBC = 16;
     public static final int ID_KAFKA = 20;
     public static final int ID_KAFKA_HIVE = 21;
+    public static final int ID_RHEOS = 30;
+    public static final int ID_RHEOS_HIVE = 31;
 
     int getSourceType();
 

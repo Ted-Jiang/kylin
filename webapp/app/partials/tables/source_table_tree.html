@@ -17,35 +17,36 @@
 -->
 
 <div class="tree-border" ng-controller="SourceMetaCtrl">
-    <div class="row">
-        <div class="col-xs-7">
-            <h3 class="text-info">Tables</h3>
-        </div>
-
-        <!--button-->
-        <div class="col-xs-5" style="padding-left: 0px;margin-top: 20px;">
-            <div class="pull-right">
-              <a class="btn btn-xs btn-primary" tooltip="Load Table"  ng-if="userService.hasRole('ROLE_ADMIN')|| (!kylinConfig.isProd() && hasPermission('project',projectModel, permissions.ADMINISTRATION.mask))"  ng-click="openModal()"><i class="fa fa-download"></i></a>
-              <a class="btn btn-xs btn-info" tooltip="Load Table From Tree"  ng-if="userService.hasRole('ROLE_ADMIN')|| (!kylinConfig.isProd() && hasPermission('project',projectModel, permissions.ADMINISTRATION.mask))"  ng-click="openTreeModal()"><i class="fa fa-download"></i></a>
-              <a class="btn btn-xs btn-primary" tooltip="Add Streaming Table"  ng-if="userService.hasRole('ROLE_ADMIN')|| (!kylinConfig.isProd() && hasPermission('project',projectModel, permissions.ADMINISTRATION.mask))"  ng-click="openStreamingSourceModal()"><i class="fa fa-area-chart"></i></a>
-              <a class="btn btn-xs btn-info" tooltip-placement="left" tooltip="Add Streaming Table V2" ng-if="userService.hasRole('ROLE_ADMIN') || (!kylinConfig.isProd() && hasPermission('project',projectModel, permissions.ADMINISTRATION.mask))"  ng-click="openStreamingSourceModalV2()"><i class="fa fa-area-chart"></i></a>
-            </div>
-        </div>
-
+  <div class="row">
+    <div class="col-xs-7">
+      <h3 class="text-info">Tables</h3>
     </div>
-    <div class="space-4"></div>
-    <!--tree-->
-    <div style="width:100%; height:{{window}}px; overflow:auto; padding-right:35px;">
-        <abn-tree
-                tree-data         = "tableModel.selectedSrcDb"
-                tree-control      = "my_tree"
-                icon-leaf         = "fa fa-columns"
-                icon-expand       = "fa fa-database"
-                icon-collapse     = "fa fa-database"
-                expand-level      = "3">
-        </abn-tree>
-        <div no-result ng-if="tableModel.selectedSrcDb.length == 0"></div>
+
+    <!--button-->
+    <div class="col-xs-5" style="padding-left: 0px;margin-top: 20px;">
+      <div class="pull-right">
+        <a class="btn btn-xs btn-primary" tooltip="Load Table"  ng-if="userService.hasRole('ROLE_ADMIN')|| hasPermission('project',projectModel, permissions.ADMINISTRATION.mask)"  ng-click="openModal()"><i class="fa fa-download"></i></a>
+        <a class="btn btn-xs btn-info" tooltip="Load Table From Tree"  ng-if="userService.hasRole('ROLE_ADMIN')|| hasPermission('project',projectModel, permissions.ADMINISTRATION.mask)"  ng-click="openTreeModal()"><i class="fa fa-download"></i></a>
+        <!--              <a class="btn btn-xs btn-primary" tooltip="Add Streaming Table"  ng-if="userService.hasRole('ROLE_ADMIN')|| hasPermission('project',projectModel, permissions.ADMINISTRATION.mask)"  ng-click="openStreamingSourceModal()"><i class="fa fa-area-chart"></i></a>-->
+        <a class="btn btn-xs btn-info" tooltip-placement="left" tooltip="Add Kafka Streaming Table" ng-if="userService.hasRole('ROLE_ADMIN') || hasPermission('project',projectModel, permissions.ADMINISTRATION.mask)"  ng-click="openStreamingSourceModalV2()"><i class="fa fa-area-chart"></i></a>
+        <a class="btn btn-xs btn-primary" tooltip-placement="left" tooltip="Add Rheos Streaming Table" ng-if="userService.hasRole('ROLE_ADMIN') || hasPermission('project',projectModel, permissions.ADMINISTRATION.mask)"  ng-click="openRheosStreamingSourceModal()"><i class="fa fa-area-chart"></i></a>
+      </div>
     </div>
+
+  </div>
+  <div class="space-4"></div>
+  <!--tree-->
+  <div style="width:100%; height:{{window}}px; overflow:auto; padding-right:35px;">
+    <abn-tree
+      tree-data         = "tableModel.selectedSrcDb"
+      tree-control      = "my_tree"
+      icon-leaf         = "fa fa-columns"
+      icon-expand       = "fa fa-database"
+      icon-collapse     = "fa fa-database"
+      expand-level      = "3">
+    </abn-tree>
+    <div no-result ng-if="tableModel.selectedSrcDb.length == 0"></div>
+  </div>
 </div>
 
 <script type="text/ng-template" id="addHiveTableFromTree.html">

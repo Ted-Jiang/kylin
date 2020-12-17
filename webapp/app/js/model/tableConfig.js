@@ -132,7 +132,9 @@ KylinApp.constant('tableConfig', {
   ],
  streamingSourceType: {
    kafka: 20,
-   kafka_hive: 21
+   kafka_hive: 21,
+   rheos: 30,
+   rheos_hive: 31
  }
 
 

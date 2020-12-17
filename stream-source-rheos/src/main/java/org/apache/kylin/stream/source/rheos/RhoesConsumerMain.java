@@ -25,6 +25,7 @@ import io.ebay.rheos.kafka.client.StreamConnectorConfig;
 import io.ebay.rheos.schema.avro.GenericRecordDomainDataDecoder;
 import io.ebay.rheos.schema.avro.RheosEventDeserializer;
 import io.ebay.rheos.schema.event.RheosEvent;
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -103,9 +104,12 @@ public class RhoesConsumerMain {
                     @Override
                     public void print(String topic, byte[] byteValue) {
                         RheosEvent rheosEvent = deserializer.deserialize(topic, byteValue);
-
+                        
                         GenericRecord domainRecord = decoder.decode(rheosEvent);
-                        System.out.println(domainRecord);
+                        // this is the schema including data ane header information.
+                        System.out.println("Event schema: \n" + rheosEvent.getSchema());
+                        System.out.println("Event message: \n"+ rheosEvent);
+                        System.out.println();
                     }
                 };
             } else {
@@ -137,6 +141,11 @@ public class RhoesConsumerMain {
         sourceConfig.setProperties(sourceProperties);
         String schemaTemplate = rheosSource.getMessageTemplate(sourceConfig);
         System.out.println("Schema template for topic " + topicName + " is:\n" + schemaTemplate);
+
+        // convert the avro schema to sample template
+        Schema schema = new Schema.Parser().parse(schemaTemplate);
+        String templateMessage = MessageTemplateUtils.convertAvroSchemaToJson(schema);
+        System.out.println("Template message for rheos event "+ topicName + " is: \n" + templateMessage);
     }
 
     private interface RecordValuePrinter {

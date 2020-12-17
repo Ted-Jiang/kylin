@@ -1055,6 +1055,12 @@ KylinApp
         controller: StreamingSourceCtrlV2,
         backdrop : 'static',
         resolve: {
+          // kafka stream
+          isKafka: function () {
+            return {
+              value: true
+            }
+          },
           projectName: function () {
             return $scope.projectModel.selectedProject;
           },
@@ -1065,7 +1071,34 @@ KylinApp
       });
     };
 
-    var StreamingSourceCtrlV2 = function($scope, $modalInstance, $filter, MessageService, projectName, scope, cubeConfig, tableConfig, StreamingModel, StreamingServiceV2) {
+    //rheos stream onboard
+    $scope.openRheosStreamingSourceModal = function () {
+      if (!$scope.projectModel.selectedProject) {
+        SweetAlert.swal('Oops...', "Please select a project.", 'info');
+        return;
+      }
+      $modal.open({
+        templateUrl: 'addRheosStreamingSource.html',
+        controller: StreamingSourceCtrlV2,
+        backdrop: 'static',
+        resolve: {
+          // rheos
+          isKafka: function () {
+            return {
+              value: false
+            }
+          },
+          projectName: function () {
+            return $scope.projectModel.selectedProject;
+          },
+          scope: function () {
+            return $scope;
+          }
+        }
+      });
+    };
+
+    var StreamingSourceCtrlV2 = function($scope, $modalInstance, $filter, MessageService, projectName, isKafka, scope, cubeConfig, tableConfig, StreamingModel, StreamingServiceV2) {
       $scope.tableConfig = tableConfig;
       // common
       $scope.steps = {
@@ -1108,9 +1141,24 @@ KylinApp
         parser_info: {}
       };
 
-      $scope.tableData = {
-        source_type: tableConfig.streamingSourceType.kafka
+      $scope.rheosConfig ={
+        EventType: ['RHEOS_EVENT'],
+        RheosDCNameOptions: ['rno','lvs','slc']
       };
+
+      if (isKafka.value) {
+        $scope.tableData = {
+          source_type: tableConfig.streamingSourceType.kafka
+        };
+      } else {
+        // rheos
+        $scope.tableData = {
+          source_type: tableConfig.streamingSourceType.rheos
+        };
+        $scope.streamingConfig.properties.topicDC = $scope.rheosConfig.RheosDCNameOptions[0];
+        $scope.streamingConfig.properties.topicEventType = $scope.rheosConfig.EventType[0];
+      }
+
 
       $scope.removeBootstrapServer = function(index) {
         $scope.streamingConfig.properties.bootstrapServers.splice(index, 1);
@@ -1144,7 +1192,8 @@ KylinApp
               tableData: $scope.tableData,
               streamingConfig: $scope.streamingConfig});
         StreamingServiceV2.getParserTemplate({streamingConfig: transformStreamingConfig.streamingConfig, sourceType: $scope.tableData.source_type}, function(template){
-          if (tableConfig.streamingSourceType.kafka === $scope.tableData.source_type) {
+          if (tableConfig.streamingSourceType.kafka === $scope.tableData.source_type ||
+              tableConfig.streamingSourceType.rheos === $scope.tableData.source_type) {
             $scope.streaming.template = $filter('json')(template, 4);
           }
         }, function(e) {
@@ -1198,7 +1247,8 @@ KylinApp
           }
           return obj;
         }
-        if (tableConfig.streamingSourceType.kafka === $scope.tableData.source_type) {
+        if (tableConfig.streamingSourceType.kafka === $scope.tableData.source_type ||
+            tableConfig.streamingSourceType.rheos === $scope.tableData.source_type) {
           // TODO kafka need to support json not just first layer
           flatStreamingJson(createNewObj, columnsByTemplate)(templateObj)
         }
@@ -1467,7 +1517,8 @@ KylinApp
         streamingRequest.project = streamingObject.project;
         var streamingConfig = angular.copy(streamingObject.streamingConfig);
         streamingRequest.tableData = angular.copy(streamingObject.tableData);
-        if (tableConfig.streamingSourceType.kafka === streamingRequest.tableData.source_type) {
+        if (tableConfig.streamingSourceType.kafka === streamingRequest.tableData.source_type ||
+            tableConfig.streamingSourceType.rheos === streamingRequest.tableData.source_type) {
             // Set bootstrap servers
             var bootstrapServersStr = '';
             angular.forEach(streamingObject.streamingConfig.properties.bootstrapServers, function(bootstrapServer, index) {

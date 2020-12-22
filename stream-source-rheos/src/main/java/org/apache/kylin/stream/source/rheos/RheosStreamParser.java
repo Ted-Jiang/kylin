@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import static org.apache.kylin.common.util.DateFormat.DEFAULT_DATETIME_PATTERN_WITHOUT_MILLISECONDS;
@@ -57,6 +58,7 @@ public class RheosStreamParser implements IStreamingMessageParser<ConsumerRecord
     protected List<TblColRef> allColumns;
     private boolean formatTs = false;// not used
     private String tsColName = "TIMESTAMP";
+    private String[] tsColHierarchies;
     protected TimeColumnFormat timeColumnFormat = null;
 
     protected RheosEventDeserializer deserializer;
@@ -77,12 +79,13 @@ public class RheosStreamParser implements IStreamingMessageParser<ConsumerRecord
         if (parserInfo != null) {
             this.formatTs = parserInfo.isFormatTs();
             this.tsColName = parserInfo.getTsColName();
+            this.tsColHierarchies = tsColName.split("\\.");
             columnMappings = parserInfo.getColumnToSourceFieldMapping();
             this.columnToSourceFieldMapping = Maps.newHashMap();
             if (columnMappings != null) {
                 for (Map.Entry<String, String> mappingEntry : columnMappings.entrySet()) {
                     String[] hierarchies = mappingEntry.getValue().split("\\.");
-                    columnToSourceFieldMapping.put(mappingEntry.getKey(), hierarchies);
+                    columnToSourceFieldMapping.put(mappingEntry.getKey().toUpperCase(Locale.ROOT), hierarchies);
                 }
             }
         }
@@ -122,7 +125,7 @@ public class RheosStreamParser implements IStreamingMessageParser<ConsumerRecord
     }
 
     private long parseTimeColumn(GenericRecord domainRecord) {
-        Object tsObj = getColumnValue(domainRecord, tsColName);
+        Object tsObj = getColumnValueFromHierarchy(domainRecord, tsColHierarchies);
         String tsStr = (tsObj == null ? null : tsObj.toString());
         if (StringUtils.isEmpty(tsStr)) {
             throw new MessageFormatException("time column is empty for the record");
@@ -141,7 +144,11 @@ public class RheosStreamParser implements IStreamingMessageParser<ConsumerRecord
         }
 
         String[] hierarchies = columnToSourceFieldMapping.get(colName);
-        if (hierarchies.length == 0) {
+        return getColumnValueFromHierarchy(domainRecord, hierarchies);
+    }
+
+    private Object getColumnValueFromHierarchy(GenericRecord domainRecord, String[] hierarchies) {
+        if (hierarchies == null || hierarchies.length == 0) {
             return null;
         }
         GenericRecord directParent = domainRecord;

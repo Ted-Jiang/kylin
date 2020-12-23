@@ -372,7 +372,7 @@ public class RheosSource extends KafkaSource {
     }
 
     @VisibleForTesting
-    String parseAndGetRheosTopicSubject(String topicSubjectInfo) throws IOException {
+    static String parseAndGetRheosTopicSubject(String topicSubjectInfo) throws IOException {
         logger.debug("Topic subject info details: {}", topicSubjectInfo);
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode rootNode = objectMapper.readTree(topicSubjectInfo);

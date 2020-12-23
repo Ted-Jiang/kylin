@@ -25,20 +25,21 @@ public class RheosSourceTest {
 
     @Test
     public void testGetTopicSubject() throws Exception {
-        String topicSubjectInfo = "[\n" +
-                "  {\n" +
-                "    \"createdBy\": \"tatian$$loyalty-dynamiccoupons\",\n" +
-                "    \"createdDate\": \"2020-09-21T02:21:04Z\",\n" +
-                "    \"lastModifiedBy\": \"tatian$$loyalty-dynamiccoupons\",\n" +
-                "    \"lastModifiedDate\": \"2020-09-21T02:21:04Z\",\n" +
-                "    \"subject\": \"TransPageKylin\",\n" +
-                "    \"compatibility\": \"backward\",\n" +
-                "    \"admin\": true\n" +
-                "  }\n" +
-                "]";
+        String topicSubjectInfo = "{\n" +
+                "   \"data\":[\n" +
+                "      {\n" +
+                "         \"createdBy\":\"tatian$$loyalty-dynamiccoupons\",\n" +
+                "         \"createdDate\":\"2020-09-21T02:21:04Z\",\n" +
+                "         \"lastModifiedBy\":\"tatian$$loyalty-dynamiccoupons\",\n" +
+                "         \"lastModifiedDate\":\"2020-09-21T02:21:04Z\",\n" +
+                "         \"subject\":\"TransPageKylin\",\n" +
+                "         \"compatibility\":\"backward\",\n" +
+                "         \"admin\":true\n" +
+                "      }\n" +
+                "   ]\n" +
+                "}";
 
-        RheosSource source = new RheosSource();
-        String subject = source.parseAndGetRheosTopicSubject(topicSubjectInfo);
+        String subject = RheosSource.parseAndGetRheosTopicSubject(topicSubjectInfo);
         Assert.assertEquals("TransPageKylin", subject);
     }
 }

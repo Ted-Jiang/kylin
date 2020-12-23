@@ -160,8 +160,8 @@ public class CubeReducerTest extends LocalFileMetadataTestCase {
     }
 
     private Text newValueText(BufferedMeasureCodec codec, String sum, String min, String max, int count, int item_count) {
-        Object[] values = new Object[] { sum == null ? null : new BigDecimal(sum), //
-                new BigDecimal(min), new BigDecimal(max), new Long(count), new Long(item_count) };
+        Object[] values = new Object[]{sum == null ? null : new BigDecimal(sum), //
+                min == null ? null : new BigDecimal(min), max == null ? null : new BigDecimal(max), new Long(count), new Long(item_count)};
 
         ByteBuffer buf = codec.encode(values);
 

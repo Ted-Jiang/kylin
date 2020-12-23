@@ -36,12 +36,17 @@ public class LongMaxAggregator extends MeasureAggregator<Long> {
     public void aggregate(Long value) {
         if (max == null)
             max = value;
-        else if (max < value)
+        else if (value != null && max < value)
             max = value;
     }
 
     @Override
     public Long aggregate(Long value1, Long value2) {
+        if (value1 == null) {
+            return value2;
+        } else if (value2 == null) {
+            return value1;
+        }
         return Math.max(value1, value2);
     }
 

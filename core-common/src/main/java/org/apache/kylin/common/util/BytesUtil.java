@@ -31,6 +31,7 @@ public class BytesUtil {
     }
 
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
+    public static final byte[] VLONG_NULL_BYTE_ARRAY = new byte[]{-113, 0};
 
     public static void writeByte(byte num, byte[] bytes, int offset, int size) {
         for (int i = offset + size - 1; i >= offset; i--) {
@@ -222,6 +223,14 @@ public class BytesUtil {
 
     }
 
+    public static void writeVLongObject(Long i, ByteBuffer out) {
+        if (i == null) {
+            out.put(VLONG_NULL_BYTE_ARRAY);
+            return;
+        }
+        writeVLong(i, out);
+    }
+
     public static void writeVLong(long i, ByteBuffer out) {
 
         if (i >= -112 && i <= 127) {
@@ -250,6 +259,20 @@ public class BytesUtil {
             long mask = 0xFFL << shiftbits;
             out.put((byte) ((i & mask) >> shiftbits));
         }
+    }
+
+    public static Long readVLongObject(ByteBuffer in) {
+        int mark = in.position();
+
+        boolean ifNull = true;
+        for (int i = 0; i < VLONG_NULL_BYTE_ARRAY.length; i++) {
+            if (in.get() != VLONG_NULL_BYTE_ARRAY[i]) {
+                ifNull = false;
+                in.position(mark);
+                break;
+            }
+        }
+        return ifNull ? null : BytesUtil.readVLong(in);
     }
 
     public static long readVLong(ByteBuffer in) {

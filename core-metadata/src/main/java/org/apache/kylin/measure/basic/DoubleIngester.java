@@ -33,7 +33,7 @@ public class DoubleIngester extends MeasureIngester<Double> {
             throw new IllegalArgumentException();
 
         if (values[0] == null || values[0].length() == 0)
-            return new Double(0);
+            return null;
         else
             return Double.parseDouble(values[0]);
     }

@@ -34,7 +34,7 @@ public class BigDecimalIngester extends MeasureIngester<BigDecimal> {
             throw new IllegalArgumentException();
 
         if (values[0] == null || values[0].length() == 0)
-            return new BigDecimal(0);
+            return null;
         else
             return new BigDecimal(values[0]);
     }

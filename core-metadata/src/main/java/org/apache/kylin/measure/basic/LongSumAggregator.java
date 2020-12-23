@@ -25,21 +25,31 @@ import org.apache.kylin.measure.MeasureAggregator;
 @SuppressWarnings("serial")
 public class LongSumAggregator extends MeasureAggregator<Long> {
 
-    Long sum = new Long(0L);
+    Long sum = null;
 
     @Override
     public void reset() {
-        sum = new Long(0L);
+        sum = null;
     }
 
     @Override
     public void aggregate(Long value) {
+        if (value == null)
+            return;
+        if (sum == null) {
+            sum = 0L;
+        }
         sum += value;
     }
 
     @Override
     public Long aggregate(Long value1, Long value2) {
-        return Long.valueOf(value1 + value2);
+        if (value1 == null) {
+            return value2;
+        } else if (value2 == null) {
+            return value1;
+        }
+        return value1 + value2;
     }
 
     @Override

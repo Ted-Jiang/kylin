@@ -38,7 +38,7 @@ public class BigDecimalMinAggregator extends MeasureAggregator<BigDecimal> {
     public void aggregate(BigDecimal value) {
         if (min == null)
             min = value;
-        else if (min.compareTo(value) > 0)
+        else if (value != null && min.compareTo(value) > 0)
             min = value;
     }
 

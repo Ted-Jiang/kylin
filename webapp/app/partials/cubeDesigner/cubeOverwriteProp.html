@@ -126,7 +126,37 @@
             <div style="padding-top: 7px;">{{cubeMetaFrame.override_kylin_properties['kylin.stream.segment.retention.policy.purge.retentionTimeInSec']}}</div>
           </div>
         </div>
-      </ng-form>
+
+        <div ng-if="isStreamingCube && isRheosCube" class="row" style="border-top: 1px solid #dddddd; border-bottom: 1px solid #dddddd; margin-bottom: 15px;">
+          <h4>Rheos Properties</h4>
+        </div>
+
+        <div ng-if="isStreamingCube && isRheosCube" class="row form-group">
+          <label class="col-xs-12 col-sm-6 control-label no-padding-right" style="word-wrap: break-word;">
+            <b>kylin.source.rheos.consumer.name</b>
+          </label>
+          <div ng-if="state.mode=='edit'" class="col-xs-12 col-sm-5" ng-class="{'has-error':cubeMetaFrame.override_kylin_properties['kylin.source.rheos.consumer.name']==''}">
+            <input ng-model="cubeMetaFrame.override_kylin_properties['kylin.source.rheos.consumer.name']" placeholder="Seconds" class="form-control" />
+            <small class="help-block" ng-show="cubeMetaFrame.override_kylin_properties['kylin.source.rheos.consumer.name']==''">Property value is required.</small>
+          </div>
+          <div ng-if="state.mode=='view'" class="col-xs-12 col-sm-5">
+            <div style="padding-top: 7px;">{{cubeMetaFrame.override_kylin_properties['kylin.source.rheos.consumer.name']}}</div>
+          </div>
+        </div>
+
+        <div ng-if="isStreamingCube && isRheosCube" class="row form-group">
+          <label class="col-xs-12 col-sm-6 control-label no-padding-right" style="word-wrap: break-word;">
+            <b>kylin.source.rheos.bootstrap.servers</b>
+          </label>
+          <div ng-if="state.mode=='edit'" class="col-xs-12 col-sm-5" ng-class="{'has-error':cubeMetaFrame.override_kylin_properties['kylin.source.rheos.bootstrap.servers']==''}">
+            <input ng-model="cubeMetaFrame.override_kylin_properties['kylin.source.rheos.bootstrap.servers']" placeholder="Seconds" class="form-control" />
+            <small class="help-block" ng-show="cubeMetaFrame.override_kylin_properties['kylin.source.rheos.bootstrap.servers']==''">Property value is required.</small>
+          </div>
+          <div ng-if="state.mode=='view'" class="col-xs-12 col-sm-5">
+            <div style="padding-top: 7px;">{{cubeMetaFrame.override_kylin_properties['kylin.source.rheos.bootstrap.servers']}}</div>
+          </div>
+        </div>
+        </ng-form>
     </div>
 
   <!--Tips-->

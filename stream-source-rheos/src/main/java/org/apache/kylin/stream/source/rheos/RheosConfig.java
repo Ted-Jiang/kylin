@@ -116,7 +116,7 @@ public class RheosConfig {
     }
 
     public String getRheosConsumerName() {
-        return getOptional("consumer-name");
+        return getOptional("consumer.name");
     }
 
     public String getRheosDC() {
@@ -124,7 +124,7 @@ public class RheosConfig {
     }
 
     public String getRheosBootstrapServers() {
-        return getOptional("bootstrap-servers");
+        return getOptional("bootstrap.servers");
     }
 
     public Map<String, String> getSSLProps() {

@@ -18,11 +18,16 @@
 
 'use strict';
 
-KylinApp.controller('CubeOverWriteCtrl', function ($scope, $modal,cubeConfig,MetaModel,cubesManager,CubeDescModel,TableService,tableConfig) {
+KylinApp.controller('CubeOverWriteCtrl', function ($scope, $modal, cubeConfig, cubesManager, CubeDescModel, TableService, tableConfig) {
   $scope.cubesManager = cubesManager;
-
   // check the cube is streaming
   $scope.isStreamingCube = $scope.cubeMetaFrame.storage_type === 3;
+  // Rheos，Rheos Hive
+  $scope.isRheosCube = false;
+
+  // check table type:
+  // if the type of table is rheos, set the `isRheosCube` true, otherwise false
+  // get the table type, if this is rheos type, add some property
 
   // Set default value for streaming properties
   if ($scope.state.mode === 'edit' && $scope.isStreamingCube) {
@@ -43,6 +48,31 @@ KylinApp.controller('CubeOverWriteCtrl', function ($scope, $modal,cubeConfig,Met
     }
   }
 
+  // properties for rheos
+  if ($scope.state.mode === "edit" && $scope.isStreamingCube) {
+    var projectName = $scope.projectModel.selectedProject;
+    var tableName = $scope.metaModel.model.fact_table;
+    TableService.get({pro: projectName, tableName: tableName}, function (table) {
+      if (table.source_type === tableConfig.streamingSourceType.rheos) {
+        $scope.isRheosCube = true;
+        if (!$scope.cubeMetaFrame.override_kylin_properties['kylin.source.rheos.consumer.name']) {
+          $scope.cubeMetaFrame.override_kylin_properties['kylin.source.rheos.consumer.name'] = '';
+        }
+        if (!$scope.cubeMetaFrame.override_kylin_properties['kylin.source.rheos.bootstrap.servers']) {
+          $scope.cubeMetaFrame.override_kylin_properties['kylin.source.rheos.bootstrap.servers'] = '';
+        }
+      }
+    }, function (e) {
+      if (e.data && e.data.exception) {
+        var message = e.data.exception;
+        var msg = !!(message) ? message : 'Failed to get table info.';
+        swal('Oops...', msg, 'error');
+      } else {
+        swal('Oops...', "Failed to get table info.", 'error');
+      }
+    });
+  }
+
   //rowkey
   $scope.convertedProperties = [];
 
@@ -51,6 +81,14 @@ KylinApp.controller('CubeOverWriteCtrl', function ($scope, $modal,cubeConfig,Met
     if ($scope.isStreamingCube) {
       streamingProperties = ['kylin.stream.cube.window', 'kylin.stream.cube.duration', 'kylin.stream.index.checkpoint.intervals', 'kylin.cube.algorithm', 'kylin.stream.segment.retention.policy', 'kylin.stream.segment.retention.policy.purge.retentionTimeInSec'];
     }
+
+    if (key === 'kylin.source.rheos.consumer.name'
+      || key === 'kylin.source.rheos.bootstrap.servers') {
+      $scope.isRheosCube = true;
+      streamingProperties.push('kylin.source.rheos.consumer.name')
+      streamingProperties.push('kylin.source.rheos.bootstrap.servers')
+    }
+
     if (streamingProperties.indexOf(key) === -1) {
       $scope.convertedProperties.push({
         name:key,

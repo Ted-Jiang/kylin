@@ -136,16 +136,10 @@ public class MessageTemplateUtilsTest {
                 .endRecord();
 
         root = mapper.createObjectNode();
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR
-                + MessageTemplateUtils.EVENT_CREATE_TIME, MessageTemplateUtils.TIMESTAMP);
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR
-                + MessageTemplateUtils.EVENT_SEND_TIME, MessageTemplateUtils.TIMESTAMP);
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR + MessageTemplateUtils.SCHEMA_ID,
-                Integer.MAX_VALUE);
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR + MessageTemplateUtils.EVENT_ID,
-                (String) MessageTemplateUtils.DEFAULT_SAMPLE_VALUES.get(Schema.Type.STRING));
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR + MessageTemplateUtils.PRODUCER_ID,
-                (String) MessageTemplateUtils.DEFAULT_SAMPLE_VALUES.get(Schema.Type.STRING));
+        ObjectNode headerNode = mapper.createObjectNode();
+        headerNode.put(MessageTemplateUtils.EVENT_CREATE_TIME, MessageTemplateUtils.TIMESTAMP);
+        headerNode.put(MessageTemplateUtils.EVENT_SEND_TIME, MessageTemplateUtils.TIMESTAMP);
+        root.set(MessageTemplateUtils.RHEOS_HEADER, headerNode);
         expectResult = root.toPrettyString();
         sampleMessage = MessageTemplateUtils.convertAvroSchemaToJson(schema);
         Assert.assertEquals(expectResult, sampleMessage);
@@ -178,16 +172,10 @@ public class MessageTemplateUtilsTest {
                 .endRecord();
 
         root = mapper.createObjectNode();
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR
-                + MessageTemplateUtils.EVENT_CREATE_TIME, MessageTemplateUtils.TIMESTAMP);
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR
-                + MessageTemplateUtils.EVENT_SEND_TIME, MessageTemplateUtils.TIMESTAMP);
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR + MessageTemplateUtils.SCHEMA_ID,
-                Integer.MAX_VALUE);
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR + MessageTemplateUtils.EVENT_ID,
-                (String) MessageTemplateUtils.DEFAULT_SAMPLE_VALUES.get(Schema.Type.STRING));
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR + MessageTemplateUtils.PRODUCER_ID,
-                (String) MessageTemplateUtils.DEFAULT_SAMPLE_VALUES.get(Schema.Type.STRING));
+        headerNode = mapper.createObjectNode();
+        headerNode.put(MessageTemplateUtils.EVENT_CREATE_TIME, MessageTemplateUtils.TIMESTAMP);
+        headerNode.put(MessageTemplateUtils.EVENT_SEND_TIME, MessageTemplateUtils.TIMESTAMP);
+        root.set(MessageTemplateUtils.RHEOS_HEADER, headerNode);
 
         root.put("field1", (Integer) MessageTemplateUtils.DEFAULT_SAMPLE_VALUES.get(Schema.Type.INT));
         root.put("field2", (Long) MessageTemplateUtils.DEFAULT_SAMPLE_VALUES.get(Schema.Type.LONG));
@@ -204,17 +192,10 @@ public class MessageTemplateUtilsTest {
         // Test avro schema from json-format
         schema = new Schema.Parser().parse(avorSchemaForJsonFormat);
         root = mapper.createObjectNode();
-
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR
-                + MessageTemplateUtils.EVENT_CREATE_TIME, MessageTemplateUtils.TIMESTAMP);
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR
-                + MessageTemplateUtils.EVENT_SEND_TIME, MessageTemplateUtils.TIMESTAMP);
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR + MessageTemplateUtils.SCHEMA_ID,
-                Integer.MAX_VALUE);
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR + MessageTemplateUtils.EVENT_ID,
-                (String) MessageTemplateUtils.DEFAULT_SAMPLE_VALUES.get(Schema.Type.STRING));
-        root.put(MessageTemplateUtils.RHEOS_HEADER + MessageTemplateUtils.LINK_CHAR + MessageTemplateUtils.PRODUCER_ID,
-                (String) MessageTemplateUtils.DEFAULT_SAMPLE_VALUES.get(Schema.Type.STRING));
+        headerNode = mapper.createObjectNode();
+        headerNode.put(MessageTemplateUtils.EVENT_CREATE_TIME, MessageTemplateUtils.TIMESTAMP);
+        headerNode.put(MessageTemplateUtils.EVENT_SEND_TIME, MessageTemplateUtils.TIMESTAMP);
+        root.set(MessageTemplateUtils.RHEOS_HEADER, headerNode);
 
         root.put("page_id", (String) MessageTemplateUtils.DEFAULT_SAMPLE_VALUES.get(Schema.Type.STRING));
         root.put("pv", (Long) MessageTemplateUtils.DEFAULT_SAMPLE_VALUES.get(Schema.Type.LONG));

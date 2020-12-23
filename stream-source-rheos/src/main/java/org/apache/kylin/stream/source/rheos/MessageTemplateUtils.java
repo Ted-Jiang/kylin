@@ -18,7 +18,7 @@
 
 package org.apache.kylin.stream.source.rheos;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.Maps;
 import org.apache.avro.Schema;
@@ -36,10 +36,6 @@ public class MessageTemplateUtils {
     public final static String RHEOS_HEADER = "rheosHeader";
     public final static String EVENT_CREATE_TIME = "eventCreateTimestamp";
     public final static String EVENT_SEND_TIME = "eventSentTimestamp";
-    public final static String SCHEMA_ID = "schemaId";
-    public final static String EVENT_ID = "eventId";
-    public final static String PRODUCER_ID = "producerId";
-    public final static char LINK_CHAR = '_';
     public final static long TIMESTAMP = 1608026193615L;
     private final static byte[] bytes = { 0, 0 };
 
@@ -65,8 +61,7 @@ public class MessageTemplateUtils {
             throw new StreamingException("root type is not record, which is: " + rheosEventSchema.getType());
         } else {
             List<Schema.Field> fields = rheosEventSchema.getFields();
-            ObjectMapper mapper = new ObjectMapper();
-            ObjectNode root = mapper.createObjectNode();
+            ObjectNode root  = JsonNodeFactory.instance.objectNode();
             for (Schema.Field field : fields) {
                 switch (field.schema().getType()) {
                 case STRING:
@@ -101,7 +96,7 @@ public class MessageTemplateUtils {
                 case RECORD:
                     // must be rheos header
                     if (RHEOS_HEADER.equals(field.name()) && field.schema().getType().equals(Schema.Type.RECORD)) {
-                        convertRheosHeaderSchema(field.schema(), root);
+                        convertRheosHeaderSchema(root);
                     } else {
                         throw new StreamingException(String.format(Locale.ROOT,
                                 "The name of filed is not \"rheosHeader\" or the schema type is not RECORD, "
@@ -146,13 +141,11 @@ public class MessageTemplateUtils {
         }
     }
 
-    private static void convertRheosHeaderSchema(Schema rheosHeader, ObjectNode root) {
+    private static void convertRheosHeaderSchema(ObjectNode root) {
         // rheosHeader must be RECORD schema
-        List<Schema.Field> fields = rheosHeader.getFields();
-        root.put(RHEOS_HEADER + LINK_CHAR + EVENT_CREATE_TIME, TIMESTAMP);
-        root.put(RHEOS_HEADER + LINK_CHAR + EVENT_SEND_TIME, TIMESTAMP);
-        root.put(RHEOS_HEADER + LINK_CHAR + SCHEMA_ID, Integer.MAX_VALUE);
-        root.put(RHEOS_HEADER + LINK_CHAR + EVENT_ID, (String) DEFAULT_SAMPLE_VALUES.get(Schema.Type.STRING));
-        root.put(RHEOS_HEADER + LINK_CHAR + PRODUCER_ID, (String) DEFAULT_SAMPLE_VALUES.get(Schema.Type.STRING));
+        ObjectNode headerNode = JsonNodeFactory.instance.objectNode();
+        headerNode.put(EVENT_CREATE_TIME, TIMESTAMP);
+        headerNode.put(EVENT_SEND_TIME, TIMESTAMP);
+        root.set(RHEOS_HEADER, headerNode);
     }
 }

@@ -1116,6 +1116,7 @@ KylinApp
             template: '',
             dataTypeArr: tableConfig.dataTypes,
             TSColumnArr: [],
+            TSColumnMappingArr: [],
             TSPatternArr: ['MS', 'S'],
             TSParserArr: ['org.apache.kylin.stream.source.kafka.LongTimeParser', 'org.apache.kylin.stream.source.kafka.DateTimeParser'],
             TSColumnSelected: '',
@@ -1178,6 +1179,7 @@ KylinApp
         template: '',
         dataTypeArr: tableConfig.dataTypes,
         TSColumnArr: [],
+        TSColumnMappingArr: [],
         TSColumnSelected: '',
         TSParser: '',
         TSPattern: '',
@@ -1214,6 +1216,7 @@ KylinApp
         $scope.streaming.errMsg = '';
 
         $scope.streaming.TSColumnArr = [];
+        $scope.streaming.TSColumnMappingArr = [];
 
         // Check template is not empty
         if (!$scope.streaming.template) {
@@ -1244,6 +1247,7 @@ KylinApp
           obj.comment=comment;
           if (obj.datatype === 'timestamp') {
             $scope.streaming.TSColumnArr.push(key);
+            $scope.streaming.TSColumnMappingArr.push(comment);
           }
           return obj;
         }
@@ -1322,7 +1326,6 @@ KylinApp
           comment: field.doc || '',
           field_mapping: parentName ? parentName + '.' + field.name : field.name
         };
-
         return _column;
       };
 
@@ -1340,8 +1343,11 @@ KylinApp
           if ($scope.additionalColumn.datatype == 'timestamp') {
             if (!$scope.streaming.TSColumnArr) {
               $scope.streaming.TSColumnArr = [];
+              $scope.streaming.TSColumnMappingArr = [];
             }
             $scope.streaming.TSColumnArr.push($scope.additionalColumn.name);
+            // add mapping info when add column
+            $scope.streaming.TSColumnMappingArr.push($scope.additionalColumn.field_mapping);
           }
           $scope.additionalColumn = {};
         } else {
@@ -1367,10 +1373,16 @@ KylinApp
         if (column.datatype === 'timestamp') {
           if (!$scope.streaming.TSColumnArr.includes(column.name)) {
             $scope.streaming.TSColumnArr.push(column.name);
+            if (!column.field_mapping) {
+              $scope.streaming.TSColumnMappingArr.push(column.field_mapping);
+            } else {
+              $scope.streaming.TSColumnMappingArr.push(column.comment);
+            }
           }
         } else {
           if ($scope.streaming.TSColumnArr.includes(column.name)) {
             $scope.streaming.TSColumnArr.splice($scope.streaming.TSColumnArr.findIndex(function(opt) {return opt === column.name}), 1);
+            $scope.streaming.TSColumnMappingArr.splice($scope.streaming.TSColumnArr.findIndex(function(opt) {return opt === column.name}), 1);
             if (column.name === $scope.streaming.TSColumnSelected) {
               $scope.streaming.TSColumnSelected = '';
             }
@@ -1450,6 +1462,14 @@ KylinApp
             $scope.streamingConfig.parser_info.field_mapping[col.name] = col.comment.replace(/\|/g, '.') || ''
           }
         })
+        // rheos streaming
+        if ($scope.tableConfig.streamingSourceType.rheos === $scope.tableData.source_type) {
+          // rheos type streaming
+          var index = $scope.streaming.TSColumnArr.findIndex(function (opt) {
+            return opt === $scope.streaming.TSColumnSelected
+          });
+          $scope.streamingConfig.parser_info.field_mapping[$scope.streaming.TSColumnSelected] = $scope.streaming.TSColumnMappingArr[index].replace(/\|/g, '.');
+        }
         SweetAlert.swal({
           title: '',
           text: 'Are you sure to save the streaming table?',

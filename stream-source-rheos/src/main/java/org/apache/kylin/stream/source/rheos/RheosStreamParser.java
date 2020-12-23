@@ -32,6 +32,7 @@ import org.apache.kylin.cube.model.CubeDesc;
 import org.apache.kylin.cube.model.CubeJoinedFlatTableDesc;
 import org.apache.kylin.dimension.TimeDerivedColumnType;
 import org.apache.kylin.metadata.model.TblColRef;
+import org.apache.kylin.stream.core.exception.StreamingException;
 import org.apache.kylin.stream.core.model.StreamingMessage;
 import org.apache.kylin.stream.core.source.IStreamingMessageParser;
 import org.apache.kylin.stream.core.source.MessageFormatException;
@@ -58,7 +59,6 @@ public class RheosStreamParser implements IStreamingMessageParser<ConsumerRecord
     protected List<TblColRef> allColumns;
     private boolean formatTs = false;// not used
     private String tsColName = "TIMESTAMP";
-    private String[] tsColHierarchies;
     protected TimeColumnFormat timeColumnFormat = null;
 
     protected RheosEventDeserializer deserializer;
@@ -79,7 +79,6 @@ public class RheosStreamParser implements IStreamingMessageParser<ConsumerRecord
         if (parserInfo != null) {
             this.formatTs = parserInfo.isFormatTs();
             this.tsColName = parserInfo.getTsColName();
-            this.tsColHierarchies = tsColName.split("\\.");
             columnMappings = parserInfo.getColumnToSourceFieldMapping();
             this.columnToSourceFieldMapping = Maps.newHashMap();
             if (columnMappings != null) {
@@ -125,7 +124,7 @@ public class RheosStreamParser implements IStreamingMessageParser<ConsumerRecord
     }
 
     private long parseTimeColumn(GenericRecord domainRecord) {
-        Object tsObj = getColumnValueFromHierarchy(domainRecord, tsColHierarchies);
+        Object tsObj = getColumnValue(domainRecord, tsColName);
         String tsStr = (tsObj == null ? null : tsObj.toString());
         if (StringUtils.isEmpty(tsStr)) {
             throw new MessageFormatException("time column is empty for the record");
@@ -144,11 +143,7 @@ public class RheosStreamParser implements IStreamingMessageParser<ConsumerRecord
         }
 
         String[] hierarchies = columnToSourceFieldMapping.get(colName);
-        return getColumnValueFromHierarchy(domainRecord, hierarchies);
-    }
-
-    private Object getColumnValueFromHierarchy(GenericRecord domainRecord, String[] hierarchies) {
-        if (hierarchies == null || hierarchies.length == 0) {
+        if (hierarchies.length == 0) {
             return null;
         }
         GenericRecord directParent = domainRecord;

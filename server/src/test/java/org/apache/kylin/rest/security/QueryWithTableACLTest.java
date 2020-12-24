@@ -54,19 +54,19 @@ public class QueryWithTableACLTest extends LocalFileMetadataTestCase {
     @Test
     public void testNormalQuery() throws SQLException {
         QueryACLTestUtil.setUser(ADMIN);
-        QueryACLTestUtil.mockQuery(PROJECT, "select * from STREAMING_TABLE");
+        QueryACLTestUtil.mockQuery(PROJECT, "select * from STREAMING_TABLE LIMIT 100");
     }
 
     @Test
     public void testFailQuery() throws SQLException, IOException {
         QueryACLTestUtil.setUser(MODELER);
-        QueryACLTestUtil.mockQuery(PROJECT, "select * from STREAMING_TABLE");
+        QueryACLTestUtil.mockQuery(PROJECT, "select * from STREAMING_TABLE LIMIT 100");
 
         QueryACLTestUtil.setUser(ADMIN);
         TableACLManager.getInstance(KylinConfig.getInstanceFromEnv()).addTableACL(PROJECT, "ADMIN", STREAMING_TABLE, MetadataConstants.TYPE_USER);
         thrown.expectCause(CoreMatchers.isA(AccessDeniedException.class));
         thrown.expectMessage(CoreMatchers.containsString("Query failed.Access table:DEFAULT.STREAMING_TABLE denied"));
-        QueryACLTestUtil.mockQuery(PROJECT, "select * from STREAMING_TABLE");
+        QueryACLTestUtil.mockQuery(PROJECT, "select * from STREAMING_TABLE LIMIT 100");
     }
 
     @Test

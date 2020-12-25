@@ -54,16 +54,20 @@ public class KylinResultSet extends AvaticaResultSet {
         String sql = signature.sql;
         List<AvaticaParameter> params = signature.parameters;
         List<Object> paramValues = null;
+        Map<String, String> queryToggles = new HashMap<>();
         if (!(statement instanceof KylinPreparedStatement)) {
             params = null;
+            if (statement instanceof KylinStatement) {
+                queryToggles = ((KylinStatement) statement).getQueryToggles();
+            }
         } else if (params != null && !params.isEmpty()) {
             paramValues = ((KylinPreparedStatement) statement).getParameterJDBCValues();
+            queryToggles = ((KylinPreparedStatement) statement).getQueryToggles();
         }
 
         KylinConnection connection = (KylinConnection) statement.connection;
         IRemoteClient client = connection.getRemoteClient();
 
-        Map<String, String> queryToggles = new HashMap<>();
         int maxRows = statement.getMaxRows();
         queryToggles.put("ATTR_STATEMENT_MAX_ROWS", String.valueOf(maxRows));
         addServerProps(queryToggles, connection);

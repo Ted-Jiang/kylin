@@ -47,6 +47,22 @@ public class DriverTest {
     }
 
     @Test
+    public void testStatementWithQueryToggles() throws SQLException {
+        Driver driver = new DummyDriver();
+
+        Connection conn = driver.connect("jdbc:kylin://test_url/test_db", null);
+        KylinStatement statement = (KylinStatement) conn.createStatement();
+        statement.setQueryToggle("DEBUG_TOGGLE_HIT_CUBE", "test");
+        ResultSet resultSet = statement.executeQuery("select * from test_table");
+
+        while (resultSet.next()) {
+            assertEquals("foo", resultSet.getString(1));
+            assertEquals("bar", resultSet.getString(2));
+            assertEquals("tool", resultSet.getString(3));
+        }
+    }
+
+    @Test
     public void testStatementWithMockData() throws SQLException {
         Driver driver = new DummyDriver();
 

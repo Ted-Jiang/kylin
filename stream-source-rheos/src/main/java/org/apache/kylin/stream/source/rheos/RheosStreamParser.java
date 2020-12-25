@@ -32,7 +32,6 @@ import org.apache.kylin.cube.model.CubeDesc;
 import org.apache.kylin.cube.model.CubeJoinedFlatTableDesc;
 import org.apache.kylin.dimension.TimeDerivedColumnType;
 import org.apache.kylin.metadata.model.TblColRef;
-import org.apache.kylin.stream.core.exception.StreamingException;
 import org.apache.kylin.stream.core.model.StreamingMessage;
 import org.apache.kylin.stream.core.source.IStreamingMessageParser;
 import org.apache.kylin.stream.core.source.MessageFormatException;
@@ -78,7 +77,7 @@ public class RheosStreamParser implements IStreamingMessageParser<ConsumerRecord
         Map<String, String> columnMappings = null;
         if (parserInfo != null) {
             this.formatTs = parserInfo.isFormatTs();
-            this.tsColName = parserInfo.getTsColName();
+            this.tsColName = parserInfo.getTsColName().toUpperCase(Locale.ROOT);
             columnMappings = parserInfo.getColumnToSourceFieldMapping();
             this.columnToSourceFieldMapping = Maps.newHashMap();
             if (columnMappings != null) {

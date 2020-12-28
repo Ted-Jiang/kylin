@@ -6,7 +6,7 @@
     "id" : "1",
     "name" : "TRANS_ID",
     "datatype" : "bigint",
-    "data_gen" : "ID"
+    "data_gen" : "ID,null=true,nullpct=0.2"
   }, {
     "id" : "2",
     "name" : "ORDER_ID",
@@ -22,7 +22,7 @@
     "id" : "4",
     "name" : "LSTG_FORMAT_NAME",
     "datatype" : "string",
-    "data_gen" : "FP-GTC|FP-non GTC|ABIN|Auction|Others",
+    "data_gen" : "FP-GTC|FP-non GTC|ABIN|Auction|Others,null=true,nullpct=0.2",
     "index": "T"
   }, {
     "id" : "5",
@@ -56,7 +56,7 @@
     "id" : "10",
     "name" : "ITEM_COUNT",
     "datatype" : "int",
-    "data_gen" : "RAND"
+    "data_gen" : "RAND,null=true,nullpct=0.2"
   }, {
     "id" : "11",
     "name" : "TEST_COUNT_DISTINCT_BITMAP",

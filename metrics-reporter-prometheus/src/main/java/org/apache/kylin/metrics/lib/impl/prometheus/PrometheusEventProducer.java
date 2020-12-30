@@ -441,7 +441,7 @@ public class PrometheusEventProducer {
                         }
                         continue;
                     }
-                    if (threadName.startsWith("kylin-coproc-") && isThreadRunningKylinCode(threadInfo)) {
+                    if (threadName.startsWith("kylin-coproc-")) {
                         usedCoprocessorThreadCnt++;
                         continue;
                     }

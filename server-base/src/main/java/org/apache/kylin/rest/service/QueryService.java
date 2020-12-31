@@ -629,11 +629,9 @@ public class QueryService extends BasicService {
         // Check whether duplicate query exists
         int lazyCount = 0;
         while (response.isRunning()) {
-            // Wait at most one minute
-            if (System.currentTimeMillis() - response.getLazyQueryStartTime() >= getConfig()
-                    .getLazyQueryWaitingTimeoutMilliSeconds()) {
-                cache.evict(sqlRequest.getCacheKey());
-                return null;
+            long waitingTime = System.currentTimeMillis() - response.getLazyQueryStartTime();
+            if (waitingTime >= getConfig().getLazyQueryWaitingTimeoutMilliSeconds()) {
+                throw new RuntimeException("Lazy query waiting more than " + waitingTime + "ms");
             }
             if (lazyCount++ % 100 == 0) {
                 logger.info("Duplicated SQL request is running, waiting...");

@@ -213,11 +213,13 @@ public abstract class GTCubeStorageQueryBase implements IStorageQuery {
                 context.getStorageLimitLevel(), context.isNeedStorageAggregation());
 
         if (hackNoAggregations && context.getStorageLimitLevel() == StorageLimitLevel.NO_LIMIT) {
-            Long baseCuboidRowCount = cubeInstance.getBaseCuboidRowCount();
             long rawQueryMaxReturnRowCount = cubeInstance.getConfig().getRawQueryMaxReturnRowCount();
-            if (baseCuboidRowCount == null || baseCuboidRowCount > rawQueryMaxReturnRowCount) {
-                logger.error("Fail fast to no aggregation query due to scanning {} row count exceeding the threshold {}", baseCuboidRowCount, rawQueryMaxReturnRowCount);
-                throw new RuntimeException("Fail fast to no aggregation query due to scanning " + baseCuboidRowCount + " row count exceeding the threshold " + rawQueryMaxReturnRowCount);
+            if (rawQueryMaxReturnRowCount != Long.MAX_VALUE && rawQueryMaxReturnRowCount > 0) {
+                Long baseCuboidRowCount = cubeInstance.getBaseCuboidRowCount();
+                if (baseCuboidRowCount == null || baseCuboidRowCount > rawQueryMaxReturnRowCount) {
+                    logger.error("Fail fast to no aggregation query due to scanning {} row count exceeding the threshold {}", baseCuboidRowCount, rawQueryMaxReturnRowCount);
+                    throw new RuntimeException("Fail fast to no aggregation query due to scanning " + baseCuboidRowCount + " row count exceeding the threshold " + rawQueryMaxReturnRowCount);
+                }
             }
         }
         return new GTCubeStorageQueryRequest(cuboid, dimensionsD, groupsD, dynGroups, dynGroupExprs, filterColumnD,

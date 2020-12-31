@@ -2017,7 +2017,7 @@ public abstract class KylinConfigBase implements Serializable {
 
     public long getRawQueryMaxReturnRowCount() {
         Long value = Long
-                .parseLong(this.getOptional("kylin.query.max-return-row-count-for-raw-hacker", String.valueOf(100000)));
+                .parseLong(this.getOptional("kylin.query.max-return-row-count-for-raw-hacker", String.valueOf(0)));
         return value > 0 ? value : Long.MAX_VALUE;
     }
 

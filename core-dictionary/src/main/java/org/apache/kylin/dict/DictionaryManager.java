@@ -74,11 +74,10 @@ public class DictionaryManager {
             if (info.dictionaryObject instanceof TrieDictionary) {
                 TrieDictionary<String> dict = (TrieDictionary<String>) info.dictionaryObject;
                 cacheSize += dict.getStorageSizeInBytes();
-            }
-            else if (info.dictionaryObject instanceof TrieDictionaryForest) {
-                TrieDictionaryForest dictionaryForest =  (TrieDictionaryForest) info.dictionaryObject;
+            } else if (info.dictionaryObject instanceof TrieDictionaryForest) {
+                TrieDictionaryForest dictionaryForest = (TrieDictionaryForest) info.dictionaryObject;
                 List<TrieDictionary> trees = dictionaryForest.getTrees();
-                for (TrieDictionary dict : trees){
+                for (TrieDictionary dict : trees) {
                     cacheSize += dict.getStorageSizeInBytes();
                 }
             }

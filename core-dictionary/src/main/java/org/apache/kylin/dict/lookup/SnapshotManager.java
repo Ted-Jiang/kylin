@@ -296,6 +296,7 @@ public class SnapshotManager {
                 TrieDictionary<String> dict = (TrieDictionary<String>) info.getDict();
                 cacheSize += dict.getStorageSizeInBytes();
             }
+            cacheSize += info.getRowIndicesSizeInBytes();
         }
         long cacheSizeMB = cacheSize >> 20;
         return cacheSizeMB;

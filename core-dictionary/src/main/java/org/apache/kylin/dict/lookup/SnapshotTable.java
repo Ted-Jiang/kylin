@@ -74,8 +74,15 @@ public class SnapshotTable extends RootPersistentEntity implements IReadableTabl
         this.useDictionary = true;
     }
 
-    public Dictionary<String> getDict(){
+    public Dictionary<String> getDict() {
         return this.dict;
+    }
+
+    public long getRowIndicesSizeInBytes() {
+        if (rowIndices == null || rowIndices.isEmpty()) {
+            return 0L;
+        }
+        return rowIndices.size() * rowIndices.get(0).length * 4L;
     }
 
     public long getLastBuildTime() {

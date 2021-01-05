@@ -129,7 +129,7 @@ public class JdbcHiveInputBase extends HiveInputBase {
         }
 
         protected KylinConfig getConfig() {
-            return flatDesc.getDataModel().getConfig();
+            return flatDesc.getSegment() == null ? flatDesc.getDataModel().getConfig() : flatDesc.getSegment().getConfig();
         }
 
         @Override

@@ -83,7 +83,7 @@ public class DictionaryGeneratorCLI {
 
     private static void processSegment(KylinConfig config, CubeSegment cubeSeg, String uuid,
             DistinctColumnValuesProvider factTableValueProvider, DictionaryProvider dictProvider) throws IOException {
-        CubeManager cubeMgr = CubeManager.getInstance(config);
+        CubeManager cubeMgr = CubeManager.getInstance(KylinConfig.getInstanceFromEnv());
 
         // dictionary
         for (TblColRef col : cubeSeg.getCubeDesc().getAllColumnsNeedDictionaryBuilt()) {

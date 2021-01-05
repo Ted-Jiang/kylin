@@ -151,7 +151,7 @@ public class CubeInstance extends RootPersistentEntity implements IRealization, 
     }
 
     public CubeInstance latestCopyForWrite() {
-        CubeManager mgr = CubeManager.getInstance(config);
+        CubeManager mgr = CubeManager.getInstance(KylinConfig.getInstanceFromEnv());
         CubeInstance latest = mgr.getCube(name); // in case this object is out-of-date
         return mgr.copyForWrite(latest);
     }

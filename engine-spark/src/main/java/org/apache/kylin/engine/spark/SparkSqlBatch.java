@@ -22,8 +22,10 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 
+import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.AbstractApplication;
 import org.apache.kylin.common.util.OptionsHelper;
+import org.apache.kylin.engine.mr.common.AbstractHadoopJob;
 import org.apache.kylin.engine.mr.common.BatchConstants;
 
 import org.apache.spark.sql.SparkSession;
@@ -35,6 +37,7 @@ import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Map;
 
 /**
  * Execute a batch of spark sql in order, if a sql execution fails, abort and throw an exception,
@@ -64,6 +67,11 @@ public class SparkSqlBatch extends AbstractApplication implements Serializable {
             .isRequired(true)
             .withDescription("Sql count")
             .create(BatchConstants.ARG_SQL_COUNT);
+    public static final Option OPTION_METAURL = OptionBuilder.withArgName(BatchConstants.ARG_META_URL)
+            .hasArg()
+            .isRequired(true)
+            .withDescription("self define conf in spark-sql")
+            .create(BatchConstants.ARG_META_URL);
 
     public SparkSqlBatch() {
         options = new Options();
@@ -71,6 +79,7 @@ public class SparkSqlBatch extends AbstractApplication implements Serializable {
         options.addOption(OPTION_STEP_NAME);
         options.addOption(OPTION_SEGMENT_ID);
         options.addOption(OPTION_SQL_COUNT);
+        options.addOption(OPTION_METAURL);
     }
 
     @Override
@@ -84,6 +93,10 @@ public class SparkSqlBatch extends AbstractApplication implements Serializable {
         String stepName = base64Decode(optionsHelper.getOptionValue(OPTION_STEP_NAME));
         String segmentId = optionsHelper.getOptionValue(OPTION_SEGMENT_ID);
         String sqlCountStr = optionsHelper.getOptionValue(OPTION_SQL_COUNT);
+        String metaURL = optionsHelper.getOptionValue(OPTION_METAURL);
+
+        KylinConfig kylinConfig = AbstractHadoopJob.loadKylinConfigFromHdfs(metaURL);
+
         logger.info("start execute sql batch job, cubeName: " + cubeName + ", stepName: " +
                 stepName + ", segmentId: " + segmentId + ", sqlCount: " + sqlCountStr);
 
@@ -94,7 +107,7 @@ public class SparkSqlBatch extends AbstractApplication implements Serializable {
         }
 
         SparkSession sparkSession = getSparkSession(stepName + " for cube: " +
-                cubeName + ", segment " + segmentId);
+                cubeName + ", segment " + segmentId, kylinConfig);
         for (int i = 0; i < sqlCount; i++) {
             String argName = BatchConstants.ARG_BASE64_ENCODED_SQL + String.valueOf(i);
             Option optionSqlText = OptionBuilder.withArgName(argName)
@@ -115,11 +128,17 @@ public class SparkSqlBatch extends AbstractApplication implements Serializable {
         }
     }
 
-    private SparkSession getSparkSession(String appName) {
-        return SparkSession.builder()
+    private SparkSession getSparkSession(String appName, KylinConfig config) {
+        SparkSession.Builder builder = SparkSession.builder()
                 .appName(appName)
-                .enableHiveSupport()
-                .getOrCreate();
+                .enableHiveSupport();
+
+        Map<String, String> sqlConfigOverride = config.getSparkSQLConfigOverride();
+        for (Map.Entry<String, String> entry : sqlConfigOverride.entrySet()) {
+            logger.info("Override user-defined spark-sql conf, set {}={}.", entry.getKey(), entry.getValue());
+            builder.config(entry.getKey(), entry.getValue());
+        }
+        return builder.getOrCreate();
     }
 
     private String base64Decode(String str) throws UnsupportedEncodingException {

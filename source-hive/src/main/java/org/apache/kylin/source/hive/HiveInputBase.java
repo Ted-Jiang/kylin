@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Base64;
@@ -30,6 +31,10 @@ import java.util.Set;
 import java.util.Locale;
 import java.util.Collections;
 
+import org.apache.kylin.common.KylinConfigExt;
+import org.apache.kylin.cube.CubeSegment;
+import org.apache.kylin.engine.mr.common.JobRelatedMetaUtil;
+import org.apache.kylin.engine.spark.SparkBatchCubingJobBuilder2;
 import org.apache.kylin.shaded.com.google.common.base.Strings;
 import org.apache.kylin.shaded.com.google.common.collect.Lists;
 import org.apache.hadoop.fs.FileSystem;
@@ -338,7 +343,7 @@ public class HiveInputBase {
                 } else {
                     if (kylinConfig.isSparCreateHiveTableViaSparkEnable()) {
                         jobFlow.addTask(createFlatHiveTableBySparkSql(hiveInitStatements,
-                                jobWorkingDir, cubeName, flatDesc));
+                                jobWorkingDir, cubeName, flatDesc, jobFlow.getId()));
                     } else {
                         jobFlow.addTask(createFlatHiveTableStep(hiveInitStatements, jobWorkingDir, cubeName, flatDesc));
                     }
@@ -431,8 +436,8 @@ public class HiveInputBase {
         return step;
     }
 
-    protected static AbstractExecutable createFlatHiveTableBySparkSql(String hiveInitStatements,
-                                                                      String jobWorkingDir, String cubeName, IJoinedFlatTableDesc flatDesc) {
+    protected static AbstractExecutable createFlatHiveTableBySparkSql(String hiveInitStatements, String jobWorkingDir,
+            String cubeName, IJoinedFlatTableDesc flatDesc, String jobId) {
         final String dropTableHql = JoinedFlatTable.generateDropTableStatement(flatDesc);
         final String createTableHql = JoinedFlatTable.generateCreateTableStatement(flatDesc,
                 jobWorkingDir);
@@ -440,6 +445,18 @@ public class HiveInputBase {
 
         KylinConfig config = flatDesc.getSegment().getConfig();
         final SparkExecutable sparkExecutable = SparkExecutableFactory.instance(config);
+
+        SparkBatchCubingJobBuilder2 builder2 = new SparkBatchCubingJobBuilder2((CubeSegment) flatDesc.getSegment(),
+                null, 0);
+        String metadataUrl = builder2.getSegmentMetadataUrl(config, jobId);
+        try {
+            // only dump props
+            JobRelatedMetaUtil.dumpAndUploadKylinPropsAndMetadata(new HashSet<String>(),
+                    (KylinConfigExt) flatDesc.getSegment().getConfig(), metadataUrl);
+        } catch (IOException exception) {
+            logger.error("Fail to dumpAndUploadKylinPropsAndMetadata to: " + metadataUrl);
+            exception.printStackTrace();
+        }
         sparkExecutable.setName(ExecutableConstants.STEP_NAME_CREATE_FLAT_TABLE_WITH_SPARK);
         sparkExecutable.setClassName(SparkCreatingFlatTable.class.getName());
 

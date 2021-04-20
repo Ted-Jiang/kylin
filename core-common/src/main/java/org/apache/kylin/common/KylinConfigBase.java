@@ -1576,6 +1576,10 @@ public abstract class KylinConfigBase implements Serializable {
         return getPropertiesByPrefix("kylin.engine.spark-conf.");
     }
 
+    public Map<String, String> getSparkSQLConfigOverride() {
+        return getPropertiesByPrefix("kylin.engine.spark-sql-conf.");
+    }
+
     public Map<String, String> getFlinkConfigOverride() {
         return getPropertiesByPrefix("kylin.engine.flink-conf.");
     }

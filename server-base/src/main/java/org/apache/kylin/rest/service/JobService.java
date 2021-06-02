@@ -516,6 +516,11 @@ public class JobService extends BasicService implements InitializingBean {
                 throw new BadRequestException("The cube " + cube.getName() + " has READY_PENDING segments "
                         + readyPendingSegments + ". It's not allowed for building");
             }
+            // when run optimize cuboidBytesRecommend is Not null.
+            if (cube.getCuboidsRecommend() != null) {
+                throw new BadRequestException(
+                        "The cube " + cube.getName() + " has running optimize job. It's not allowed for building");
+            }
         }
     }
 
